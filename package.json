@@ -1,0 +1,33 @@
+{
+  "name": "metabuilder-orchestrator",
+  "version": "0.1.0",
+  "description": "Orquestador multi-agente que genera aplicaciones (landing pages, webs de pedidos, blogs) usando LangGraph + Devin CLI",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "build:app": "node src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/damianra/metabuilder-orchestrator.git"
+  },
+  "keywords": [
+    "orchestrator",
+    "multi-agent",
+    "langgraph",
+    "devin-cli"
+  ],
+  "author": "Damian Ramirez",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/damianra/metabuilder-orchestrator/issues"
+  },
+  "homepage": "https://github.com/damianra/metabuilder-orchestrator#readme",
+  "dependencies": {
+    "@langchain/core": "^1.3.0",
+    "@langchain/langgraph": "^1.5.2",
+    "dotenv": "^18.0.9",
+    "execa": "^10.2.0"
+  }
+}

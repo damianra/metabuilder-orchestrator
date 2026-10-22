@@ -1,0 +1,26 @@
+# Dependencias
+node_modules/
+
+# Entorno y secretos
+.env
+
+# Apps generadas (cada una lleva su propio repo git)
+generated-apps/
+
+# Logs de corridas y exports de sesiones Devin
+runs/
+
+# Artefactos de apps generadas
+*.sqlite
+*.sqlite-journal
+dist/
+build/
+coverage/
+
+# Config local de Devin
+.devin/
+
+# OS / editor
+.DS_Store
+*.swp
+*.log
