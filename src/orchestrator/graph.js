@@ -16,6 +16,12 @@ function afterPreflight(state) {
   return state.status === 'failed' ? 'fail' : 'planner';
 }
 
+function afterPlanner(state) {
+  // Fallo de transporte/timeout de Devin → cortar; plan.json
+  // ausente/inválido con respuesta OK → validate decide (repairPlan).
+  return state.status === 'failed' ? 'fail' : 'validate';
+}
+
 function afterValidate(state) {
   if (state.validationErrors.length === 0) return 'build';
   if (state.planRetries < config.maxPlanRetries) return 'repairPlan';
@@ -68,7 +74,7 @@ export function buildGraph() {
 
     .addEdge(START, 'preflight')
     .addConditionalEdges('preflight', afterPreflight)
-    .addEdge('planner', 'validate')
+    .addConditionalEdges('planner', afterPlanner)
     .addEdge('repairPlan', 'validate')
     .addConditionalEdges('validate', afterValidate)
     .addConditionalEdges('build', afterBuild)

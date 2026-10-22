@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export const log = (node, msg) => ({ ts: new Date().toISOString(), node, msg });
 
@@ -17,10 +18,8 @@ export function writePlan(projectDir, plan) {
 }
 
 export function loadPrompt(name, vars = {}) {
-  let text = readFileSync(
-    join(new URL('../prompts', import.meta.url).pathname, `${name}.md`),
-    'utf8',
-  );
+  const promptsDir = fileURLToPath(new URL('../prompts', import.meta.url));
+  let text = readFileSync(join(promptsDir, `${name}.md`), 'utf8');
   for (const [k, v] of Object.entries(vars)) {
     text = text.replaceAll(`{{${k}}}`, String(v));
   }

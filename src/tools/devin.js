@@ -80,6 +80,14 @@ class AcpClient {
             outcome: { outcome: 'selected', optionId: msg.params.options[0].optionId },
           },
         });
+      } else if (msg.id !== undefined && msg.method) {
+        // Request agente→cliente no manejada (fs/*, terminal/*, etc.):
+        // responder error para no dejar al agente colgado.
+        this.#send({
+          jsonrpc: '2.0',
+          id: msg.id,
+          error: { code: -32601, message: `method not implemented: ${msg.method}` },
+        });
       }
     }
   }
@@ -111,9 +119,13 @@ class AcpClient {
 
 async function startSession({ cwd, logPath, model, mode }) {
   const client = new AcpClient(cwd, logPath);
+  // Sin fs/terminal capabilities: el agente usa sus tools nativos
+  // (local_exec/local_write/...) que corren server-side en `cwd`.
+  // Si las anunciamos, el agente delega cada fs op al cliente y se
+  // bloquearía esperando respuestas que nunca llegan.
   await client.call('initialize', {
     protocolVersion: 1,
-    clientCapabilities: { fs: { readTextFile: true, writeTextFile: true }, terminal: true },
+    clientCapabilities: {},
     clientInfo: { name: 'metabuilder-orchestrator', version: '0.1.0' },
   });
   const { apiKey, apiServerUrl } = loadCredentials();

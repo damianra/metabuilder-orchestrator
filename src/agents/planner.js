@@ -1,48 +1,101 @@
-import { log, writePlan } from './common.js';
+import { join } from 'node:path';
+import { config } from '../config.js';
+import { runDevinPrompt } from '../tools/devin.js';
+import { log, loadPrompt, readPlan, writePlan } from './common.js';
+
+function logPath(state, name) {
+  return state.runDir ? join(state.runDir, 'prompts', `${name}.rpc.jsonl`) : undefined;
+}
 
 /**
- * STUB (T4 lo implementa con Devin): genera un plan de 2 pasos que ejercita
- * el bucle build→verify del grafo. El paso 2 verifica un artefacto real.
+ * Invoca a Devin para generar plan.json en el directorio del proyecto.
  */
 export async function plannerNode(state) {
-  const plan = {
-    projectName: state.projectSlug,
+  const prompt = loadPrompt('planner', {
+    idea: state.idea,
     scope: state.scope,
-    appType: 'custom',
-    validated: false,
-    steps: [
-      {
-        id: 1,
-        description: '[stub] crear archivo de prueba',
-        type: 'infra',
-        verify: process.env.MB_STUB_VERIFY ?? 'echo "stub" > step1.txt && test -f step1.txt',
-        status: 'pending',
-        attempts: 0,
-      },
-      {
-        id: 2,
-        description: '[stub] verificar que plan.json existe',
-        type: 'test',
-        verify: 'test -f plan.json',
-        status: 'pending',
-        attempts: 0,
-      },
-    ],
-  };
+    slug: state.projectSlug,
+  });
+
+  const res = await runDevinPrompt({
+    prompt,
+    cwd: state.projectDir,
+    timeoutMs: config.devinTimeoutMs,
+    logPath: logPath(state, 'planner'),
+  });
+
+  if (!res.ok) {
+    return {
+      status: 'failed',
+      lastError: `planner falló: ${res.error}`,
+      history: [log('planner', `error Devin: ${res.error}`)],
+    };
+  }
+
+  let plan;
+  try {
+    plan = readPlan(state.projectDir);
+  } catch (e) {
+    plan = null;
+  }
+  if (!plan) {
+    // Devin respondió OK pero no dejó plan.json → el validador
+    // genera el error y repairPlan lo reintenta.
+    return {
+      plan: null,
+      history: [log('planner', 'plan.json ausente o JSON inválido → validate → repair')],
+    };
+  }
+
+  // El scope y el nombre los manda el usuario, no el planner.
+  plan.scope = state.scope;
+  plan.projectName = state.projectSlug;
   writePlan(state.projectDir, plan);
+
   return {
     plan,
     status: 'planned',
-    history: [log('plan', `plan stub con ${plan.steps.length} pasos`)],
+    history: [log('planner', `plan generado: ${plan.steps?.length ?? 0} pasos, appType=${plan.appType}`)],
+    appType: plan.appType ?? 'custom',
   };
 }
 
 /**
- * STUB (T4): repararía el plan vía Devin usando validationErrors.
+ * Repara plan.json según los errores del validador, vía Devin.
  */
 export async function repairPlanNode(state) {
+  const errors = state.validationErrors.map((e) => `- ${e}`).join('\n');
+  const prompt = loadPrompt('plan-repair', {
+    errors,
+    scope: state.scope,
+    slug: state.projectSlug,
+  });
+
+  const res = await runDevinPrompt({
+    prompt,
+    cwd: state.projectDir,
+    timeoutMs: config.devinTimeoutMs,
+    logPath: logPath(state, `repair-${state.planRetries + 1}`),
+  });
+
+  let plan = null;
+  try {
+    plan = readPlan(state.projectDir);
+  } catch {
+    /* queda null */
+  }
+
   return {
+    plan: plan ?? state.plan,
     planRetries: state.planRetries + 1,
-    history: [log('repairPlan', 'reparación de plan (stub)')],
+    lastError: res.ok ? null : `repairPlan falló: ${res.error}`,
+    history: [
+      log(
+        'repairPlan',
+        res.ok
+          ? `plan reescrito (intento ${state.planRetries + 1}/${config.maxPlanRetries})`
+          : `Devin falló al reparar: ${res.error}`,
+      ),
+    ],
   };
 }

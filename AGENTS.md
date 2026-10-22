@@ -25,9 +25,12 @@ node -e "import('./src/tools/shell.js').then(m=>m.run('echo ok',{cwd:'/tmp'}).th
 `src/orchestrator/graph.js` (LangGraph `StateGraph`):
 
 ```
-preflight → plan → validate ─┬─→ build → verify ─┬─→ build (siguiente paso)
-                             │                   ├─→ finalVerify → finalize → END
-                             └─→ repairPlan      └─→ fix → verify
+preflight → planner → validate ─┬─→ builder → verify ─┬─→ builder (siguiente paso)
+                                │                      ├─→ finalVerify → finalize → END
+                                └─→ repairPlan         └─→ fixer → verify
+
+Fail terminal: fallos de transporte/timeout del planner y reintentos
+agotados van al nodo `fail` (status: failed), no a repairPlan.
 ```
 
 - Estado: `src/orchestrator/state.js` (`Annotation.Root`).
@@ -55,7 +58,7 @@ falla con "Not logged in" aunque `credentials.toml` exista y sea válido.
 La vía soportada es **`devin acp`** (JSON-RPC sobre stdio), igual que
 Devin Desktop. Secuencia (`src/tools/devin.js`):
 
-1. `initialize` (protocolVersion 1, `fs`+`terminal` capabilities)
+1. `initialize` (protocolVersion 1, `clientCapabilities: {}`)
 2. `authenticate` `{ methodId: "windsurf-api-key", _meta: { api_key, api_server_url } }`
    — leídos de `~/.local/share/devin/credentials.toml`
 3. `session/new` `{ cwd, mcpServers: [] }`
@@ -68,6 +71,17 @@ Devin Desktop. Secuencia (`src/tools/devin.js`):
 Notas ACP:
 - `session/request_permission` puede llegar aun en bypass → el cliente
   auto-aprueba la primera opción (red de seguridad).
+- **NO anunciar `fs`/`terminal` capabilities.** Si el cliente declara
+  `fs.readTextFile/writeTextFile`, el agente delega cada lectura/escritura
+  de archivo al cliente via `fs/read_text_file`/`fs/write_text_file` y se
+  queda colgado si no respondemos (síntoma: el agente "piensa" 15 min,
+  el tool_call dice "Wrote plan.json" pero el archivo nunca aparece).
+  Con capabilities vacías usa sus tools nativos (`local_*`) que escriben
+  directo en `cwd`. El cliente responde error `-32601` a cualquier
+  request no manejada como red de seguridad.
+- El prompt del planner debe exigir escritura inmediata con razonamiento
+  mínimo — prompts abiertos provocan que el agente explore/piense hasta
+  agotar el timeout sin escribir nada.
 - Cada paso abre una sesión nueva (proceso `devin acp` propio). La memoria
   entre pasos es el filesystem + `plan.json` + el AGENTS.md copiado.
 - `devin auth status` y `devin models list` reportan "Not logged in" con
