@@ -1,0 +1,38 @@
+import { Annotation } from '@langchain/langgraph';
+
+const replace = (a, b) => b ?? a;
+const append = (a, b) => [...(a ?? []), ...(b ?? [])];
+
+export const OrchestratorState = Annotation.Root({
+  // Entrada del usuario
+  idea: Annotation({ reducer: replace, default: () => '' }),
+  scope: Annotation({ reducer: replace, default: () => 'fullstack' }),
+  appType: Annotation({ reducer: replace, default: () => 'custom' }),
+
+  // Proyecto generado
+  projectSlug: Annotation({ reducer: replace, default: () => '' }),
+  projectDir: Annotation({ reducer: replace, default: () => '' }),
+  runDir: Annotation({ reducer: replace, default: () => '' }),
+
+  // plan.json
+  plan: Annotation({ reducer: replace, default: () => null }),
+  validationErrors: Annotation({ reducer: replace, default: () => [] }),
+  planRetries: Annotation({ reducer: replace, default: () => 0 }),
+
+  // Loop de ejecución
+  currentStepIndex: Annotation({ reducer: replace, default: () => 0 }),
+  stepRetries: Annotation({ reducer: replace, default: () => 0 }),
+  finalRetries: Annotation({ reducer: replace, default: () => 0 }),
+  lastError: Annotation({ reducer: replace, default: () => null }),
+  lastOutput: Annotation({ reducer: replace, default: () => '' }),
+
+  // finalize puede reintentar sobre el resultado de finalVerify
+  verifying: Annotation({ reducer: replace, default: () => 'step' }), // 'step' | 'final'
+
+  // Flags CLI
+  noPush: Annotation({ reducer: replace, default: () => false }),
+  keepGoing: Annotation({ reducer: replace, default: () => false }),
+
+  status: Annotation({ reducer: replace, default: () => 'pending' }),
+  history: Annotation({ reducer: append, default: () => [] }),
+});

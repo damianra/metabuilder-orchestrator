@@ -15,11 +15,13 @@ export async function run(command, { cwd, timeoutMs = 5 * 60 * 1000, env = {} } 
       all: false,
     });
     return {
-      ok: res.exitCode === 0,
+      ok: res.exitCode === 0 && !res.timedOut,
       exitCode: res.exitCode,
       stdout: res.stdout ?? '',
-      stderr: res.stderr ?? '',
-      timedOut: false,
+      stderr: res.timedOut
+        ? (res.stderr ?? '') + '\n[metabuilder] comando excedió el timeout'
+        : (res.stderr ?? ''),
+      timedOut: Boolean(res.timedOut),
     };
   } catch (err) {
     if (err instanceof ExecaError && err.timedOut) {
