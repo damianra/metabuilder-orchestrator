@@ -23,7 +23,15 @@ export function runLogPath(state, name) {
 
 export function loadPrompt(name, vars = {}) {
   const promptsDir = fileURLToPath(new URL('../prompts', import.meta.url));
-  let text = readFileSync(join(promptsDir, `${name}.md`), 'utf8');
+  return interpolate(readFileSync(join(promptsDir, `${name}.md`), 'utf8'), vars);
+}
+
+export function loadTemplate(name, vars = {}) {
+  const templatesDir = fileURLToPath(new URL('../templates', import.meta.url));
+  return interpolate(readFileSync(join(templatesDir, name), 'utf8'), vars);
+}
+
+function interpolate(text, vars) {
   for (const [k, v] of Object.entries(vars)) {
     text = text.replaceAll(`{{${k}}}`, String(v));
   }

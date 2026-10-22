@@ -1,9 +1,9 @@
-import { existsSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
 import { getGitHubUser, createRepo, enablePages } from '../tools/github.js';
-import { log } from './common.js';
+import { log, loadTemplate } from './common.js';
 
 // Nunca loguear el token: sanitiza cualquier salida que pueda contenerlo.
 const sanitize = (s) =>
@@ -45,9 +45,48 @@ export async function finalVerifyNode(state) {
  * - --github + GITHUB_TOKEN: crea el repo via REST y, si hay frontend,
  *   publica dist/ en la rama gh-pages y activa GitHub Pages.
  */
+/**
+ * README.md determinístico (descripción + cómo levantar el proyecto +
+ * crédito a MetaBuilder). Se escribe justo antes del commit para que
+ * refleje el scope final, sin depender del agente.
+ */
+function writeReadme(state) {
+  const hasFrontend = state.scope !== 'backend';
+  const hasBackend = state.scope !== 'frontend';
+
+  const stack = [
+    hasFrontend && '- React + Vite + Tailwind CSS (frontend)',
+    hasBackend && '- Node.js + Express + SQLite (backend)',
+    '- Vitest (tests) + Playwright + Chromium (E2E)',
+  ].filter(Boolean).join('\n');
+
+  const devCommands = [
+    hasFrontend && 'npm run dev        # frontend en http://localhost:5173',
+    hasBackend && 'npm run api        # API Express en http://localhost:4000',
+  ].filter(Boolean).join('\n');
+
+  const testCommands = [
+    'npm test           # suite Vitest',
+    hasFrontend && 'npm run test:e2e   # E2E Playwright (Chromium)',
+  ].filter(Boolean).join('\n');
+
+  const md = loadTemplate('README.md', {
+    name: state.projectSlug,
+    idea: state.idea,
+    stack,
+    devCommands,
+    testCommands,
+  });
+  writeFileSync(join(state.projectDir, 'README.md'), md);
+}
+
 export async function finalizerNode(state) {
   const dir = state.projectDir;
   const history = [];
+
+  writeReadme(state);
+  history.push(log('finalize', 'README.md generado'));
+
   const git = (args, cwd = dir) =>
     run(`git ${args}`, { cwd, timeoutMs: 120_000 }).then((r) => ({
       ...r,
