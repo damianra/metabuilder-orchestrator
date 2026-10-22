@@ -1,7 +1,7 @@
 import { Command } from '@langchain/langgraph';
 import { createInterface } from 'node:readline/promises';
 import { buildGraph } from './orchestrator/graph.js';
-import { inferAppType, listVerticals } from './verticals/index.js';
+import { getVertical, inferAppType, listVerticals } from './verticals/index.js';
 
 function parseArgs(argv) {
   const args = { noPush: false, keepGoing: false, yes: false, github: false };
@@ -27,35 +27,75 @@ function printPlan(plan) {
   }
 }
 
-async function ask(question) {
+function createAsker() {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
-  const ans = await rl.question(question);
-  rl.close();
-  return ans.trim().toLowerCase();
+  return {
+    ask: async (q) => (await rl.question(q)).trim(),
+    close: () => rl.close(),
+  };
 }
 
-const args = parseArgs(process.argv.slice(2));
+// Modo interactivo: rellena lo que falten los flags.
+async function collectArgs(args) {
+  const interactive = Boolean(process.stdin.isTTY);
+  const asker = createAsker();
+  try {
+    if (!args.idea) {
+      if (!interactive) {
+        console.error('Falta --idea "<descripcion>"');
+        process.exit(2);
+      }
+      args.idea = await asker.ask('¿Qué aplicación querés crear? ');
+    }
+    if (!args.scope) {
+      if (!interactive) args.scope = 'fullstack';
+      else {
+        const s = await asker.ask('Scope [fullstack/frontend/backend] (fullstack): ');
+        args.scope = ['frontend', 'backend', 'fullstack'].includes(s) ? s : 'fullstack';
+      }
+    }
+    if (!args.appType) {
+      const inferred = inferAppType(args.idea, args.scope);
+      if (!interactive) args.appType = inferred;
+      else {
+        const t = await asker.ask(
+          `Tipo de app [${[...listVerticals(), 'custom'].join('/')}] (${inferred}): `,
+        );
+        args.appType = t || inferred;
+      }
+    }
+    if (!args.name && interactive) {
+      args.name = await asker.ask('Nombre del proyecto (slug, vacío = derivar de la idea): ');
+    }
+    if (!args.github && !args.noPush && interactive) {
+      const g = await asker.ask('¿Crear repo en GitHub y publicar en Pages? [s/N] ');
+      args.github = /^s/i.test(g);
+      if (!args.github) args.noPush = true;
+    }
+  } finally {
+    asker.close();
+  }
+  return args;
+}
+
+const args = await collectArgs(parseArgs(process.argv.slice(2)));
 
 if (!args.idea) {
-  console.error(
-    'Uso: npm start -- --idea "<descripcion>" [--scope fullstack|frontend|backend]\n' +
-      `                   [--app-type ${listVerticals().join('|')}|custom] [--name slug]\n` +
-      '                   [--github  (crea repo + GitHub Pages; requiere GITHUB_TOKEN)]\n' +
-      '                   [--no-push] [--keep-going] [-y|--yes  (sin confirmación de plan)]',
-  );
+  console.error('Falta --idea "<descripcion>"');
   process.exit(2);
 }
-
-const scope = args.scope ?? 'fullstack';
-const appType = args.appType ?? inferAppType(args.idea, scope);
+if (!getVertical(args.appType) && args.appType !== 'custom') {
+  console.error(`--app-type desconocido "${args.appType}" (usá ${listVerticals().join('|')} o custom)`);
+  process.exit(2);
+}
 
 // Confirmación de plan: solo si la salida es interactiva y no se pasó --yes.
 const confirmPlan = Boolean(process.stdin.isTTY) && !args.yes;
 
 const initial = {
   idea: args.idea,
-  scope,
-  appType,
+  scope: args.scope,
+  appType: args.appType,
   projectSlug: args.name ?? '',
   noPush: args.noPush,
   keepGoing: args.keepGoing,
@@ -71,7 +111,9 @@ let result = await app.invoke(initial, runConfig);
 // El nodo confirm suspende el grafo con interrupt() hasta que el usuario apruebe.
 while (result.__interrupt__?.length) {
   printPlan(result.plan);
-  const ans = await ask('\n¿Construir con este plan? [S/n] ');
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const ans = (await rl.question('\n¿Construir con este plan? [S/n] ')).trim().toLowerCase();
+  rl.close();
   result = await app.invoke(new Command({ resume: ans || 's' }), runConfig);
 }
 
