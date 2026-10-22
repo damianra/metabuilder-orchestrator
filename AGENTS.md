@@ -31,7 +31,14 @@ preflight → plan → validate ─┬─→ build → verify ─┬─→ build
 ```
 
 - Estado: `src/orchestrator/state.js` (`Annotation.Root`).
-- Nodos: `src/agents/*.js` (un archivo por nodo).
+- Nodos: `src/agents/*.js` (un archivo por nodo). Helpers compartidos
+  (log, readPlan/writePlan, loadPrompt): `src/agents/common.js`.
+- **LangGraph prohíbe que un nodo se llame igual que un canal de estado.**
+  Por eso el nodo se llama `planner` (el canal `plan` guarda el plan.json).
+- `verifying` en el estado distingue verificación por paso (`'step'`) de la
+  final (`'final'`) — `fix` vuelve a `verify` o a `finalVerify` según eso.
+- Todo fallo terminal va al nodo `fail` (setea `status: 'failed'`), nunca
+  directo a END sin marcar estado.
 - Tools: `src/tools/` (`devin.js` cliente ACP, `shell.js` execa, `slug.js`).
 - Prompts versionables: `src/prompts/*.md`.
 - `src/templates/AGENTS.md` se **copia a cada app generada** con las reglas

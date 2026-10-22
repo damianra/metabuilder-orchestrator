@@ -7,25 +7,23 @@ import { repairPlanNode } from '../agents/planner.js';
 import { builderNode } from '../agents/builder.js';
 import { verifierNode } from '../agents/verifier.js';
 import { fixerNode } from '../agents/fixer.js';
-import { finalizerNode } from '../agents/finalizer.js';
+import { finalVerifyNode, finalizerNode } from '../agents/finalizer.js';
 import { config } from '../config.js';
-
-const log = (node, msg) => ({ ts: new Date().toISOString(), node, msg });
 
 // ---------- Routers ----------
 
 function afterPreflight(state) {
-  return state.status === 'failed' ? END : 'plan';
+  return state.status === 'failed' ? 'fail' : 'planner';
 }
 
 function afterValidate(state) {
   if (state.validationErrors.length === 0) return 'build';
   if (state.planRetries < config.maxPlanRetries) return 'repairPlan';
-  return END;
+  return 'fail';
 }
 
 function afterBuild(state) {
-  return state.status === 'failed' ? END : 'verify';
+  return state.status === 'failed' ? 'fail' : 'verify';
 }
 
 function hasMoreSteps(state) {
@@ -42,11 +40,12 @@ function afterVerify(state) {
   const retries = state.verifying === 'final' ? state.finalRetries : state.stepRetries;
   if (retries < config.maxStepRetries) return 'fix';
   if (state.keepGoing && hasMoreSteps(state)) return 'build';
-  return END;
+  return 'fail';
 }
 
 function afterFix(state) {
-  return state.status === 'failed' ? END : 'verify';
+  if (state.status === 'failed') return 'fail';
+  return state.verifying === 'final' ? 'finalVerify' : 'verify';
 }
 
 // ---------- Grafo ----------
@@ -54,28 +53,30 @@ function afterFix(state) {
 export function buildGraph() {
   const graph = new StateGraph(OrchestratorState)
     .addNode('preflight', preflightNode)
-    .addNode('plan', plannerNode)
+    .addNode('planner', plannerNode)
     .addNode('validate', validatorNode)
     .addNode('repairPlan', repairPlanNode)
     .addNode('build', builderNode)
     .addNode('verify', verifierNode)
     .addNode('fix', fixerNode)
-    .addNode('finalVerify', async (state) => ({
-      verifying: 'final',
-      history: [log('finalVerify', 'verificación final (stub)')],
-    }))
+    .addNode('finalVerify', finalVerifyNode)
     .addNode('finalize', finalizerNode)
+    .addNode('fail', async (state) => ({
+      status: 'failed',
+      history: [{ ts: new Date().toISOString(), node: 'fail', msg: state.lastError ?? 'fallo sin error registrado' }],
+    }))
 
     .addEdge(START, 'preflight')
     .addConditionalEdges('preflight', afterPreflight)
-    .addEdge('plan', 'validate')
+    .addEdge('planner', 'validate')
     .addEdge('repairPlan', 'validate')
     .addConditionalEdges('validate', afterValidate)
     .addConditionalEdges('build', afterBuild)
     .addConditionalEdges('verify', afterVerify)
     .addConditionalEdges('fix', afterFix)
     .addConditionalEdges('finalVerify', afterVerify)
-    .addEdge('finalize', END);
+    .addEdge('finalize', END)
+    .addEdge('fail', END);
 
   return graph.compile();
 }
