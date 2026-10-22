@@ -8,6 +8,7 @@ import { builderNode } from '../agents/builder.js';
 import { verifierNode } from '../agents/verifier.js';
 import { fixerNode } from '../agents/fixer.js';
 import { confirmNode } from '../agents/confirm.js';
+import { reviewerNode } from '../agents/reviewer.js';
 import { finalVerifyNode, finalizerNode } from '../agents/finalizer.js';
 import { config } from '../config.js';
 
@@ -43,8 +44,8 @@ function hasMoreSteps(state) {
 
 function afterVerify(state) {
   if (!state.lastError) {
-    // paso OK
-    if (state.verifying === 'final') return 'finalize';
+    // paso OK; verificación final OK → sub-agente QA antes de finalize
+    if (state.verifying === 'final') return 'review';
     return hasMoreSteps(state) ? 'build' : 'finalVerify';
   }
   // falló la verificación
@@ -57,6 +58,13 @@ function afterVerify(state) {
 function afterFix(state) {
   if (state.status === 'failed') return 'fail';
   return state.verifying === 'final' ? 'finalVerify' : 'verify';
+}
+
+function afterReview(state) {
+  if (state.status === 'failed') return 'fail';
+  if (!state.lastError) return 'finalize';
+  // Issues de QA → el fixer los corrige y se re-verifica (finalVerify).
+  return state.finalRetries < config.maxStepRetries ? 'fix' : 'fail';
 }
 
 // ---------- Grafo ----------
@@ -72,6 +80,7 @@ export function buildGraph() {
     .addNode('fix', fixerNode)
     .addNode('confirm', confirmNode)
     .addNode('finalVerify', finalVerifyNode)
+    .addNode('review', reviewerNode)
     .addNode('finalize', finalizerNode)
     .addNode('fail', async (state) => ({
       status: 'failed',
@@ -88,6 +97,7 @@ export function buildGraph() {
     .addConditionalEdges('verify', afterVerify)
     .addConditionalEdges('fix', afterFix)
     .addConditionalEdges('finalVerify', afterVerify)
+    .addConditionalEdges('review', afterReview)
     .addEdge('finalize', END)
     .addEdge('fail', END);
 

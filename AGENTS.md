@@ -27,11 +27,17 @@ node -e "import('./src/tools/shell.js').then(m=>m.run('echo ok',{cwd:'/tmp'}).th
 
 ```
 preflight → planner → validate ─┬─→ confirm → builder → verify ─┬─→ builder (siguiente paso)
-                                │                               ├─→ finalVerify → finalize → END
-                                └─→ repairPlan                  └─→ fixer → verify
+                                │                               ├─→ finalVerify → review ─┬─→ finalize → END
+                                └─→ repairPlan                  └─→ fixer → verify        └─→ fixer
 
 Fail terminal: fallos de transporte/timeout del planner y reintentos
 agotados van al nodo `fail` (status: failed), no a repairPlan.
+
+`review` es el sub-agente QA (prompts/reviewer.md): sesión Devin que
+inspecciona la app contra AGENTS.md + idea. Responde `RESULT: APPROVED`
+(→ finalize) o `RESULT: ISSUES` (→ fixer corrige, consume finalRetries,
+vuelve a finalVerify). El repo remoto se crea recién en finalize: evita
+repos vacíos si el pipeline falla antes.
 
 ## Verticales (skills de generación)
 
