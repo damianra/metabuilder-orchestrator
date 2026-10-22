@@ -1,9 +1,10 @@
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
 import { checkDevinAuth } from '../tools/devin.js';
 import { ensureProjectDir } from '../tools/slug.js';
+import { getVertical } from '../verticals/index.js';
 import { log } from './common.js';
 
 const REQUIRED_BINS = ['devin', 'node', 'npm', 'git'];
@@ -42,6 +43,32 @@ export async function preflightNode(state) {
     join(config.templatesDir, 'AGENTS.md'),
     join(dir, 'AGENTS.md'),
   );
+
+  // Vertical conocido con frontend → copiar skeleton + npm install
+  // (scaffold determinístico: el agente no gasta tiempo ni tokens en init).
+  const vertical = getVertical(state.appType);
+  const withFrontend = state.scope !== 'backend';
+  if (vertical && withFrontend && !existsSync(join(dir, 'package.json'))) {
+    const skeleton = join(config.templatesDir, 'app-skeleton');
+    cpSync(skeleton, dir, { recursive: true });
+
+    // Personalizar placeholders del skeleton
+    for (const f of ['package.json', 'index.html', 'src/App.jsx']) {
+      const p = join(dir, f);
+      writeFileSync(p, readFileSync(p, 'utf8').replaceAll('__APP_NAME__', slug));
+    }
+    history.push(log('preflight', `skeleton copiado (${vertical.name})`));
+
+    const install = await run('npm install', { cwd: dir, timeoutMs: 300_000 });
+    if (!install.ok) {
+      return {
+        status: 'failed',
+        lastError: `npm install del skeleton falló: ${install.stderr.slice(-500)}`,
+        history: [...history, log('preflight', 'npm install falló')],
+      };
+    }
+    history.push(log('preflight', 'dependencias instaladas'));
+  }
 
   return {
     projectSlug: slug,

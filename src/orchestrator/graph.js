@@ -1,4 +1,4 @@
-import { StateGraph, START, END } from '@langchain/langgraph';
+import { StateGraph, START, END, MemorySaver } from '@langchain/langgraph';
 import { OrchestratorState } from './state.js';
 import { preflightNode } from '../agents/preflight.js';
 import { plannerNode } from '../agents/planner.js';
@@ -7,6 +7,7 @@ import { repairPlanNode } from '../agents/planner.js';
 import { builderNode } from '../agents/builder.js';
 import { verifierNode } from '../agents/verifier.js';
 import { fixerNode } from '../agents/fixer.js';
+import { confirmNode } from '../agents/confirm.js';
 import { finalVerifyNode, finalizerNode } from '../agents/finalizer.js';
 import { config } from '../config.js';
 
@@ -23,9 +24,13 @@ function afterPlanner(state) {
 }
 
 function afterValidate(state) {
-  if (state.validationErrors.length === 0) return 'build';
+  if (state.validationErrors.length === 0) return 'confirm';
   if (state.planRetries < config.maxPlanRetries) return 'repairPlan';
   return 'fail';
+}
+
+function afterConfirm(state) {
+  return state.status === 'failed' ? 'fail' : 'build';
 }
 
 function afterBuild(state) {
@@ -65,6 +70,7 @@ export function buildGraph() {
     .addNode('build', builderNode)
     .addNode('verify', verifierNode)
     .addNode('fix', fixerNode)
+    .addNode('confirm', confirmNode)
     .addNode('finalVerify', finalVerifyNode)
     .addNode('finalize', finalizerNode)
     .addNode('fail', async (state) => ({
@@ -77,6 +83,7 @@ export function buildGraph() {
     .addConditionalEdges('planner', afterPlanner)
     .addEdge('repairPlan', 'validate')
     .addConditionalEdges('validate', afterValidate)
+    .addConditionalEdges('confirm', afterConfirm)
     .addConditionalEdges('build', afterBuild)
     .addConditionalEdges('verify', afterVerify)
     .addConditionalEdges('fix', afterFix)
@@ -84,5 +91,6 @@ export function buildGraph() {
     .addEdge('finalize', END)
     .addEdge('fail', END);
 
-  return graph.compile();
+  // Checkpointer requerido para interrupt() del nodo confirm.
+  return graph.compile({ checkpointer: new MemorySaver() });
 }

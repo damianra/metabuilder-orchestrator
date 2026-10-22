@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { config } from '../config.js';
 import { runDevinPrompt } from '../tools/devin.js';
+import { getVertical } from '../verticals/index.js';
 import { log, loadPrompt, readPlan, writePlan } from './common.js';
 
 function logPath(state, name) {
@@ -8,9 +9,45 @@ function logPath(state, name) {
 }
 
 /**
- * Invoca a Devin para generar plan.json en el directorio del proyecto.
+ * Genera plan.json. Tres caminos en orden:
+ * 1. Si ya existe plan.json (resume) → reutilizar.
+ * 2. Si appType es un vertical conocido → template determinístico (0 Devin).
+ * 3. appType 'custom' → planner LLM vía Devin ACP.
  */
 export async function plannerNode(state) {
+  const existing = readPlan(state.projectDir);
+  if (existing?.steps?.length) {
+    existing.scope = state.scope;
+    existing.projectName = state.projectSlug;
+    return {
+      plan: existing,
+      appType: existing.appType ?? state.appType,
+      status: 'planned',
+      history: [log('planner', `plan.json existente reutilizado (${existing.steps.length} pasos)`)],
+    };
+  }
+
+  const vertical = getVertical(state.appType);
+  if (vertical) {
+    const plan = vertical.buildPlan({
+      projectName: state.projectSlug,
+      idea: state.idea,
+      scope: state.scope,
+    });
+    plan.scope = state.scope;
+    plan.projectName = state.projectSlug;
+    writePlan(state.projectDir, plan);
+    return {
+      plan,
+      appType: vertical.name,
+      status: 'planned',
+      history: [
+        log('planner', `plan template "${vertical.name}": ${plan.steps.length} pasos (sin Devin)`),
+      ],
+    };
+  }
+
+  // ---- appType custom → planner LLM ----
   const prompt = loadPrompt('planner', {
     idea: state.idea,
     scope: state.scope,

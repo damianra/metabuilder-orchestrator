@@ -9,8 +9,9 @@ básicas (landings, pedidos, blogs) delegando la escritura de código a
 
 ```bash
 npm install
-npm start -- --idea "..." --scope fullstack|frontend|backend [--name slug] [--no-push] [--keep-going]
-node src/index.js            # modo interactivo (readline)
+npm start -- --idea "..." --scope fullstack|frontend|backend \
+            --app-type landing|orders|custom [--name slug] \
+            [--no-push] [--keep-going] [-y|--yes]
 ```
 
 Verificación rápida de tools sin tocar el grafo:
@@ -25,12 +26,42 @@ node -e "import('./src/tools/shell.js').then(m=>m.run('echo ok',{cwd:'/tmp'}).th
 `src/orchestrator/graph.js` (LangGraph `StateGraph`):
 
 ```
-preflight → planner → validate ─┬─→ builder → verify ─┬─→ builder (siguiente paso)
-                                │                      ├─→ finalVerify → finalize → END
-                                └─→ repairPlan         └─→ fixer → verify
+preflight → planner → validate ─┬─→ confirm → builder → verify ─┬─→ builder (siguiente paso)
+                                │                               ├─→ finalVerify → finalize → END
+                                └─→ repairPlan                  └─→ fixer → verify
 
 Fail terminal: fallos de transporte/timeout del planner y reintentos
 agotados van al nodo `fail` (status: failed), no a repairPlan.
+
+## Verticales (skills de generación)
+
+`src/verticals/<nombre>/index.js` exporta `{ name, buildPlan }`. Cada
+vertical es un plan determinístico — **el planner NO llama a Devin** para
+verticales conocidos, solo para `appType: 'custom'`. Agregar un vertical =
+nueva carpeta + registro en `src/verticals/index.js`. Las descripciones de
+pasos deben contener las keywords que espera `validator.js` (vite,
+playwright, vitest, express, sqlite, "reglas de UI").
+
+- `landing`: frontend-only, página informativa (hero/features/menú/
+  contacto/footer). Contenido no provisto → lorem ipsum + placeholders.
+- `orders`: pedidos para casas de comida; soporta `fullstack` (Express +
+  SQLite), `frontend` (datos mock) y `backend` (solo API).
+
+## Skeleton de app
+
+`src/templates/app-skeleton/` es un proyecto Vite+React+Tailwind+Vitest+
+Playwright **funcional** que `preflight` copia a la app generada cuando el
+vertical tiene frontend (scope ≠ backend), reemplaza `__APP_NAME__` y
+corre `npm install`. El builder nunca hace scaffolding desde cero.
+Nota: `vite.config.js` excluye `e2e/**` de Vitest — sin eso Vitest intenta
+correr los specs de Playwright y falla.
+
+## Confirmación de plan
+
+El nodo `confirm` usa `interrupt()` (LangGraph + `MemorySaver`): el grafo
+suspende tras validar, el CLI muestra el plan y espera `[S/n]`; resume via
+`Command({ resume })`. Se activa solo si stdin es TTY y no se pasó `--yes`.
+Rechazar → `fail` sin ejecutar builds.
 ```
 
 - Estado: `src/orchestrator/state.js` (`Annotation.Root`).
@@ -126,4 +157,7 @@ código generado debe cumplir y que Playwright verifica.
   chromium` (sin `--with-deps`, requiere sudo). Si faltan libs del SO:
   `sudo npx playwright install-deps chromium`.
 - **Timeout de paso**: `DEVIN_TIMEOUT_MS` (default 15 min).
+- **Chromium de Playwright**: browsers en `~/.cache/ms-playwright`
+  (compartido entre apps) — una sola descarga. Si falta:
+  `npx playwright install chromium` dentro de la app generada.
 - **Push**: solo si `GITHUB_REPO_URL` (SSH) está seteada y repo existe.

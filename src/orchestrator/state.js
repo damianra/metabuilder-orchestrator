@@ -32,6 +32,7 @@ export const OrchestratorState = Annotation.Root({
   // Flags CLI
   noPush: Annotation({ reducer: replace, default: () => false }),
   keepGoing: Annotation({ reducer: replace, default: () => false }),
+  confirmPlan: Annotation({ reducer: replace, default: () => false }),
 
   status: Annotation({ reducer: replace, default: () => 'pending' }),
   history: Annotation({ reducer: append, default: () => [] }),
