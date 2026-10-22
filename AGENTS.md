@@ -113,6 +113,13 @@ Notas ACP:
 - El prompt del planner debe exigir escritura inmediata con razonamiento
   mínimo — prompts abiertos provocan que el agente explore/piense hasta
   agotar el timeout sin escribir nada.
+- **Nunca escribir al log stream tras `end()`**: el proceso hijo puede
+  seguir emitiendo stderr/stdout después de `close()` →
+  `ERR_STREAM_WRITE_AFTER_END` mata el orquestador (crash sin catch).
+  `AcpClient` usa `#writeLog` guardado + `log.on('error', () => {})` —
+  mantener ese patrón.
+- Pasos `type: 'infra'` con `package.json` ya presente NO llaman a Devin:
+  el skeleton lo resolvió; `verify` valida igual.
 - Cada paso abre una sesión nueva (proceso `devin acp` propio). La memoria
   entre pasos es el filesystem + `plan.json` + el AGENTS.md copiado.
 - `devin auth status` y `devin models list` reportan "Not logged in" con

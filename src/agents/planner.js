@@ -1,12 +1,7 @@
-import { join } from 'node:path';
 import { config } from '../config.js';
 import { runDevinPrompt } from '../tools/devin.js';
 import { getVertical } from '../verticals/index.js';
-import { log, loadPrompt, readPlan, writePlan } from './common.js';
-
-function logPath(state, name) {
-  return state.runDir ? join(state.runDir, 'prompts', `${name}.rpc.jsonl`) : undefined;
-}
+import { log, loadPrompt, readPlan, runLogPath, writePlan } from './common.js';
 
 /**
  * Genera plan.json. Tres caminos en orden:
@@ -58,7 +53,7 @@ export async function plannerNode(state) {
     prompt,
     cwd: state.projectDir,
     timeoutMs: config.devinTimeoutMs,
-    logPath: logPath(state, 'planner'),
+    logPath: runLogPath(state, 'planner'),
   });
 
   if (!res.ok) {
@@ -112,7 +107,7 @@ export async function repairPlanNode(state) {
     prompt,
     cwd: state.projectDir,
     timeoutMs: config.devinTimeoutMs,
-    logPath: logPath(state, `repair-${state.planRetries + 1}`),
+    logPath: runLogPath(state, `repair-${state.planRetries + 1}`),
   });
 
   let plan = null;

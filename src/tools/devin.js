@@ -48,12 +48,27 @@ class AcpClient {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     this.#log = logPath ? createWriteStream(logPath, { flags: 'a' }) : null;
+    // El stream puede fallar (ENOSPC, etc.) — el log nunca debe tumbar la sesión.
+    this.#log?.on('error', () => {});
     this.#proc.stdout.on('data', (chunk) => this.#onData(chunk));
-    this.#proc.stderr.on('data', (chunk) => this.#log?.write(`[stderr] ${chunk}`));
+    this.#proc.stderr.on('data', (chunk) => this.#writeLog(`[stderr] ${chunk}`));
+  }
+
+  // El proceso puede seguir emitiendo stderr/stdout tras close() (end del
+  // log stream) — escribir solo si sigue abierto. Un WriteStream con
+  // 'error' sin listener tira ERR_STREAM_WRITE_AFTER_END y mata el proceso.
+  #writeLog(chunk) {
+    try {
+      if (this.#log && !this.#log.writableEnded && !this.#log.destroyed) {
+        this.#log.write(chunk);
+      }
+    } catch {
+      /* el log nunca debe romper la sesión */
+    }
   }
 
   #onData(chunk) {
-    this.#log?.write(chunk);
+    this.#writeLog(chunk);
     this.#buffer += chunk;
     let idx;
     while ((idx = this.#buffer.indexOf('\n')) >= 0) {
@@ -93,7 +108,7 @@ class AcpClient {
   }
 
   #send(msg) {
-    this.#log?.write(`[client→] ${JSON.stringify(msg)}\n`);
+    this.#writeLog(`[client→] ${JSON.stringify(msg)}\n`);
     this.#proc.stdin.write(JSON.stringify(msg) + '\n');
   }
 

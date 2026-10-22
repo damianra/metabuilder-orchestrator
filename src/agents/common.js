@@ -17,6 +17,10 @@ export function writePlan(projectDir, plan) {
   writeFileSync(planPath(projectDir), JSON.stringify(plan, null, 2) + '\n');
 }
 
+export function runLogPath(state, name) {
+  return state.runDir ? join(state.runDir, 'prompts', `${name}.rpc.jsonl`) : undefined;
+}
+
 export function loadPrompt(name, vars = {}) {
   const promptsDir = fileURLToPath(new URL('../prompts', import.meta.url));
   let text = readFileSync(join(promptsDir, `${name}.md`), 'utf8');
