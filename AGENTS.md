@@ -191,4 +191,12 @@ solo vitest). Falla → loop `fix` (finalRetries) → `fail`.
 - **Chromium de Playwright**: browsers en `~/.cache/ms-playwright`
   (compartido entre apps) — una sola descarga. Si falta:
   `npx playwright install chromium` dentro de la app generada.
-- **Push**: solo si `GITHUB_REPO_URL` (SSH) está seteada y repo existe.
+- **Push HTTPS a GitHub**: `http.extraHeader` con `Bearer` NO funciona —
+  usar `git -c http.https://github.com.extraHeader="Authorization: Basic
+  base64(x-access-token:$GITHUB_TOKEN)"` (ver `ghAuthArgs` en
+  `agents/finalizer.js`). El token nunca entra al remote ni a los logs.
+- **Pages**: pushear la rama `gh-pages` suele auto-habilitar Pages; el
+  POST a `/repos/{o}/{r}/pages` puede devolver 500 transitorio o 409
+  "already enabled" — ambos son OK, verificar con GET.
+- **Commit en re-runs**: si la app ya tiene todo commiteado, el finalize
+  salta el commit vía `git diff --cached --quiet`.
