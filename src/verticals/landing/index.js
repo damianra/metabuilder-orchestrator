@@ -30,7 +30,8 @@ export function buildPlan({ projectName, idea }) {
         `Implementar la landing en React + Tailwind sobre el skeleton existente. Idea del usuario: "${idea}". ` +
           'Secciones mínimas en una sola página: Hero (titular + CTA), Features/Servicios, Menú o Productos si aplica, Contacto con formulario (nombre, email, mensaje), Footer. ' +
           'Todo contenido que el usuario no haya provisto explícitamente → texto lorem ipsum breve y placeholders visuales (bloques de color o placehold.co). ' +
-          'Cumplir TODAS las reglas de UI de AGENTS.md: botón de enviar deshabilitado por defecto y habilitado solo con campos válidos, no renderizar links/iconos con URL vacía, fallback informativo si no hay datos, componentes sin props inventadas, componentes no soportados con fallback silencioso.',
+          'Cumplir TODAS las reglas de UI de AGENTS.md: botón de enviar deshabilitado por defecto y habilitado solo con campos válidos, no renderizar links/iconos con URL vacía, fallback informativo si no hay datos, componentes sin props inventadas, componentes no soportados con fallback silencioso. ' +
+          'Aplicar la guía de diseño de AGENTS.md: íconos reales de lucide-react (nunca placeholders de color), paleta neutra + 1 acento, navbar con anclas, hero con gradiente, cards con ring/shadow/hover.',
         'npm run build',
       ),
       step(
