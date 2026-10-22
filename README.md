@@ -1,65 +1,100 @@
 # MetaBuilder — Orquestador de desarrollo con agentes
 
-Generador de aplicaciones básicas (landing pages, webs de pedidos, blogs, etc.) orquestado con **LangGraph** que delega la escritura de código a **Devin CLI** en modo headless.
+Generador de aplicaciones básicas (landing pages, webs de pedidos, blogs, etc.) orquestado con **LangGraph**, que delega la escritura de código a **Devin CLI via ACP**.
 
-## Arquitectura
+## Cómo funciona
 
 ```
-preflight → plan → validate ─┬─→ build → verify ─┬─→ (siguiente paso)
-                             │                   ├─→ finalVerify → finalize
-                             └─→ repairPlan      └─→ fix → verify
+preflight → planner → validate ─┬─→ confirm → builder → verify ─┬─→ builder (siguiente paso)
+                                │                               ├─→ finalVerify → review ─┬─→ finalize → END
+                                └─→ repairPlan                  └─→ fixer → verify        └─→ fixer
 ```
 
-- **LangGraph** mantiene el estado de la orquestación en memoria local (`src/orchestrator/`).
-- **Devin CLI** (`devin -p`, modo `dangerous`, cwd acotado al proyecto) escribe el código de cada paso.
-- `plan.json` dentro del proyecto generado actúa como checkpoint (status/attempts por paso).
-- Verificación real por paso: cada paso declara un comando `verify` (`npm run build`, `npx vitest run`, `npm run test:e2e`...).
+| Nodo | Qué hace |
+| --- | --- |
+| `preflight` | Chequea binarios + auth Devin (ACP), crea `generated-apps/<slug>/`, copia `AGENTS.md` y — si el tipo es un vertical con frontend — copia el **skeleton** (Vite+React+Tailwind+Vitest+Playwright) y corre `npm install`. |
+| `planner` | Genera `plan.json`. Si `appType` es un **vertical conocido** (`landing`, `orders`) usa un template determinístico (**sin llamar a Devin**); si es `custom`, una sesión Devin ACP lo escribe. Si ya existe `plan.json`, lo reutiliza (resume). |
+| `validate` | Validación 100% local del plan (schema, tipos de paso, `verify` ejecutable, requisitos por scope). |
+| `confirm` | `interrupt()` de LangGraph: muestra el plan y espera `[S/n]` — solo en TTY y sin `--yes`. |
+| `builder` | Una sesión Devin ACP por paso (`prompts/builder.md`). Pasos `infra` con skeleton ya copiado no consumen Devin. |
+| `verify` | Corre el comando `verify` del paso dentro del proyecto (`execa`, nunca lanza). |
+| `fixer` | Si verify falla: manda a Devin la descripción del paso + stderr (`prompts/fixer.md`). Máx `MAX_STEP_RETRIES` (3) intentos. |
+| `finalVerify` | Batería por scope: `npm run build` + `npx vitest run` + `npm run test:e2e` (solo si hay frontend; backend → solo vitest). |
+| `review` | Sub-agente QA: sesión Devin revisa la app contra `AGENTS.md` y la idea (`prompts/reviewer.md`). `RESULT: APPROVED` → finalize; `RESULT: ISSUES` → fixer. |
+| `finalize` | Genera `README.md` (descripción + cómo levantarlo + crédito a MetaBuilder), `git init/commit`, y push según modo. |
+| `repairPlan` / `fail` | Reparación del plan (máx `MAX_PLAN_RETRIES`=2, solo errores de contenido) / terminación en `failed`. |
 
-## Stack de las apps generadas
+## Contexto inicial: qué necesita el orquestador
 
-- Frontend: React + Vite + Tailwind CSS
-- Backend: Node.js + Express
-- BD: SQLite (archivo local)
-- Testing: Vitest + Playwright (E2E, solo si hay frontend)
+La entrada mínima es **la idea** — una descripción en texto libre de la app a crear. Con eso:
+
+- `--app-type` decide el **vertical** (paquete de plan+secciones predefinidas). Si no se pasa, se **infiere de la idea** (`pedido/restaurante/comida/pizza…` → `orders`; resto con frontend → `landing`; backend puro → `custom` — que usa el planner LLM).
+- `--scope` decide qué construir: `fullstack` (front+back), `frontend`, `backend`.
+- `--name` fija el slug del directorio/repo; vacío → derivado de la idea.
+
+Ejemplos de contexto inicial:
+
+```bash
+# Todo explícito, sin preguntas
+npm start -- --idea "Landing de cafetería con menú y contacto" --app-type landing --scope frontend --name cafe -y
+
+# Mínimo: la idea; lo demás se infiere (orders+fullstack si habla de pedidos)
+npm start -- --idea "Pizzería con pedidos a domicilio" -y
+
+# Interactivo: pregunta lo que falte
+npm start
+```
+
+## Flags
+
+| Flag | Qué hace |
+| --- | --- |
+| `--idea "<texto>"` | **Requerido** (o se pregunta en modo interactivo). Descripción de la app. |
+| `--scope` | `fullstack` \| `frontend` \| `backend` (default `fullstack`). |
+| `--app-type` | `landing` \| `orders` \| `custom`. `landing`/`orders` usan plan template (instantáneo); `custom` usa planner LLM. Default: inferido. |
+| `--name <slug>` | Nombre del proyecto/dir/repo. Default: slug de la idea (con sufijo si existe). |
+| `-y` / `--yes` | No pedir confirmación del plan ni preguntas interactivas. |
+| `--github` | Tras aprobación del QA: crea el repo en GitHub (REST, `GITHUB_TOKEN`), push a `main`, y si hay frontend publica `dist/` en `gh-pages` + activa GitHub Pages (`https://<user>.github.io/<repo>/`). |
+| `--no-push` | Solo commit local, nada remoto. |
+| `--keep-going` | Continuar al siguiente paso aunque uno agote reintentos (en vez de `fail`). |
+
+## Configuración (`.env`)
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Para qué |
+| --- | --- |
+| `GITHUB_TOKEN` | PAT clásico scope `repo` (github.com/settings/tokens). Habilita `--github`. |
+| `GITHUB_REPO_URL` | Alternativa a `--github`: pushea a un repo **pre-creado** (SSH). Sin crear repo ni Pages. |
+| `GIT_USER_NAME` / `GIT_USER_EMAIL` | Identidad de los commits en las apps generadas. |
+| `DEVIN_MODEL` | Default `swe-2-high` (gratuito). |
+| `DEVIN_TIMEOUT_MS` | Timeout por sesión Devin (default 15 min). |
+| `MAX_STEP_RETRIES` / `MAX_PLAN_RETRIES` | Reintentos de fix por paso / de reparación de plan (3 / 2). |
+| `VERIFY_TIMEOUT_MS` | Timeout por comando `verify` (default 5 min). |
 
 ## Requisitos
 
-- Node.js >= 20, npm, git
-- [Devin CLI](https://devin.ai) instalado y autenticado:
-
-```bash
-devin auth login          # una sola vez; el token persiste en ~/.local/share/devin/credentials.toml
-devin models list         # probe: exit 0 = autenticado
-```
-
-## Uso
-
-```bash
-cp .env.example .env      # configurar GIT_USER_*, GITHUB_REPO_URL (opcional)
-npm install
-
-npm start -- --idea "landing page para una cafetería" --scope frontend
-npm start -- --idea "web de pedidos con carrito"               # scope default: fullstack
-npm start                                                    # modo interactivo
-```
-
-### Flags
-
-| Flag | Descripción |
-| --- | --- |
-| `--idea <texto>` | Descripción de la app a generar |
-| `--scope` | `fullstack` \| `frontend` \| `backend` (default `fullstack`) |
-| `--name <slug>` | Nombre del proyecto (default: inferido de la idea) |
-| `--no-push` | Solo commit local, no pushear aunque haya `GITHUB_REPO_URL` |
-| `--keep-going` | Continuar aunque un paso falle tras los reintentos |
+- Node.js >= 20, npm, git.
+- **Devin CLI** autenticado vía cuenta Windsurf: `~/.local/share/devin/credentials.toml` con `windsurf_api_key` (lo escribe Devin Desktop). El orquestador usa `devin acp` (mismo canal que Devin Desktop) — **`devin -p`/`auth status` reportan "Not logged in" con estas credenciales y NO son la vía**.
+- Playwright Chromium: se instala una vez en `~/.cache/ms-playwright` (compartido entre apps).
 
 ## Estructura
 
-- `src/index.js` — entrada CLI
-- `src/orchestrator/` — grafo LangGraph y estado
-- `src/agents/` — nodos: preflight, planner, validator, builder, verifier, fixer, finalizer
-- `src/tools/` — wrappers: devin CLI headless, shell, slug
-- `src/prompts/` — plantillas de prompts
-- `src/templates/AGENTS.md` — reglas de UI/stack copiadas a cada app generada
-- `generated-apps/` — salida (gitignored, cada app con su propio repo)
-- `runs/` — logs y exports de sesiones Devin (gitignored)
+- `src/index.js` — CLI (flags + modo interactivo + loop de confirmación).
+- `src/orchestrator/` — `state.js` (canales) + `graph.js` (routing + checkpointer).
+- `src/agents/` — nodos: preflight, planner, validator, confirm, builder, verifier, fixer, reviewer, finalizer.
+- `src/tools/` — `devin.js` (cliente ACP), `shell.js` (execa), `slug.js`, `github.js` (REST).
+- `src/prompts/` — builder/fixer/planner/plan-repair/reviewer.md.
+- `src/verticals/` — paquetes por tipo de app (`landing`, `orders`): `buildPlan()` determinístico.
+- `src/templates/` — `AGENTS.md` (reglas UI + guía de diseño copiadas a cada app), `README.md`, `app-skeleton/`.
+- `generated-apps/` — apps generadas (**gitignored**, cada una con su repo git).
+- `runs/` — logs JSON-RPC de cada sesión Devin (**gitignored**).
+
+## Qué contiene cada app generada
+
+- `plan.json` — checkpoint con status/attempts por paso.
+- `AGENTS.md` — reglas de UI + guía de diseño.
+- `README.md` — descripción, cómo levantarlo, crédito a MetaBuilder.
+- Repo git propio con commit inicial (y remoto/Pages si `--github`).
