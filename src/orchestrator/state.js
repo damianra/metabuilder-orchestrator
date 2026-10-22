@@ -34,6 +34,7 @@ export const OrchestratorState = Annotation.Root({
   keepGoing: Annotation({ reducer: replace, default: () => false }),
   confirmPlan: Annotation({ reducer: replace, default: () => false }),
   deployGithub: Annotation({ reducer: replace, default: () => false }),
+  deployPages: Annotation({ reducer: replace, default: () => false }),
   whatsappPhone: Annotation({ reducer: replace, default: () => '' }),
 
   status: Annotation({ reducer: replace, default: () => 'pending' }),

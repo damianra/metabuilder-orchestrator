@@ -4,12 +4,13 @@ import { buildGraph } from './orchestrator/graph.js';
 import { getVertical, inferAppType, listVerticals } from './verticals/index.js';
 
 function parseArgs(argv) {
-  const args = { noPush: false, keepGoing: false, yes: false, github: false };
+  const args = { noPush: false, keepGoing: false, yes: false, github: false, ghpages: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--no-push') args.noPush = true;
     else if (a === '--keep-going') args.keepGoing = true;
     else if (a === '--github') args.github = true;
+    else if (a === '--ghpages') args.ghpages = true;
     else if (a === '--yes' || a === '-y') args.yes = true;
     else if (a.startsWith('--')) {
       const key = a.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
@@ -71,9 +72,13 @@ async function collectArgs(args) {
       args.phone = await asker.ask('WhatsApp del negocio (ej. 5491155500000, vacío = placeholder): ');
     }
     if (!args.github && !args.noPush && interactive) {
-      const g = await asker.ask('¿Crear repo en GitHub y publicar en Pages? [s/N] ');
+      const g = await asker.ask('¿Crear repo en GitHub? [s/N] ');
       args.github = /^s/i.test(g);
       if (!args.github) args.noPush = true;
+    }
+    if (args.github && !args.ghpages && interactive && args.scope !== 'backend') {
+      const p = await asker.ask('¿Publicar en GitHub Pages? [s/N] ');
+      args.ghpages = /^s/i.test(p);
     }
   } finally {
     asker.close();
@@ -91,6 +96,10 @@ if (!getVertical(args.appType) && args.appType !== 'custom') {
   console.error(`--app-type desconocido "${args.appType}" (usá ${listVerticals().join('|')} o custom)`);
   process.exit(2);
 }
+if (args.ghpages && !args.github) {
+  console.error('--ghpages requiere --github (crea el repo antes de publicar Pages)');
+  process.exit(2);
+}
 
 // Confirmación de plan: solo si la salida es interactiva y no se pasó --yes.
 const confirmPlan = Boolean(process.stdin.isTTY) && !args.yes;
@@ -104,6 +113,7 @@ const initial = {
   keepGoing: args.keepGoing,
   confirmPlan,
   deployGithub: args.github,
+  deployPages: args.ghpages,
   whatsappPhone: args.phone ?? '',
 };
 

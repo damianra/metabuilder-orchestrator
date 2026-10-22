@@ -54,7 +54,8 @@ npm start
 | `--app-type` | `landing` \| `orders` \| `custom`. `landing`/`orders` usan plan template (instantáneo); `custom` usa planner LLM. Default: inferido. |
 | `--name <slug>` | Nombre del proyecto/dir/repo. Default: slug de la idea (con sufijo si existe). |
 | `-y` / `--yes` | No pedir confirmación del plan ni preguntas interactivas. |
-| `--github` | Tras aprobación del QA: crea el repo en GitHub (REST, `GITHUB_TOKEN`), push a `main`, y si hay frontend publica `dist/` en `gh-pages` + activa GitHub Pages (`https://<user>.github.io/<repo>/`). |
+| `--github` | Tras aprobación del QA: crea el repo en GitHub (REST, `GITHUB_TOKEN`) y pushea `main`. **No** publica Pages por sí solo. |
+| `--ghpages` | Publica `dist/` en rama `gh-pages` y activa GitHub Pages (`https://<user>.github.io/<repo>/`). **Requiere `--github`**; solo aplica a scopes con frontend (`frontend`/`fullstack`). |
 | `--phone <num>` | WhatsApp del negocio en formato internacional sin `+` (ej. `5491155500000`). Se inyecta en los verticales: landing → botón flotante con mini-form → `wa.me`; orders → checkout del carrito con items+total → `wa.me`. Vacío → placeholder `5491100000000`; si en la app queda vacío, el botón no se renderiza. |
 | `--no-push` | Solo commit local, nada remoto. |
 | `--keep-going` | Continuar al siguiente paso aunque uno agote reintentos (en vez de `fail`). |
@@ -98,4 +99,4 @@ cp .env.example .env
 - `plan.json` — checkpoint con status/attempts por paso.
 - `AGENTS.md` — reglas de UI + guía de diseño.
 - `README.md` — descripción, cómo levantarlo, crédito a MetaBuilder.
-- Repo git propio con commit inicial (y remoto/Pages si `--github`).
+- Repo git propio con commit inicial (remoto con `--github`, Pages además con `--ghpages`).

@@ -52,8 +52,8 @@ export async function finalVerifyNode(state) {
 /**
  * git init + commit en la app generada. Push si:
  * - GITHUB_REPO_URL configurada (repo pre-creado, SSH/HTTPS), o
- * - --github + GITHUB_TOKEN: crea el repo via REST y, si hay frontend,
- *   publica dist/ en la rama gh-pages y activa GitHub Pages.
+ * - --github + GITHUB_TOKEN: crea el repo via REST. Si además viene
+ *   --ghpages (y hay frontend), publica dist/ en gh-pages y activa Pages.
  */
 /**
  * README.md determinístico (descripción + cómo levantar el proyecto +
@@ -205,14 +205,20 @@ export async function finalizerNode(state) {
   }
   history.push(log('finalize', `push a ${remoteUrl} (main)`));
 
-  // --- GitHub Pages (solo con --github + token + frontend) ---
+  // --- GitHub Pages (solo con --github + --ghpages + token + frontend) ---
   const hasFrontend = state.scope !== 'backend';
   const distDir = join(dir, 'dist');
-  if (state.deployGithub && config.githubToken && hasFrontend && existsSync(distDir)) {
+  if (
+    state.deployGithub &&
+    state.deployPages &&
+    config.githubToken &&
+    hasFrontend &&
+    existsSync(distDir)
+  ) {
     const pages = await deployPages(git, distDir, remoteUrl, owner, repoName);
     history.push(...pages);
-  } else if (state.deployGithub && hasFrontend) {
-    history.push(log('finalize', 'sin dist/ — Pages omitido'));
+  } else if (state.deployPages && hasFrontend) {
+    history.push(log('finalize', 'sin dist/ o sin --github+token — Pages omitido'));
   }
 
   return { status: 'done', history };
