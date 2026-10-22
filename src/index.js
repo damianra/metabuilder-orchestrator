@@ -4,11 +4,12 @@ import { buildGraph } from './orchestrator/graph.js';
 import { inferAppType, listVerticals } from './verticals/index.js';
 
 function parseArgs(argv) {
-  const args = { noPush: false, keepGoing: false, yes: false };
+  const args = { noPush: false, keepGoing: false, yes: false, github: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--no-push') args.noPush = true;
     else if (a === '--keep-going') args.keepGoing = true;
+    else if (a === '--github') args.github = true;
     else if (a === '--yes' || a === '-y') args.yes = true;
     else if (a.startsWith('--')) {
       const key = a.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
@@ -39,6 +40,7 @@ if (!args.idea) {
   console.error(
     'Uso: npm start -- --idea "<descripcion>" [--scope fullstack|frontend|backend]\n' +
       `                   [--app-type ${listVerticals().join('|')}|custom] [--name slug]\n` +
+      '                   [--github  (crea repo + GitHub Pages; requiere GITHUB_TOKEN)]\n' +
       '                   [--no-push] [--keep-going] [-y|--yes  (sin confirmación de plan)]',
   );
   process.exit(2);
@@ -58,6 +60,7 @@ const initial = {
   noPush: args.noPush,
   keepGoing: args.keepGoing,
   confirmPlan,
+  deployGithub: args.github,
 };
 
 const app = buildGraph();

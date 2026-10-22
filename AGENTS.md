@@ -11,7 +11,7 @@ básicas (landings, pedidos, blogs) delegando la escritura de código a
 npm install
 npm start -- --idea "..." --scope fullstack|frontend|backend \
             --app-type landing|orders|custom [--name slug] \
-            [--no-push] [--keep-going] [-y|--yes]
+            [--github] [--no-push] [--keep-going] [-y|--yes]
 ```
 
 Verificación rápida de tools sin tocar el grafo:
@@ -157,6 +157,24 @@ timedOut}`).
 React+Vite+Tailwind / Express / SQLite / Vitest / Playwright (e2e solo si
 hay frontend). Ver `src/templates/AGENTS.md` para las 5 reglas de UI que el
 código generado debe cumplir y que Playwright verifica.
+
+## Finalización (finalizer.js)
+
+`finalVerify` corre la batería según scope: `npm run build` +
+`npx vitest run` + `npm run test:e2e` (solo si hay frontend; backend
+solo vitest). Falla → loop `fix` (finalRetries) → `fail`.
+
+`finalize`:
+1. `git init -b main` + config user + `add -A` + commit en la app.
+2. `--no-push` → termina ahí.
+3. `GITHUB_REPO_URL` → remote + push (repo pre-creado, SSH).
+4. `--github` + `GITHUB_TOKEN` (PAT scope `repo` en .env) →
+   `POST /user/repos` crea el repo, push con `http.extraHeader`
+   (el token NO queda en el remote ni en logs — `sanitize()`),
+   `dist/` → rama `gh-pages` (repo git propio dentro de dist/) +
+   `POST /repos/{o}/{r}/pages` → `https://<user>.github.io/<repo>/`.
+   Solo scopes con frontend; vite.config usa `base: './'` por eso.
+5. Sin URL ni --github → commit local + aviso.
 
 ## Troubleshooting conocido
 

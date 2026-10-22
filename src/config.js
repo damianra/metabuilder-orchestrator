@@ -32,6 +32,8 @@ export const config = {
 
   // Git de la app generada
   githubRepoUrl: process.env.GITHUB_REPO_URL || '',
+  // PAT con scope `repo` para crear repos + GitHub Pages via REST (--github)
+  githubToken: process.env.GITHUB_TOKEN || '',
   gitUserName: process.env.GIT_USER_NAME || 'MetaBuilder',
   gitUserEmail: process.env.GIT_USER_EMAIL || 'metabuilder@localhost',
 
