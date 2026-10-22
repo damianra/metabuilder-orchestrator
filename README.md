@@ -36,7 +36,7 @@ Ejemplos de contexto inicial:
 
 ```bash
 # Todo explícito, sin preguntas
-npm start -- --idea "Landing de cafetería con menú y contacto" --app-type landing --scope frontend --name cafe -y
+npm start -- --idea "Landing de cafetería con menú y contacto" --app-type landing --scope frontend --name cafe --phone 5491155500000 -y
 
 # Mínimo: la idea; lo demás se infiere (orders+fullstack si habla de pedidos)
 npm start -- --idea "Pizzería con pedidos a domicilio" -y
@@ -55,6 +55,7 @@ npm start
 | `--name <slug>` | Nombre del proyecto/dir/repo. Default: slug de la idea (con sufijo si existe). |
 | `-y` / `--yes` | No pedir confirmación del plan ni preguntas interactivas. |
 | `--github` | Tras aprobación del QA: crea el repo en GitHub (REST, `GITHUB_TOKEN`), push a `main`, y si hay frontend publica `dist/` en `gh-pages` + activa GitHub Pages (`https://<user>.github.io/<repo>/`). |
+| `--phone <num>` | WhatsApp del negocio en formato internacional sin `+` (ej. `5491155500000`). Se inyecta en los verticales: landing → botón flotante con mini-form → `wa.me`; orders → checkout del carrito con items+total → `wa.me`. Vacío → placeholder `5491100000000`; si en la app queda vacío, el botón no se renderiza. |
 | `--no-push` | Solo commit local, nada remoto. |
 | `--keep-going` | Continuar al siguiente paso aunque uno agote reintentos (en vez de `fail`). |
 

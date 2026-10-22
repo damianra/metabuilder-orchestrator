@@ -18,7 +18,7 @@ const e2eOrders = (n) =>
   step(
     n,
     'e2e',
-    'Escribir specs Playwright en e2e/ (chromium; playwright.config.js ya configurado): la página carga sin errores de consola, el menú se ve, el botón de pedido está deshabilitado hasta que el formulario es válido, y el carrito vacío muestra fallback informativo. Para aislar el e2e del backend, mockear /api con page.route (respuestas JSON fijas). Instalar el browser con `npx playwright install chromium` si hace falta.',
+    'Escribir specs Playwright en e2e/ (chromium; playwright.config.js ya configurado): la página carga sin errores de consola, el menú se ve, el carrito vacío muestra fallback informativo, el botón de pedido está deshabilitado hasta que el formulario es válido, y el link de pedido apunta a wa.me con el número configurado y el mensaje contiene items + total del carrito. Para aislar el e2e del backend, mockear /api con page.route (respuestas JSON fijas). Instalar el browser con `npx playwright install chromium` si hace falta.',
     'npm run test:e2e',
   );
 
@@ -41,16 +41,20 @@ function backendStep(n) {
   );
 }
 
-function frontendStep(n, { withApi, idea }) {
+const whatsappCartSpec = (phone) =>
+  ` Carrito de compras (agregar/quitar items con cantidades) + botón "Enviar pedido por WhatsApp" que abre https://wa.me/<numero>?text=<mensaje encodeURIComponent> — el mensaje arma una línea por item (nombre x cantidad — $precio), el total del carrito, y los datos del formulario de pedido (nombre, teléfono, notas). El número vive en una constante exportada (ej. src/data/config.js → WHATSAPP_NUMBER = '${phone || '5491100000000'}'). Si el número está vacío → NO renderizar el botón de WhatsApp. Botón disabled hasta que el carrito tenga items y el formulario sea válido.`;
+
+function frontendStep(n, { withApi, idea, phone }) {
   return step(
     n,
     'frontend',
     `Implementar la web de pedidos en React + Tailwind sobre el skeleton. Idea del usuario: "${idea}". ${
       withApi
-        ? 'El menú se obtiene de GET /api/products; el formulario de pedido (nombre, teléfono, items, notas) hace POST /api/orders y muestra confirmación con el id devuelto.'
-        : 'El menú usa datos locales en src/data/products.js; el formulario de pedido simula el envío mostrando una confirmación (sin backend real).'
+        ? 'El menú se obtiene de GET /api/products; además del envío por WhatsApp, el pedido puede persistirse via POST /api/orders.'
+        : 'El menú usa datos locales en src/data/products.js.'
     } ` +
-      'Contenido no provisto → lorem ipsum / placeholders. Cumplir todas las reglas de UI de AGENTS.md: botón de pedido deshabilitado hasta tener items y datos válidos, fallback informativo si el menú viene vacío o la API falla, sin links con URL vacía.',
+      'Contenido no provisto → lorem ipsum / placeholders. Cumplir todas las reglas de UI de AGENTS.md: botón de pedido deshabilitado hasta tener items y datos válidos, fallback informativo si el menú viene vacío o la API falla, sin links con URL vacía.' +
+      whatsappCartSpec(phone),
     'npm run build',
   );
 }
@@ -59,7 +63,7 @@ function frontendStep(n, { withApi, idea }) {
  * Página de pedidos para casas de comida.
  * scope: 'fullstack' | 'frontend' (mock) | 'backend' (solo API).
  */
-export function buildPlan({ projectName, idea, scope = 'fullstack' }) {
+export function buildPlan({ projectName, idea, scope = 'fullstack', phone }) {
   const steps = [];
 
   if (scope === 'backend') {
@@ -81,7 +85,7 @@ export function buildPlan({ projectName, idea, scope = 'fullstack' }) {
   } else if (scope === 'frontend') {
     steps.push(
       infraFrontend,
-      frontendStep(2, { withApi: false, idea }),
+      frontendStep(2, { withApi: false, idea, phone }),
       vitestStep(3),
       e2eOrders(4),
     );
@@ -89,7 +93,7 @@ export function buildPlan({ projectName, idea, scope = 'fullstack' }) {
     steps.push(
       infraFrontend,
       backendStep(2),
-      frontendStep(3, { withApi: true, idea }),
+      frontendStep(3, { withApi: true, idea, phone }),
       vitestStep(4, ' Incluir tests de la API Express (endpoints de products y orders).'),
       e2eOrders(5),
     );

@@ -28,6 +28,7 @@ export async function plannerNode(state) {
       projectName: state.projectSlug,
       idea: state.idea,
       scope: state.scope,
+      phone: state.whatsappPhone,
     });
     plan.scope = state.scope;
     plan.projectName = state.projectSlug;

@@ -67,6 +67,9 @@ async function collectArgs(args) {
     if (!args.name && interactive) {
       args.name = await asker.ask('Nombre del proyecto (slug, vacío = derivar de la idea): ');
     }
+    if (!args.phone && interactive) {
+      args.phone = await asker.ask('WhatsApp del negocio (ej. 5491155500000, vacío = placeholder): ');
+    }
     if (!args.github && !args.noPush && interactive) {
       const g = await asker.ask('¿Crear repo en GitHub y publicar en Pages? [s/N] ');
       args.github = /^s/i.test(g);
@@ -101,6 +104,7 @@ const initial = {
   keepGoing: args.keepGoing,
   confirmPlan,
   deployGithub: args.github,
+  whatsappPhone: args.phone ?? '',
 };
 
 const app = buildGraph();
