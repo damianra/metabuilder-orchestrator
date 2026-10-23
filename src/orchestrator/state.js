@@ -1,6 +1,9 @@
 import { Annotation } from '@langchain/langgraph';
 
-const replace = (a, b) => b ?? a;
+// OJO: `??` conservaba el valor viejo con null — un nodo que devolvía
+// lastError:null nunca limpiaba el error (loop infinito fix→verify).
+// Solo `undefined` (clave ausente del output) conserva; null/'' limpian.
+const replace = (a, b) => (b === undefined ? a : b);
 const append = (a, b) => [...(a ?? []), ...(b ?? [])];
 
 export const OrchestratorState = Annotation.Root({
