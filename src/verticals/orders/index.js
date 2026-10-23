@@ -18,7 +18,7 @@ const e2eOrders = (n) =>
   step(
     n,
     'e2e',
-    'Escribir specs Playwright en e2e/ (chromium; playwright.config.js ya configurado): la página carga sin errores de consola, el menú se ve, el carrito vacío muestra fallback informativo, el botón de pedido está deshabilitado hasta que el formulario es válido, y el link de pedido apunta a wa.me con el número configurado y el mensaje contiene items + total del carrito. Para aislar el e2e del backend, mockear /api con page.route (respuestas JSON fijas). Instalar el browser con `npx playwright install chromium` si hace falta.',
+    'Escribir specs Playwright en e2e/ (chromium; playwright.config.js ya configurado): la página carga sin errores de consola, el menú se ve, el carrito vacío muestra fallback informativo, el botón de pedido está deshabilitado hasta que el formulario es válido, y el link de pedido apunta a wa.me con el número configurado y el mensaje contiene items + total del carrito. Para aislar el e2e del backend, mockear las rutas /api/* con page.route (respuestas JSON fijas: business, categories, products). Instalar el browser con `npx playwright install chromium` si hace falta.',
     'npm run test:e2e',
   );
 
@@ -35,7 +35,8 @@ function backendStep(n) {
     n,
     'backend',
     'Crear API con Express en server/ (script "api": "node server/index.js", puerto 4000) con SQLite vía better-sqlite3 (instalarlo; si la compilación nativa falla, usar node:sqlite de Node). ' +
-      'Endpoints: GET /api/products (menú con seed de ~8 productos de muestra si la tabla está vacía), POST /api/orders (valida customer/phone/items y persiste), GET /api/orders/:id. ' +
+      'Tablas con seed si están vacías: `business` (nombre del local, tagline, dirección, horarios, whatsapp), `categories` (nombre, orden) y `products` (nombre, descripción, precio, category_id, icon en kebab-case para lucide). ' +
+      'Endpoints: GET /api/business (datos del local), GET /api/categories, GET /api/products (incluye categoría; ~8 productos de muestra repartidos en las categorías), POST /api/orders (valida customer/phone/items y persiste), GET /api/orders/:id. ' +
       'Configurar proxy /api → localhost:4000 en vite.config.js. Agregar tests de API con Vitest.',
     'npx vitest run',
   );
@@ -50,7 +51,7 @@ function frontendStep(n, { withApi, idea, phone }) {
     'frontend',
     `Implementar la web de pedidos en React + Tailwind sobre el skeleton. Idea del usuario: "${idea}". ${
       withApi
-        ? 'El menú se obtiene de GET /api/products; además del envío por WhatsApp, el pedido puede persistirse via POST /api/orders.'
+        ? 'Todo el contenido viene de la API: GET /api/business (nombre del local en navbar/hero/footer, horarios, dirección), GET /api/categories y GET /api/products (menú agrupable por categoría); además del envío por WhatsApp, el pedido puede persistirse via POST /api/orders. Fallback informativo si la API falla o devuelve vacío.'
         : 'El menú usa datos locales en src/data/products.js.'
     } ` +
       'Contenido no provisto → lorem ipsum / placeholders. Cumplir todas las reglas de UI de AGENTS.md: botón de pedido deshabilitado hasta tener items y datos válidos, fallback informativo si el menú viene vacío o la API falla, sin links con URL vacía.' +
