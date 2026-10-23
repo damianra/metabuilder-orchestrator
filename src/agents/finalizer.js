@@ -2,7 +2,7 @@ import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
-import { getGitHubUser, createRepo, enablePages } from '../tools/github.js';
+import { getGitHubUser, createRepo, enablePages, getPages } from '../tools/github.js';
 import { log, loadTemplate } from './common.js';
 
 // Nunca loguear el token: sanitiza cualquier salida que pueda contenerlo.
@@ -245,18 +245,37 @@ async function deployPages(git, distDir, remoteUrl, owner, repoName) {
     logs.push(log('finalize', `push gh-pages falló: ${r.stderr.slice(-200)}`));
     return logs;
   }
+  const pagesUrl = `https://${owner}.github.io/${repoName}/`;
   try {
     const pages = await enablePages(config.githubToken, owner, repoName);
     logs.push(
-      log('finalize', `GitHub Pages activo: ${pages.html_url ?? `https://${owner}.github.io/${repoName}/`}`),
-    );
-  } catch (e) {
-    logs.push(
       log(
         'finalize',
-        `Pages API: ${e.message} — activarlo en Settings → Pages → branch gh-pages`,
+        `GitHub Pages activo: ${pages.html_url ?? pagesUrl} ` +
+          `(puede tardar unos minutos en estar visible)`,
       ),
     );
+  } catch (e) {
+    // El push de gh-pages suele auto-habilitar Pages: el POST puede dar
+    // 409 "already enabled" o 500 transitorio — la URL igual es válida.
+    try {
+      const pages = await getPages(config.githubToken, owner, repoName);
+      logs.push(
+        log(
+          'finalize',
+          `GitHub Pages ya estaba activo: ${pages.html_url ?? pagesUrl} ` +
+            `(puede tardar unos minutos en reflejar el último push)`,
+        ),
+      );
+    } catch {
+      logs.push(
+        log(
+          'finalize',
+          `Pages API: ${e.message} — el push de gh-pages igual suele publicarla. ` +
+            `Verificación manual: ${pagesUrl}`,
+        ),
+      );
+    }
   }
   return logs;
 }
