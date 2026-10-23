@@ -151,6 +151,36 @@ Notas ACP:
 `verifier` lo corre con `tools/shell.run` (nunca lanza; `{ok, stderr,
 timedOut}`).
 
+## Flujo de trabajo Git (obligatorio en ESTE repo)
+
+Aplica a cualquier agente/persona que modifique el orquestador.
+**Nunca commitear directo a `main`.**
+
+1. **Branch por implementación**: `feat/<slug>`, `fix/<slug>`,
+   `docs/<slug>`, `refactor/<slug>`, `test/<slug>`, `chore/<slug>`
+   (ej. `fix/state-reducer-null`, `feat/api-skeleton`).
+2. **Commits semánticos** (Conventional Commits): `feat:`, `fix:`,
+   `docs:`, `refactor:`, `test:`, `chore:` + descripción corta.
+3. **Push de la rama** → crear PR a `main` vía REST (no hay `gh` CLI):
+   `createPullRequest(token, 'damianra', 'metabuilder-orchestrator',
+   { head, title, body })` de `src/tools/github.js` con `GITHUB_TOKEN`.
+4. **Validación funcional antes de merge**: correr la verificación que
+   toque el cambio (`node --check`, tests, tramo del pipeline afectado)
+   y **comentar en el PR** (`commentOnPR`) el veredicto:
+
+   ```
+   ## Validación funcional
+   - Qué se corrió: <comandos>
+   - Resultado: <resumen de salida>
+   - Veredicto: ✅ APROBADO PARA MERGE | ⚠️ REQUIERE REVISIÓN
+   ```
+
+   Solo se mergea con `✅ APROBADO PARA MERGE`.
+
+Las **apps generadas** (`generated-apps/<slug>/`) NO siguen este flujo:
+pushean `main` directo — su validación funcional ya la hace el
+sub-agente `review` + `finalVerify` antes del push.
+
 ## Convenciones
 
 - ESM (`"type": "module"`), Node >= 20, imports con extensión `.js`.
