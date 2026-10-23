@@ -1,6 +1,6 @@
 import { config } from '../config.js';
 import { runDevinPrompt } from '../tools/devin.js';
-import { log, loadPrompt, runLogPath, writePlan } from './common.js';
+import { activity, log, loadPrompt, runLogPath, writePlan } from './common.js';
 
 /**
  * Envía el fallo de verificación a Devin para reparar la causa raíz.
@@ -35,6 +35,7 @@ export async function fixerNode(state) {
     cwd: state.projectDir,
     timeoutMs: config.devinTimeoutMs,
     logPath: runLogPath(state, `fix-${isFinal ? 'final' : step?.id}-${attempt}`),
+    onActivity: activity,
   });
 
   return {

@@ -176,6 +176,7 @@ export async function runDevinPrompt({
   mode = config.devinMode,
   logPath,
   onText,
+  onActivity,
 }) {
   let client;
   const textParts = [];
@@ -184,11 +185,29 @@ export async function runDevinPrompt({
     client = started.client;
     const sessionId = started.sessionId;
 
+    // Dedup + throttle de actividad: los tool_call pueden llegar en ráfagas.
+    let lastActivity = '';
+    let lastActivityTs = 0;
+    const reportActivity = (label) => {
+      if (!onActivity || !label || label === lastActivity) return;
+      const now = Date.now();
+      if (now - lastActivityTs < 1500) return;
+      lastActivity = label;
+      lastActivityTs = now;
+      onActivity(label);
+    };
+
     client.onUpdate = (params) => {
       const u = params.update;
       if (u?.sessionUpdate === 'agent_message_chunk' && u.content?.type === 'text') {
         textParts.push(u.content.text);
         onText?.(u.content.text);
+        return;
+      }
+      if (u?.sessionUpdate === 'tool_call' || u?.sessionUpdate === 'tool_call_update') {
+        const file = u.locations?.[0]?.path?.split('/').slice(-2).join('/');
+        const label = u.title || (u.kind ? `${u.kind}${file ? `: ${file}` : ''}` : file);
+        reportActivity(label);
       }
     };
 
