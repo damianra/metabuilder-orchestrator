@@ -1,16 +1,21 @@
 import { Command } from '@langchain/langgraph';
 import { createInterface } from 'node:readline/promises';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { buildGraph } from './orchestrator/graph.js';
 import { getVertical, inferAppType, listVerticals } from './verticals/index.js';
+import { setQuiet } from './agents/common.js';
 
 function parseArgs(argv) {
-  const args = { noPush: false, keepGoing: false, yes: false, github: false, ghpages: false };
+  const args = { noPush: false, keepGoing: false, yes: false, github: false, ghpages: false, quiet: false, verbose: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--no-push') args.noPush = true;
     else if (a === '--keep-going') args.keepGoing = true;
     else if (a === '--github') args.github = true;
     else if (a === '--ghpages') args.ghpages = true;
+    else if (a === '--quiet') args.quiet = true;
+    else if (a === '--verbose') args.verbose = true;
     else if (a === '--yes' || a === '-y') args.yes = true;
     else if (a.startsWith('--')) {
       const key = a.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
@@ -117,18 +122,103 @@ const initial = {
   whatsappPhone: args.phone ?? '',
 };
 
+// Etiqueta legible por nodo (rol del agente que está corriendo).
+const NODE_LABEL = {
+  preflight: '⚙  preflight',
+  planner: '📋 planner',
+  validate: '✔  validate',
+  repairPlan: '📋 repair-plan',
+  confirm: '🖐  confirm',
+  build: '🛠  dev',
+  verify: '🔍 verify',
+  fix: '🔧 fix',
+  finalVerify: '🔍 final-verify',
+  review: '🧐 QA',
+  finalize: '📦 finalize',
+  fail: '✗  fail',
+};
+
+setQuiet(args.quiet);
+const MAX_MSG = args.verbose ? Infinity : 220;
+const trim = (s) => (s.length > MAX_MSG ? s.slice(0, MAX_MSG) + '…' : s);
+
+// Escribe status.json dentro del proyecto (punto 4: estado para
+// workers/CI sin depender de la terminal).
+let snapshot = { ...initial };
+function writeStatus(node) {
+  if (!snapshot.projectDir) return;
+  try {
+    const total = snapshot.plan?.steps?.length ?? 0;
+    writeFileSync(
+      join(snapshot.projectDir, 'status.json'),
+      JSON.stringify(
+        {
+          node,
+          status: snapshot.status,
+          step: Math.min(snapshot.currentStepIndex ?? 0, total),
+          totalSteps: total,
+          lastError: snapshot.lastError ?? null,
+          ts: new Date().toISOString(),
+        },
+        null,
+        2,
+      ) + '\n',
+    );
+  } catch {
+    /* status.json nunca debe romper el pipeline */
+  }
+}
+
+function reportUpdate(node, update) {
+  for (const [k, v] of Object.entries(update ?? {})) {
+    if (v !== undefined) snapshot[k] = v;
+  }
+  writeStatus(node);
+  if (args.quiet) return;
+  const label = NODE_LABEL[node] ?? node;
+  const msgs = update?.history?.length ? update.history : [{ msg: JSON.stringify(update).slice(0, 120) }];
+  for (const h of msgs) {
+    const stepInfo =
+      node === 'build' && snapshot.plan
+        ? ` [paso ${Math.min((snapshot.currentStepIndex ?? 0) + 1, snapshot.plan.steps.length)}/${snapshot.plan.steps.length}]`
+        : '';
+    console.log(`${label}${stepInfo}  ${trim(h.msg)}`);
+  }
+}
+
 const app = buildGraph();
 const runConfig = { configurable: { thread_id: `run-${Date.now()}` } };
 
-let result = await app.invoke(initial, runConfig);
+if (!args.quiet) {
+  const deploy = args.github ? (args.ghpages ? 'GitHub + Pages' : 'GitHub') : 'local';
+  console.log(`\n🚀 MetaBuilder — "${args.idea.slice(0, 90)}"`);
+  console.log(`   vertical=${args.appType} · scope=${args.scope} · deploy=${deploy}\n`);
+}
 
-// El nodo confirm suspende el grafo con interrupt() hasta que el usuario apruebe.
-while (result.__interrupt__?.length) {
+// Streaming con updates: cada nodo reporta su historial apenas termina,
+// y entre medio los agentes imprimen actividad de herramientas (stderr).
+let result;
+let input = initial;
+for (;;) {
+  const stream = await app.stream(input, { ...runConfig, streamMode: 'updates' });
+  for await (const chunk of stream) {
+    for (const [node, update] of Object.entries(chunk)) {
+      if (node === '__interrupt__') continue;
+      reportUpdate(node, update);
+    }
+  }
+
+  const state = await app.getState(runConfig);
+  const interrupts = (state.tasks ?? []).flatMap((t) => t.interrupts ?? []);
+  result = state.values;
+  if (!interrupts.length) break;
+
+  // El nodo confirm suspende el grafo hasta que el usuario apruebe.
   printPlan(result.plan);
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   const ans = (await rl.question('\n¿Construir con este plan? [S/n] ')).trim().toLowerCase();
   rl.close();
-  result = await app.invoke(new Command({ resume: ans || 's' }), runConfig);
+  input = new Command({ resume: ans || 's' });
 }
 
 console.log('\n=== Resultado ===');

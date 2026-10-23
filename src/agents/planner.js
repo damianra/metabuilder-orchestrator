@@ -1,7 +1,7 @@
 import { config } from '../config.js';
 import { runDevinPrompt } from '../tools/devin.js';
 import { getVertical } from '../verticals/index.js';
-import { log, loadPrompt, readPlan, runLogPath, writePlan } from './common.js';
+import { activity, log, loadPrompt, readPlan, runLogPath, writePlan } from './common.js';
 
 /**
  * Genera plan.json. Tres caminos en orden:
@@ -55,6 +55,7 @@ export async function plannerNode(state) {
     cwd: state.projectDir,
     timeoutMs: config.devinTimeoutMs,
     logPath: runLogPath(state, 'planner'),
+    onActivity: activity,
   });
 
   if (!res.ok) {

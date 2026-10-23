@@ -1,6 +1,6 @@
 import { config } from '../config.js';
 import { runDevinPrompt } from '../tools/devin.js';
-import { log, loadPrompt, runLogPath } from './common.js';
+import { activity, log, loadPrompt, runLogPath } from './common.js';
 
 /**
  * Sub-agente QA: una sesión Devin revisa la app terminada contra
@@ -18,6 +18,7 @@ export async function reviewerNode(state) {
     cwd: state.projectDir,
     timeoutMs: config.devinTimeoutMs,
     logPath: runLogPath(state, 'review'),
+    onActivity: activity,
   });
 
   if (!res.ok) {

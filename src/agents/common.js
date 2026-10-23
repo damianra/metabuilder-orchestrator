@@ -4,6 +4,13 @@ import { fileURLToPath } from 'node:url';
 
 export const log = (node, msg) => ({ ts: new Date().toISOString(), node, msg });
 
+// --- Reporter de actividad live (stderr para no ensuciar stdout del CLI) ---
+let quiet = false;
+export const setQuiet = (v) => { quiet = v; };
+export function activity(msg) {
+  if (!quiet) process.stderr.write(`   ▸ ${msg}\n`);
+}
+
 export function planPath(projectDir) {
   return join(projectDir, 'plan.json');
 }

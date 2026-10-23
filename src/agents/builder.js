@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { config } from '../config.js';
 import { runDevinPrompt } from '../tools/devin.js';
-import { log, loadPrompt, runLogPath, writePlan } from './common.js';
+import { activity, log, loadPrompt, runLogPath, writePlan } from './common.js';
 
 /**
  * Ejecuta el paso actual del plan via Devin ACP.
@@ -41,6 +41,7 @@ export async function builderNode(state) {
     cwd: state.projectDir,
     timeoutMs: config.devinTimeoutMs,
     logPath: runLogPath(state, `build-${step.id}`),
+    onActivity: activity,
   });
 
   if (!res.ok) {
