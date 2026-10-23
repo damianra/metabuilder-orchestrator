@@ -30,3 +30,10 @@ export const enablePages = (token, owner, repo) =>
   api(token, 'POST', `/repos/${owner}/${repo}/pages`, {
     source: { branch: 'gh-pages', path: '/' },
   });
+
+// Flujo de trabajo del repo orquestador: branch → PR → validación.
+export const createPullRequest = (token, owner, repo, { head, base = 'main', title, body = '' }) =>
+  api(token, 'POST', `/repos/${owner}/${repo}/pulls`, { head, base, title, body });
+
+export const commentOnPR = (token, owner, repo, prNumber, body) =>
+  api(token, 'POST', `/repos/${owner}/${repo}/issues/${prNumber}/comments`, { body });
