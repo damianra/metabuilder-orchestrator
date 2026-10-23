@@ -42,9 +42,13 @@ Patrón estándar cuando la app pide contacto/pedidos por WhatsApp:
 - `npm run build` — build de producción (si hay frontend)
 - `npm test` / `npx vitest run` — suite Vitest
 - `npm run test:e2e` — suite Playwright (si hay frontend)
+- `npm run api` — API Express en puerto 4000 (si hay backend)
+- `npm run dev:api` — lo mismo con `--watch` (si hay backend)
 
 ## Notas para el agente que escribe código
 
 - Mantener los pasos atómicos y autocontenidos: cada tarea debe dejar el proyecto en un estado compilable.
-- No commitear `node_modules/`, `.env`, `*.sqlite`, `dist/` ni `build/`.
+- No commitear `node_modules/`, `.env`, `*.sqlite`, `server/uploads/*`, `dist/` ni `build/`.
 - Al escribir tests E2E con Playwright, cubrir explícitamente las reglas de UI de arriba.
+- **Backend (api-skeleton)**: cada `server/routes/<name>.js` que exporte un `Router` default se monta solo en `/api/<name>` — no tocar `server/app.js` ni `server/db.js`. Schema en `server/schema.sql` (idempotente), seed en `server/seed-data.js` (se inserta si la tabla está vacía).
+- **Imágenes**: `POST /api/uploads` con campo `file` (image/*, máx 5MB) → `{ url: "/uploads/<file>" }`. Guardar ese path en la entidad (ej. `cover_image`); el frontend lo consume tal cual (el proxy de Vite redirige `/uploads` al puerto 4000).

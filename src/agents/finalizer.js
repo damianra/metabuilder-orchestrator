@@ -2,8 +2,9 @@ import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
+import { awaitInstall, isInstalling } from '../tools/install.js';
 import { getGitHubUser, createRepo, enablePages, getPages } from '../tools/github.js';
-import { log, loadTemplate } from './common.js';
+import { activity, log, loadTemplate } from './common.js';
 
 // Nunca loguear el token: sanitiza cualquier salida que pueda contenerlo.
 const sanitize = (s) =>
@@ -25,6 +26,16 @@ const ghAuthArgs = () =>
  * Un fallo → lastError → loop fix (finalRetries) → fail.
  */
 export async function finalVerifyNode(state) {
+  if (isInstalling(state.projectDir)) activity('esperando npm install…');
+  const install = await awaitInstall(state.projectDir);
+  if (!install.ok) {
+    return {
+      verifying: 'final',
+      lastError: `npm install falló: ${install.stderr.slice(-500)}`,
+      history: [log('finalVerify', 'FAIL: npm install')],
+    };
+  }
+
   const hasFrontend = state.scope !== 'backend';
   const cmds = hasFrontend
     ? ['npm run build', 'npx vitest run', 'npm run test:e2e']

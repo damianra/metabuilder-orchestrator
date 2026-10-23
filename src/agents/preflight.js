@@ -1,29 +1,74 @@
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
 import { checkDevinAuth } from '../tools/devin.js';
+import { startInstall } from '../tools/install.js';
 import { ensureProjectDir } from '../tools/slug.js';
 import { getVertical } from '../verticals/index.js';
-import { log } from './common.js';
+import { activity, log } from './common.js';
 
 const REQUIRED_BINS = ['devin', 'node', 'npm', 'git'];
+
+/**
+ * Copia src/templates/api-skeleton/ sobre el proyecto:
+ * - package.partial.json → se mergea en package.json existente
+ *   (fullstack) o se convierte en el package.json (backend puro).
+ * - gitignore.partial → se appendea al .gitignore existente o lo crea.
+ */
+export function copyApiSkeleton(dir) {
+  const src = join(config.templatesDir, 'api-skeleton');
+  cpSync(src, dir, {
+    recursive: true,
+    filter: (s) => !['package.partial.json', 'gitignore.partial'].includes(basename(s)),
+  });
+
+  const partial = JSON.parse(readFileSync(join(src, 'package.partial.json'), 'utf8'));
+  const pkgPath = join(dir, 'package.json');
+  if (existsSync(pkgPath)) {
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+    pkg.scripts = { ...partial.scripts, ...pkg.scripts };
+    pkg.dependencies = { ...partial.dependencies, ...pkg.dependencies };
+    pkg.devDependencies = { ...partial.devDependencies, ...pkg.devDependencies };
+    writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+  } else {
+    writeFileSync(pkgPath, JSON.stringify(partial, null, 2) + '\n');
+  }
+
+  const gi = readFileSync(join(src, 'gitignore.partial'), 'utf8');
+  const giPath = join(dir, '.gitignore');
+  writeFileSync(giPath, existsSync(giPath) ? readFileSync(giPath, 'utf8').trimEnd() + '\n' + gi : gi);
+}
+
+/**
+ * Chromium se descarga una vez en ~/.cache/ms-playwright (compartido
+ * entre apps). Lo pre-calentamos en background, encadenado al
+ * npm install que provee el binario playwright. Nunca se awaita:
+ * el paso e2e reintenta `npx playwright install chromium` si hiciera
+ * falta.
+ */
+function prewarmPlaywright(dir) {
+  startInstall(dir)
+    .then((r) => r.ok && run('npx playwright install chromium', { cwd: dir, timeoutMs: 600_000 }))
+    .catch(() => {});
+}
 
 export async function preflightNode(state) {
   const history = [log('preflight', 'verificando binarios y autenticación')];
 
-  for (const bin of REQUIRED_BINS) {
-    const res = await run(`command -v ${bin}`);
-    if (!res.ok) {
-      return {
-        status: 'failed',
-        lastError: `binario requerido no encontrado: ${bin}`,
-        history: [...history, log('preflight', `falta ${bin}`)],
-      };
-    }
+  // Probes en paralelo: binarios requeridos + auth Devin (ACP).
+  const [bins, auth] = await Promise.all([
+    Promise.all(REQUIRED_BINS.map((bin) => run(`command -v ${bin}`))),
+    checkDevinAuth(),
+  ]);
+  const missing = REQUIRED_BINS.filter((_, i) => !bins[i].ok);
+  if (missing.length) {
+    return {
+      status: 'failed',
+      lastError: `binario requerido no encontrado: ${missing.join(', ')}`,
+      history: [...history, log('preflight', `falta ${missing.join(', ')}`)],
+    };
   }
-
-  const auth = await checkDevinAuth();
   if (!auth.ok) {
     return {
       status: 'failed',
@@ -44,30 +89,58 @@ export async function preflightNode(state) {
     join(dir, 'AGENTS.md'),
   );
 
-  // Vertical conocido con frontend → copiar skeleton + npm install
+  // Vertical conocido con frontend → copiar app-skeleton.
+  // Scope con backend → api-skeleton (Express + SQLite + uploads);
+  // el overlay del vertical aporta schema/seed/routes si existe.
   // (scaffold determinístico: el agente no gasta tiempo ni tokens en init).
   const vertical = getVertical(state.appType);
   const withFrontend = state.scope !== 'backend';
-  if (vertical && withFrontend && !existsSync(join(dir, 'package.json'))) {
-    const skeleton = join(config.templatesDir, 'app-skeleton');
-    cpSync(skeleton, dir, { recursive: true });
+  const withBackend = state.scope !== 'frontend';
+  const fresh = !existsSync(join(dir, 'package.json'));
+
+  if (fresh) {
+    if (vertical && withFrontend) {
+      cpSync(join(config.templatesDir, 'app-skeleton'), dir, { recursive: true });
+      history.push(log('preflight', `skeleton frontend copiado (${vertical.name})`));
+      activity('skeleton frontend copiado');
+    }
+
+    const overlayDir = vertical
+      ? join(config.rootDir, 'src', 'verticals', vertical.name, 'api')
+      : null;
+    const wantsApi =
+      withBackend && (state.appType === 'custom' || (overlayDir && existsSync(overlayDir)));
+    if (wantsApi) {
+      copyApiSkeleton(dir);
+      history.push(log('preflight', 'api-skeleton copiado (Express + SQLite + uploads)'));
+      activity('api-skeleton copiado');
+      if (overlayDir && existsSync(overlayDir)) {
+        cpSync(overlayDir, join(dir, 'server'), { recursive: true });
+        history.push(log('preflight', `overlay api de ${vertical.name} aplicado`));
+        activity('overlay api del vertical aplicado');
+      }
+    }
 
     // Personalizar placeholders del skeleton
     for (const f of ['package.json', 'index.html', 'src/App.jsx']) {
       const p = join(dir, f);
-      writeFileSync(p, readFileSync(p, 'utf8').replaceAll('__APP_NAME__', slug));
+      if (existsSync(p)) {
+        writeFileSync(p, readFileSync(p, 'utf8').replaceAll('__APP_NAME__', slug));
+      }
     }
-    history.push(log('preflight', `skeleton copiado (${vertical.name})`));
 
-    const install = await run('npm install', { cwd: dir, timeoutMs: 300_000 });
-    if (!install.ok) {
-      return {
-        status: 'failed',
-        lastError: `npm install del skeleton falló: ${install.stderr.slice(-500)}`,
-        history: [...history, log('preflight', 'npm install falló')],
-      };
+    // npm install lazy: corre en background mientras el pipeline
+    // avanza (planner, confirmación del plan). builder/verifier lo
+    // awaitan antes de tocar node_modules.
+    if (existsSync(join(dir, 'package.json'))) {
+      startInstall(dir);
+      history.push(log('preflight', 'npm install corriendo en background'));
+      activity('npm install en background…');
+      if (vertical && withFrontend) {
+        prewarmPlaywright(dir);
+        history.push(log('preflight', 'playwright chromium pre-warm en background'));
+      }
     }
-    history.push(log('preflight', 'dependencias instaladas'));
   }
 
   return {

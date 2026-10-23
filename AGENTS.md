@@ -50,17 +50,39 @@ playwright, vitest, express, sqlite, "reglas de UI").
 
 - `landing`: frontend-only, página informativa (hero/features/menú/
   contacto/footer). Contenido no provisto → lorem ipsum + placeholders.
-- `orders`: pedidos para casas de comida; soporta `fullstack` (Express +
-  SQLite), `frontend` (datos mock) y `backend` (solo API).
+- `orders`: pedidos para casas de comida; soporta `fullstack`, `frontend`
+  (datos mock) y `backend`. Con backend usa el overlay
+  `src/verticals/orders/api/` (schema business/categories/products/
+  orders/order_items + routes) sobre el api-skeleton; el paso backend
+  es generativo-lite: Devin solo personaliza seed-data.js y endpoints
+  extra de la idea.
 
 ## Skeleton de app
 
 `src/templates/app-skeleton/` es un proyecto Vite+React+Tailwind+Vitest+
 Playwright **funcional** que `preflight` copia a la app generada cuando el
-vertical tiene frontend (scope ≠ backend), reemplaza `__APP_NAME__` y
-corre `npm install`. El builder nunca hace scaffolding desde cero.
+vertical tiene frontend (scope ≠ backend) y reemplaza `__APP_NAME__`.
+El builder nunca hace scaffolding desde cero.
 Nota: `vite.config.js` excluye `e2e/**` de Vitest — sin eso Vitest intenta
-correr los specs de Playwright y falla.
+correr los specs de Playwright y falla. Además proxea `/api` y `/uploads`
+a :4000 (config muerta si el scope no tiene backend).
+
+`src/templates/api-skeleton/` es el equivalente de backend: Express 5 +
+better-sqlite3 + multer, auto-mount de `server/routes/<name>.js` en
+`/api/<name>`, `schema.sql` + `seed-data.js` (seed solo si la tabla está
+vacía), `POST /api/uploads` → `/uploads/<file>`. `preflight` lo copia
+cuando el scope tiene backend (standalone si scope=backend — el
+`package.partial.json` pasa a `package.json`; overlay sobre app-skeleton
+si fullstack — mergea deps/scripts). Si el vertical tiene
+`src/verticals/<v>/api/` (schema.sql, seed-data.js, routes/) se copia
+encima de `server/`. También aplica a `appType: 'custom'` con backend.
+
+`npm install` corre **lazy en background** (`src/tools/install.js`:
+`startInstall`/`awaitInstall`/`isInstalling`, registry por projectDir) —
+overlap con planner + confirmación humana. `builder`, `verifier` y
+`finalVerify` lo awaitan antes de tocar node_modules. Si el scope tiene
+frontend también se pre-calienta `npx playwright install chromium` en
+background (nunca se awaita; el paso e2e lo reintenta si hace falta).
 
 ## Confirmación de plan
 
@@ -79,7 +101,8 @@ Rechazar → `fail` sin ejecutar builds.
   final (`'final'`) — `fix` vuelve a `verify` o a `finalVerify` según eso.
 - Todo fallo terminal va al nodo `fail` (setea `status: 'failed'`), nunca
   directo a END sin marcar estado.
-- Tools: `src/tools/` (`devin.js` cliente ACP, `shell.js` execa, `slug.js`).
+- Tools: `src/tools/` (`devin.js` cliente ACP, `shell.js` execa, `slug.js`,
+  `install.js` npm install lazy, `github.js` REST).
 - Prompts versionables: `src/prompts/*.md`.
 - `src/templates/AGENTS.md` se **copia a cada app generada** con las reglas
   de UI obligatorias — no confundir con este archivo (raíz), que documenta
