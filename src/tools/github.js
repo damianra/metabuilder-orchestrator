@@ -31,6 +31,9 @@ export const enablePages = (token, owner, repo) =>
     source: { branch: 'gh-pages', path: '/' },
   });
 
+export const getPages = (token, owner, repo) =>
+  api(token, 'GET', `/repos/${owner}/${repo}/pages`);
+
 // Flujo de trabajo del repo orquestador: branch → PR → validación.
 export const createPullRequest = (token, owner, repo, { head, base = 'main', title, body = '' }) =>
   api(token, 'POST', `/repos/${owner}/${repo}/pulls`, { head, base, title, body });
