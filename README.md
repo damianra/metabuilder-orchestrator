@@ -87,6 +87,7 @@ cp .env.example .env
 | `DEVIN_TIMEOUT_MS` | Timeout por sesión Devin (default 15 min). |
 | `MAX_STEP_RETRIES` / `MAX_PLAN_RETRIES` | Reintentos de fix por paso / de reparación de plan (3 / 2). |
 | `VERIFY_TIMEOUT_MS` | Timeout por comando `verify` (default 5 min). |
+| `MAX_CONCURRENT_DEVIN_SESSIONS` | Semáforo global de sesiones Devin entre procesos (`~/.metabuilder/devin-slots/`). Default `1` — aunque haya varios `npm start`, nunca más de una sesión `devin acp` a la vez. |
 
 ## Requisitos
 

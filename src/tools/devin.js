@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { createWriteStream, existsSync, readFileSync } from 'node:fs';
 import { config } from '../config.js';
+import { acquireDevinSlot } from './devin-lock.js';
 
 /**
  * Cliente ACP mínimo para Devin CLI.
@@ -180,6 +181,12 @@ export async function runDevinPrompt({
 }) {
   let client;
   const textParts = [];
+  // Semáforo global: nunca más de `maxDevinSessions` sesiones `devin
+  // acp` a la vez en toda la máquina (default 1). Aplica entre procesos
+  // — dos `npm start` concurrentes se serializan acá.
+  const releaseSlot = await acquireDevinSlot({
+    onWait: () => onActivity?.('esperando slot de sesión Devin (otro run en curso)…'),
+  });
   try {
     const started = await startSession({ cwd, logPath, model, mode });
     client = started.client;
@@ -236,11 +243,14 @@ export async function runDevinPrompt({
     };
   } finally {
     client?.close();
+    releaseSlot();
   }
 }
 
 /**
  * Probe de autenticación para preflight: initialize + authenticate.
+ * No consume slot del semáforo: es un handshake de ~1s sin trabajo
+ * de agente (no llega a session/new).
  */
 export async function checkDevinAuth(timeoutMs = 30_000) {
   let client;

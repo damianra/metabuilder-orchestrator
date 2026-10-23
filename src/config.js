@@ -25,6 +25,10 @@ export const config = {
   devinModel: process.env.DEVIN_MODEL || 'swe-2-high',
   devinMode: process.env.DEVIN_MODE || 'bypass',
   devinTimeoutMs: int('DEVIN_TIMEOUT_MS', 15 * 60 * 1000),
+  // Semáforo global de sesiones Devin entre procesos (slots en
+  // ~/.metabuilder/devin-slots/). 1 = nunca más de una sesión a la vez
+  // en toda la máquina, aunque haya varios `npm start` corriendo.
+  maxDevinSessions: int('MAX_CONCURRENT_DEVIN_SESSIONS', 1),
 
   // Reintentos
   maxStepRetries: int('MAX_STEP_RETRIES', 3),

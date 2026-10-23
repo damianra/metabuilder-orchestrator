@@ -84,6 +84,14 @@ overlap con planner + confirmación humana. `builder`, `verifier` y
 frontend también se pre-calienta `npx playwright install chromium` en
 background (nunca se awaita; el paso e2e lo reintenta si hace falta).
 
+**Semáforo de sesiones Devin** (`src/tools/devin-lock.js`): `runDevinPrompt`
+adquiere un slot de `~/.metabuilder/devin-slots/slot-N/` antes del spawn
+(mkdir atómico + pid file; slots de procesos muertos se reciclan). Con
+`MAX_CONCURRENT_DEVIN_SESSIONS=1` (default) nunca hay más de una sesión
+`devin acp` a la vez en toda la máquina, aunque corran varios `npm start`
+— se serializan solos. `checkDevinAuth` no consume slot (handshake de ~1s
+sin trabajo de agente).
+
 ## Confirmación de plan
 
 El nodo `confirm` usa `interrupt()` (LangGraph + `MemorySaver`): el grafo
