@@ -173,6 +173,7 @@ function reportUpdate(node, update) {
   for (const [k, v] of Object.entries(update ?? {})) {
     if (v !== undefined) snapshot[k] = v;
   }
+  writeStatus(node);
   if (args.quiet) return;
   const label = NODE_LABEL[node] ?? node;
   const msgs = update?.history?.length ? update.history : [{ msg: JSON.stringify(update).slice(0, 120) }];
@@ -183,7 +184,6 @@ function reportUpdate(node, update) {
         : '';
     console.log(`${label}${stepInfo}  ${trim(h.msg)}`);
   }
-  writeStatus(node);
 }
 
 const app = buildGraph();
