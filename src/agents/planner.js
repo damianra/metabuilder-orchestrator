@@ -160,6 +160,10 @@ export async function repairPlanNode(state) {
     /* queda null */
   }
 
+  // Devin reescribió plan.json — si perdió `arch` o las menciones en
+  // los pasos backend, se re-aplica el patrón del run.
+  if (plan) applyArch(plan, resolveArch(state.arch));
+
   return {
     plan: plan ?? state.plan,
     planRetries: state.planRetries + 1,

@@ -39,7 +39,9 @@ export function applyArch(plan, arch) {
     if (s.description?.toLowerCase().includes(tag)) continue;
     s.description = `${s.description ?? ''}\n\n${arch.instructions}`;
   }
-  plan.arch = arch.id;
+  // plan.arch solo se declara si hay pasos backend — en un plan
+  // frontend-only sería ruido cosmético.
+  if (plan.steps?.some((s) => s.type === 'backend')) plan.arch = arch.id;
   return plan;
 }
 

@@ -48,6 +48,12 @@ describe('applyArch', () => {
     expect(plan.steps[1].description).not.toContain('Arquitectura');
   });
 
+  it('plan sin pasos backend no declara plan.arch', () => {
+    const plan = { steps: [{ ...backendStep(), type: 'frontend' }] };
+    applyArch(plan, resolveArch('mvc'));
+    expect(plan.arch).toBeUndefined();
+  });
+
   it('respeta descripciones que ya declaran la arquitectura', () => {
     const plan = {
       steps: [{ ...backendStep(), description: 'API con arquitectura mvc propia' }],
