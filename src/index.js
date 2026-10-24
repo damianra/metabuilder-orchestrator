@@ -175,7 +175,9 @@ const MAX_MSG = args.verbose ? Infinity : 220;
 const trim = (s) => (s.length > MAX_MSG ? s.slice(0, MAX_MSG) + '…' : s);
 
 // Escribe status.json dentro del proyecto (punto 4: estado para
-// workers/CI sin depender de la terminal).
+// workers/CI sin depender de la terminal). elapsedMs mide desde el
+// inicio de la ejecución del grafo (no incluye las preguntas del CLI).
+const startedAt = Date.now();
 let snapshot = { ...initial };
 function writeStatus(node) {
   if (!snapshot.projectDir) return;
@@ -190,6 +192,7 @@ function writeStatus(node) {
           step: Math.min(snapshot.currentStepIndex ?? 0, total),
           totalSteps: total,
           lastError: snapshot.lastError ?? null,
+          elapsedMs: Date.now() - startedAt,
           ts: new Date().toISOString(),
         },
         null,
@@ -258,8 +261,14 @@ for (;;) {
   input = new Command({ resume: ans || 's' });
 }
 
+const elapsedMs = Date.now() - startedAt;
+const mins = Math.floor(elapsedMs / 60_000);
+const secs = Math.round((elapsedMs % 60_000) / 1000);
+const duration = mins ? `${mins}m ${secs}s` : `${secs}s`;
+
 console.log('\n=== Resultado ===');
 console.log('status:', result.status);
+console.log('duración total:', duration);
 console.log('proyecto:', result.projectDir);
 if (result.lastError) console.log('error:', result.lastError);
 console.log('\n=== Historial ===');
