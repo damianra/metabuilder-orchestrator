@@ -10,7 +10,7 @@ básicas (landings, pedidos, blogs) delegando la escritura de código a
 ```bash
 npm install
 npm start -- --idea "..." --scope fullstack|frontend|backend \
-            --app-type landing|orders|custom [--name slug] \
+            --app-type landing|orders|blog|custom [--name slug] \
             [--github] [--no-push] [--keep-going] [-y|--yes]
 
 # Reanudar un run interrumpido desde su plan.json (ruta o slug):
@@ -60,6 +60,11 @@ playwright, vitest, express, sqlite, "reglas de UI").
   orders/order_items + routes) sobre el api-skeleton; el paso backend
   es generativo-lite: Devin solo personaliza seed-data.js y endpoints
   extra de la idea.
+- `blog`: posts con categorías, tags (N:M) y comentarios moderados;
+  soporta los 3 scopes. Overlay `src/verticals/blog/api/`: routes
+  posts (`?page&limit&q&category&tag` + `/:slug`), categories, tags y
+  comments (POST → `pending`, GET solo aprobados). Mismo paso backend
+  generativo-lite.
 
 ## Skeleton de app
 

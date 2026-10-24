@@ -75,4 +75,11 @@ describe('verticales — buildPlan() siempre produce planes válidos', () => {
     const p = verticals.landing.buildPlan({ projectName: 't', idea: 'café', phone: '' });
     expect(validatePlan(p, p.scope)).toEqual([]);
   });
+
+  it('blog: los 3 scopes validan', () => {
+    for (const scope of ['fullstack', 'frontend', 'backend']) {
+      const p = verticals.blog.buildPlan({ projectName: 't', idea: 'blog de recetas', scope });
+      expect(validatePlan(p, scope), `scope ${scope}`).toEqual([]);
+    }
+  });
 });

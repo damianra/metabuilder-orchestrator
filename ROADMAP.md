@@ -51,7 +51,7 @@ Ordenado por impacto/esfuerzo. **El #1 es la recomendación actual.**
 | ~~1~~ | ~~**`--resume <dir>`**~~ (F) ✅ | Implementado y validado E2E — ver sección Completados | Un Ctrl+C/timeout ya no pierde el run |
 | ~~2~~ | ~~**CI: `npm test` en PRs**~~ (G) ✅ | Implementado: `.github/workflows/test.yml` corre la suite (52 tests, ~5s) en cada PR y push a main — compuerta determinística gratis que complementa al sub-agente `validate:pr` | Hecho |
 | ~~3~~ | ~~**orders fullstack real**~~ (B) ✅ | Validado E2E con `rotiseria-esquina`: 5/5 pasos verdes al primer intento, overlay api/ aplicado intacto, generativo-lite personalizó seed (29 productos con sabor de la idea + business + WhatsApp) y agregó `api.test.js`, POST /api/orders con total server-side → 201, frontend consume `/api/*` + checkout wa.me con items | Segundo vertical en su forma real |
-| **4** | **Nuevo vertical** (C) | Carpeta `src/verticals/<nuevo>` (blog/portfolio/catálogo) con plan + secciones + checks e2e + overlay `api/` — es el que demuestra el patrón overlay: un blog es `schema.sql` grande + routes, mismo motor | Amplía el catálogo sin tocar el grafo |
+| ~~4~~ | ~~**Nuevo vertical**~~ (C) ✅ | Implementado **`blog`**: posts/categories/tags(N:M)/comments moderados — overlay `api/` con routes posts (`?page&limit&q&category&tag` + `/:slug`), categories, tags, comments (POST → pending). 3 scopes validados, inferAppType con keywords blog/artículo/noticias/posts, overlay verificado en vivo | Catálogo ampliado sin tocar el grafo |
 | **5** | **Pool de procesos `devin acp`** (H) | Cada paso paga initialize + authenticate + session/new + set_config (overhead por paso). Mantener el proceso ACP vivo entre pasos del mismo run — `session/new` por paso sigue aislando el contexto — recorta ese costo | Medio: performance, sin cambio semántico |
 | **6** | **Automatizar `validate:pr`** (I) | Hoy es manual (`npm run validate:pr -- <N>`). Opciones: hook post-push local, GitHub Action (requeriría credenciales Devin en secrets — evaluar) o cron | Medio: conveniencia; el camino CI tiene consideraciones de secretos |
 | **7** | **Cola de jobs (`jobs.json` + worker)** (J) | Sigue siendo la decisión pendiente original — formalizar serialización de runs (ver sección abajo) | Medio — **requiere decisión previa** |
@@ -66,6 +66,7 @@ Ordenado por impacto/esfuerzo. **El #1 es la recomendación actual.**
 - ~~D~~ **Robustez de Pages** ✅ parcial — fallback `getPages` ya implementado; el retry del 500 quedó como ítem #8.
 - ~~F~~ **`--resume <dir>`** ✅ — `npm start -- --resume <dir|slug>`: `resolveResumeDir` (ruta o slug), preflight reanuda sin re-copiar, planner normaliza pasos no-done → `pending` y retoma en el primero (todo done → `finalVerify`), restaura scope/appType/idea del plan (`idea` persistido en plan.json). Validado E2E: resume a mitad de plan → done. Un Ctrl+C/timeout ya no pierde el run.
 - ~~G~~ **CI `npm test` en PRs** ✅ — `.github/workflows/test.yml` (ubuntu, Node 22, `npm ci` + `npm test`) en `pull_request` y push a `main`.
+- ~~C~~ **Vertical `blog`** ✅ — `src/verticals/blog/`: posts/categories/tags(N:M)/comments moderados, overlay api/ verificado en vivo, `inferAppType` con keywords, 3 scopes. También: log de `duración total` al final del pipeline + `elapsedMs` en status.json.
 
 ## Ejecución asincrónica sin saturar (análisis)
 
