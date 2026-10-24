@@ -1,0 +1,4 @@
+-- Schema del dominio. db.js lo ejecuta al abrir la base — debe ser
+-- idempotente (CREATE TABLE IF NOT EXISTS). Cada vertical lo provee
+-- via src/verticals/<v>/api/schema.sql; para apps custom lo escribe
+-- el builder.

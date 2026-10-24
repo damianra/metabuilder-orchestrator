@@ -1,6 +1,7 @@
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
-import { log, writePlan } from './common.js';
+import { awaitInstall, isInstalling } from '../tools/install.js';
+import { activity, log, writePlan } from './common.js';
 
 /**
  * Corre step.verify dentro del proyecto generado.
@@ -8,6 +9,19 @@ import { log, writePlan } from './common.js';
  */
 export async function verifierNode(state) {
   const step = state.plan.steps[state.currentStepIndex];
+
+  // npm install corre en background desde preflight — si todavía
+  // está corriendo lo esperamos acá, antes de tocar node_modules.
+  if (isInstalling(state.projectDir)) activity('esperando npm install…');
+  const install = await awaitInstall(state.projectDir);
+  if (!install.ok) {
+    const err = `npm install del proyecto falló: ${install.stderr.slice(-500)}`;
+    return {
+      lastError: err,
+      history: [log('verify', `paso ${step.id}: FAIL — ${err.slice(0, 200)}`)],
+    };
+  }
+
   const res = await run(step.verify, {
     cwd: state.projectDir,
     timeoutMs: config.verifyTimeoutMs,

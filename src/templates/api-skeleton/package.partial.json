@@ -1,0 +1,19 @@
+{
+  "name": "__APP_NAME__",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "api": "node server/index.js",
+    "dev:api": "node --watch server/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "express": "^5.1.0",
+    "multer": "^2.0.2"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8"
+  }
+}

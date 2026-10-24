@@ -1,0 +1,6 @@
+# api-skeleton
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+server/uploads/*
+!server/uploads/.gitkeep

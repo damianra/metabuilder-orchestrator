@@ -30,14 +30,14 @@ const vitestStep = (n, extra = '') =>
     'npx vitest run',
   );
 
-function backendStep(n) {
+function backendStep(n, idea) {
   return step(
     n,
     'backend',
-    'Crear API con Express en server/ (script "api": "node server/index.js", puerto 4000) con SQLite vía better-sqlite3 (instalarlo; si la compilación nativa falla, usar node:sqlite de Node). ' +
-      'Tablas con seed si están vacías: `business` (nombre del local, tagline, dirección, horarios, whatsapp), `categories` (nombre, orden) y `products` (nombre, descripción, precio, category_id, icon en kebab-case para lucide). ' +
-      'Endpoints: GET /api/business (datos del local), GET /api/categories, GET /api/products (incluye categoría; ~8 productos de muestra repartidos en las categorías), POST /api/orders (valida customer/phone/items y persiste), GET /api/orders/:id. ' +
-      'Configurar proxy /api → localhost:4000 en vite.config.js. Agregar tests de API con Vitest.',
+    'El proyecto ya tiene el api-skeleton instalado: Express 5 + SQLite (better-sqlite3) en server/, auto-mount de server/routes/*.js en /api/*, static /uploads y POST /api/uploads (multer). El overlay del vertical ya proveyó server/schema.sql (business, categories, products, orders, order_items), server/seed-data.js y las routes business/categories/products/orders. ' +
+      `Personalizar server/seed-data.js según la idea del usuario: "${idea}" — nombre/tagline/dirección/horarios/whatsapp del local en business, productos reales del rubro repartidos en las categorías (icon lucide en kebab-case). ` +
+      'Agregar routes/endpoints extra SOLO si la idea los pide (un archivo nuevo en server/routes/ se monta solo en /api/<nombre>). NO tocar server/db.js, server/app.js ni la convención de auto-mount. ' +
+      'Express y SQLite ya están configurados — no reinstalar ni reestructurar. Agregar tests Vitest en server/ cubriendo GET /api/business, /api/categories, /api/products, POST /api/orders y GET /api/orders/:id.',
     'npx vitest run',
   );
 }
@@ -69,15 +69,9 @@ export function buildPlan({ projectName, idea, scope = 'fullstack', phone }) {
 
   if (scope === 'backend') {
     steps.push(
+      backendStep(1, idea),
       step(
-        1,
-        'infra',
-        'Inicializar proyecto Node ESM mínimo: package.json con "type": "module", scripts "api" y "test" (vitest), e instalar express + better-sqlite3 + vitest.',
-        'npm run test -- --passWithNoTests',
-      ),
-      backendStep(2),
-      step(
-        3,
+        2,
         'test',
         'Ampliar tests Vitest de la API: GET /api/products devuelve productos, POST /api/orders valida campos y persiste, GET /api/orders/:id devuelve el pedido o 404.',
         'npx vitest run',
@@ -93,7 +87,7 @@ export function buildPlan({ projectName, idea, scope = 'fullstack', phone }) {
   } else {
     steps.push(
       infraFrontend,
-      backendStep(2),
+      backendStep(2, idea),
       frontendStep(3, { withApi: true, idea, phone }),
       vitestStep(4, ' Incluir tests de la API Express (endpoints de products y orders).'),
       e2eOrders(5),

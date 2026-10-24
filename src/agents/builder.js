@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { config } from '../config.js';
 import { runDevinPrompt } from '../tools/devin.js';
+import { awaitInstall, isInstalling } from '../tools/install.js';
 import { activity, log, loadPrompt, runLogPath, writePlan } from './common.js';
 
 /**
@@ -25,6 +26,19 @@ export async function builderNode(state) {
   const plan = structuredClone(state.plan);
   plan.steps[state.currentStepIndex].status = 'building';
   writePlan(state.projectDir, plan);
+
+  // npm install corre en background desde preflight — esperarlo
+  // antes de abrir la sesión Devin (el agente puede correr npm).
+  if (isInstalling(state.projectDir)) activity('esperando npm install…');
+  const install = await awaitInstall(state.projectDir);
+  if (!install.ok) {
+    return {
+      plan,
+      status: 'failed',
+      lastError: `npm install falló: ${install.stderr.slice(-500)}`,
+      history: [log('build', `paso ${step.id}: npm install falló — no se consume Devin`)],
+    };
+  }
 
   const prompt = loadPrompt('builder', {
     step_id: step.id,

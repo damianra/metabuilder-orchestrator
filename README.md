@@ -12,7 +12,7 @@ preflight → planner → validate ─┬─→ confirm → builder → verify �
 
 | Nodo | Qué hace |
 | --- | --- |
-| `preflight` | Chequea binarios + auth Devin (ACP), crea `generated-apps/<slug>/`, copia `AGENTS.md` y — si el tipo es un vertical con frontend — copia el **skeleton** (Vite+React+Tailwind+Vitest+Playwright) y corre `npm install`. |
+| `preflight` | Chequea binarios + auth Devin (ACP) en paralelo, crea `generated-apps/<slug>/`, copia `AGENTS.md` y los **skeletons**: `app-skeleton` (Vite+React+Tailwind+Vitest+Playwright) si el vertical tiene frontend, `api-skeleton` (Express 5 + SQLite + uploads + auto-mount de routes) si el scope tiene backend, más el **overlay** del vertical (`schema.sql`/`seed-data.js`/`routes/`). `npm install` y el pre-warm de Playwright corren en background. |
 | `planner` | Genera `plan.json`. Si `appType` es un **vertical conocido** (`landing`, `orders`) usa un template determinístico (**sin llamar a Devin**); si es `custom`, una sesión Devin ACP lo escribe. Si ya existe `plan.json`, lo reutiliza (resume). |
 | `validate` | Validación 100% local del plan (schema, tipos de paso, `verify` ejecutable, requisitos por scope). |
 | `confirm` | `interrupt()` de LangGraph: muestra el plan y espera `[S/n]` — solo en TTY y sin `--yes`. |
@@ -99,10 +99,11 @@ cp .env.example .env
 - `src/index.js` — CLI (flags + modo interactivo + loop de confirmación + feedback en vivo / `status.json`).
 - `src/orchestrator/` — `state.js` (canales) + `graph.js` (routing + checkpointer).
 - `src/agents/` — nodos: preflight, planner, validator, confirm, builder, verifier, fixer, reviewer, finalizer.
-- `src/tools/` — `devin.js` (cliente ACP), `shell.js` (execa), `slug.js`, `github.js` (REST: repos, Pages, PRs).
+- `src/tools/` — `devin.js` (cliente ACP), `shell.js` (execa), `slug.js`, `github.js` (REST: repos, Pages, PRs), `install.js` (npm install lazy en background).
 - `src/prompts/` — builder/fixer/planner/plan-repair/reviewer.md.
 - `src/verticals/` — paquetes por tipo de app (`landing`, `orders`): `buildPlan()` determinístico.
-- `src/templates/` — `AGENTS.md` (reglas UI + guía de diseño copiadas a cada app), `README.md`, `app-skeleton/`.
+- `src/templates/` — `AGENTS.md` (reglas UI + guía de diseño copiadas a cada app), `README.md`, `app-skeleton/` (frontend), `api-skeleton/` (backend Express+SQLite+uploads).
+- `src/verticals/<v>/api/` — overlay de backend por vertical (schema.sql + seed-data.js + routes/) que se copia sobre `server/`.
 - `generated-apps/` — apps generadas (**gitignored**, cada una con su repo git).
 - `runs/` — logs JSON-RPC de cada sesión Devin (**gitignored**).
 - `ROADMAP.md` — candidatos y próximos pasos (api-skeleton, tests del orquestador, ejecución asincrónica).

@@ -1,30 +1,22 @@
 # MetaBuilder — candidatos y próximos pasos
 
-Estado: T1–T7 completados. Pipeline end-to-end validado
+Estado: T1–T7 + `api-skeleton` completados. Pipeline end-to-end validado
 (`casa-comidas` → repo + GitHub Pages live).
 
-## Próximo a realizar
+## Implementado: `api-skeleton` — backend predefinido
 
-**`api-skeleton` — backend predefinido para builds rápidos** (análogo al
-skeleton de frontend). El paso backend de `orders` fullstack tardó ~3 min
-de sesión Devin para producir una estructura 100% predecible
-(`server/index.js`, `app.js`, `db.js`, seed-if-empty, endpoints, proxy).
+`src/templates/api-skeleton/` (Express 5 + better-sqlite3 + multer):
+`server/{index,app,db,schema.sql,seed-data.js}`, auto-mount de
+`server/routes/*.js` en `/api/*`, `POST /api/uploads` → `/uploads/`,
+test vitest de `/api/health`, `package.partial.json` mergeado por
+preflight. Los verticales aportan overlay en `src/verticals/<v>/api/`
+(orders: schema business/categories/products/orders/order_items +
+routes). El paso backend quedó generativo-lite (Devin personaliza
+seed + endpoints extra de la idea).
 
-- `src/templates/api-skeleton/` que `preflight` mergea sobre el
-  app-skeleton cuando `scope` tiene backend:
-  - `server/index.js` — entry, puerto 4000
-  - `server/app.js` — express + json + `/api/health` + error handler
-  - `server/db.js` — `openDb()` + WAL + `seedIfEmpty(schema, seed)`
-  - `server/db.test.js` — test vitest de `/api/health`
-  - `package.partial.json` — deps (express + better-sqlite3) + script
-    `"api"` a mergear en package.json
-- Qué queda generativo: schema por vertical (estable en `orders`, podría
-  ser template con slots), seed content (sabor del negocio), endpoints
-  extra que pida la idea.
-- Qué deja de ser decisión del agente: driver SQLite, estructura de
-  carpetas, proxy `/api`, script `api`, patrón seed, `.gitignore` de
-  artefactos WAL.
-- Impacto estimado: paso backend ~3 min → ~1-1.5 min y sin varianza.
+Asincronía aplicada: probes de preflight en paralelo, `npm install`
+lazy en background (`tools/install.js`, awaitan builder/verifier/
+finalVerify), pre-warm de Playwright chromium en background.
 
 ## Candidatos lógicos (prioridad sugerida)
 
