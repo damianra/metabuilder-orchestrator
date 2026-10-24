@@ -96,13 +96,15 @@ O ambos juntos con un solo comando (recomendado — `Ctrl+C` mata los dos):
 ```bash
 npm install                        # deps del orquestador
 npm --prefix dashboard install     # deps de la UI (una sola vez)
-npm run dashboard                  # API :4100 + UI http://127.0.0.1:4173
-npm run worker                     # en otra terminal: procesa los jobs encolados
+npm run dashboard                  # API :4100 + UI :4173 + worker de la cola
+# npm run worker no hace falta: el dashboard ya levanta el worker en
+# modo watch (queue.js). Solo se usa para procesar la cola a mano.
 ```
 
 La UI (mismo stack que las apps generadas) sirve para lanzar generaciones y supervisar `generated-apps/`:
 
-- **Nueva app** — formulario con idea + pickers de scope/vertical/arquitectura (alimentados de `GET /api/options`, que lee los registries — nada hardcodeado) + flags GitHub/Pages/verify-docker. Encola el job; `npm run worker` lo procesa en otra terminal.
+- **Nueva app** — formulario con nombre/idea + pickers de scope/vertical/arquitectura/stacks (alimentados de `GET /api/options`, que lee los registries — nada hardcodeado) + flags GitHub/Pages/verify-docker. Encola el job; el worker del dashboard lo procesa.
+- **Cola** — cada job muestra su estado con progreso en vivo (`running · paso X/Y · nodo` leído del `status.json` de la app). Si hay jobs `pending` y el worker no está vivo (heartbeat `jobs/.worker`), avisa "sin worker consumiendo la cola".
 - **Proyectos** — cards con status, pasos done/total con barra, scope/arch, badge docker; click → detalle.
 - **Detalle** (`#/p/<slug>`) — idea, tabla de pasos con intentos/verify, acciones **Resume** (opción con GitHub) / **Dockerize** (build async si hay daemon) / **Abrir repo**, y el reporte del último run.
 - **Cola** — jobs activos y recientes; indicador de API caída en el header.

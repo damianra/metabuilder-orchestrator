@@ -15,6 +15,7 @@ export default function App() {
   const [route, setRoute] = useState(parseHash);
   const [projects, setProjects] = useState([]);
   const [jobs, setJobs] = useState([]);
+  const [worker, setWorker] = useState(null);
   const [apiDown, setApiDown] = useState(false);
 
   useEffect(() => {
@@ -27,7 +28,8 @@ export default function App() {
     try {
       const [p, j] = await Promise.all([api.projects(), api.jobs()]);
       setProjects(p);
-      setJobs(j);
+      setJobs(j.jobs ?? []);
+      setWorker(j.worker ?? null);
       setApiDown(false);
     } catch {
       setApiDown(true);
@@ -72,7 +74,7 @@ export default function App() {
         ) : (
           <>
             <NewAppForm onEnqueued={refresh} />
-            <QueuePanel jobs={jobs} />
+            <QueuePanel jobs={jobs} worker={worker} />
             <ProjectList projects={projects} />
           </>
         )}

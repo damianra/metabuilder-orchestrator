@@ -10,12 +10,13 @@
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync, createWriteStream } from 'node:fs';
 import { spawn } from 'node:child_process';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
-import { addJob, readJobs } from '../queue.js';
+import { addJob, readJobs, readWorker } from '../queue.js';
+import { slugify } from '../tools/slug.js';
 import { buildReport, resolveRunId } from '../report.js';
 import { writeDockerFiles, detectFrontend, detectOutDir } from '../tools/docker.js';
 import { listArchs } from '../arch/index.js';
@@ -151,7 +152,46 @@ export function createDashboardApp({
     res.json(slugs.map((s) => projectSummary(appDir(s), s)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
   });
 
-  app.get('/api/jobs', (req, res) => res.json(readJobs(baseDir)));
+  // Slug del proyecto que un job toca: --name es el slug directo;
+  // --resume apunta a un dir/slug existente; si no, se deriva de la
+  // idea y se buscan los sufijos -2..-5 que ensureProjectDir pudo dar.
+  const jobProjectSlug = (args = []) => {
+    const at = (flag) => {
+      const i = args.indexOf(flag);
+      return i >= 0 ? args[i + 1] : null;
+    };
+    const resume = at('--resume');
+    if (resume) return basename(resume.replace(/\/+$/, ''));
+    const base = slugify(at('--name') ?? at('--idea') ?? '');
+    if (!base) return null;
+    for (let i = 0; i < 5; i++) {
+      const slug = i === 0 ? base : `${base}-${i + 1}`;
+      if (existsSync(join(appsDir, slug, 'plan.json'))) return slug;
+    }
+    return null;
+  };
+
+  // Job + progreso en vivo del pipeline (status.json de la app) +
+  // liveness del worker — el stepper de la UI se arma con esto.
+  app.get('/api/jobs', (req, res) => {
+    const jobs = readJobs(baseDir).map((j) => {
+      const slug = jobProjectSlug(j.args);
+      const status = slug ? readJson(join(appsDir, slug, 'status.json')) : null;
+      return {
+        ...j,
+        projectSlug: slug,
+        progress: status
+          ? {
+              node: status.node ?? null,
+              status: status.status ?? null,
+              step: status.step ?? null,
+              totalSteps: status.totalSteps ?? null,
+            }
+          : null,
+      };
+    });
+    res.json({ jobs, worker: readWorker(baseDir) });
+  });
 
   app.get('/api/projects/:slug', async (req, res) => {
     const slug = validSlug(req, res);

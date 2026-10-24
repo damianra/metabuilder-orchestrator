@@ -1,6 +1,7 @@
-// npm run dashboard — levanta la API (src/dashboard/server.js) y la UI
-// (dashboard/, Vite dev :4173 con proxy /api → :4100) en un solo proceso.
-// Ctrl+C mata ambos. Sin dep de concurrently: dos spawns + kill propio.
+// npm run dashboard — levanta la API (src/dashboard/server.js), la UI
+// (dashboard/, Vite dev :4173 con proxy /api → :4100) y el worker de la
+// cola (queue.js watch — los jobs no quedan pending sin consumidor)
+// en un solo proceso. Ctrl+C mata los tres. Sin dep de concurrently.
 //
 // Se spawnea vite.js directo (no `npm run dev`): matar el proceso mata
 // el server real — con npm de wrapper el nieto `sh -c vite` quedaba
@@ -23,6 +24,7 @@ if (!existsSync(viteBin)) {
 const procs = [
   spawn(process.execPath, [join(root, 'src/dashboard/server.js')], { stdio: 'inherit', cwd: root }),
   spawn(process.execPath, [viteBin], { stdio: 'inherit', cwd: join(root, 'dashboard') }),
+  spawn(process.execPath, [join(root, 'src/queue.js'), 'watch'], { stdio: 'inherit', cwd: root }),
 ];
 
 let stopping = false;
@@ -47,4 +49,6 @@ for (const p of procs) {
   });
 }
 
-console.log(`dashboard → API http://127.0.0.1:${apiPort} · UI http://127.0.0.1:4173`);
+console.log(
+  `dashboard → API http://127.0.0.1:${apiPort} · UI http://127.0.0.1:4173 · worker (cola jobs/)`,
+);

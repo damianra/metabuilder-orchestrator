@@ -201,3 +201,30 @@ describe('POST /api/runs — stacks', () => {
     expect((await post('/api/runs', { idea: 'x', stackBackend: 'nextjs' })).status).toBe(400);
   });
 });
+
+describe('GET /api/jobs — enriquecido', () => {
+  it('devuelve jobs + worker, con progreso del status.json del proyecto', async () => {
+    seedApp('mi-app', { status: 'running' });
+    writeJson(join(appsDir, 'mi-app', 'status.json'), {
+      node: 'builder',
+      status: 'building',
+      step: 3,
+      totalSteps: 6,
+      ts: '2026-01-01T00:00:00Z',
+    });
+    await post('/api/runs', { idea: 'x', name: 'mi-app' });
+    const { status, body } = await api('/api/jobs');
+    expect(status).toBe(200);
+    expect(body.worker).toBeDefined();
+    const job = body.jobs.find((j) => j.args.includes('mi-app'));
+    expect(job.projectSlug).toBe('mi-app');
+    expect(job.progress).toEqual({ node: 'builder', status: 'building', step: 3, totalSteps: 6 });
+  });
+
+  it('worker.alive refleja el heartbeat de jobs/.worker', async () => {
+    const { writeHeartbeat } = await import('../src/queue.js');
+    expect((await api('/api/jobs')).body.worker.alive).toBe(false);
+    writeHeartbeat(base);
+    expect((await api('/api/jobs')).body.worker.alive).toBe(true);
+  });
+});
