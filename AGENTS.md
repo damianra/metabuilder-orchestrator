@@ -195,17 +195,12 @@ Aplica a cualquier agente/persona que modifique el orquestador.
 3. **Push de la rama** → crear PR a `main` vía REST (no hay `gh` CLI):
    `createPullRequest(token, 'damianra', 'metabuilder-orchestrator',
    { head, title, body })` de `src/tools/github.js` con `GITHUB_TOKEN`.
-4. **Validación funcional antes de merge**: correr la verificación que
-   toque el cambio (`node --check`, tests, tramo del pipeline afectado)
-   y **comentar en el PR** (`commentOnPR`) el veredicto:
-
-   ```
-   ## Validación funcional
-   - Qué se corrió: <comandos>
-   - Resultado: <resumen de salida>
-   - Veredicto: ✅ APROBADO PARA MERGE | ⚠️ REQUIERE REVISIÓN
-   ```
-
+4. **Validación funcional antes de merge — la hace un sub-agente**:
+   `npm run validate:pr -- <N>` crea un worktree temporal del head,
+   corre una sesión Devin (`prompts/pr-validator.md`) que revisa el
+   diff + ejecuta la validación (`npm test`, `node --check`, smokes
+   dirigidos) y comenta el veredicto en el PR. El `GITHUB_TOKEN` nunca
+   llega al agente — solo lo usa el script para leer el PR y comentar.
    Solo se mergea con `✅ APROBADO PARA MERGE`.
 
 Las **apps generadas** (`generated-apps/<slug>/`) NO siguen este flujo:
