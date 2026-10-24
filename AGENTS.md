@@ -27,8 +27,8 @@ npm run queue -- watch                   # idem en loop + heartbeat jobs/.worker
                                          # + stdout/stderr de cada job → jobs/<id>.log
                                          # (es el modo que levanta npm run dashboard)
 
-# Dashboard (API + UI): API en :4100, UI Vite en :4173 con proxy /api
-npm run dashboard                        # levanta ambos (Ctrl+C mata ambos)
+# Dashboard (API + UI + worker): API en :4100, UI Vite en :4173 con proxy /api
+npm run dashboard                        # levanta los 3 (Ctrl+C mata los 3)
 npm run dashboard:api                    # solo la API (DASHBOARD_PORT/HOST)
 npm --prefix dashboard run dev           # solo la UI
 ```
@@ -213,8 +213,9 @@ fina sobre la infra existente:
 La UI vive en `dashboard/` (subpackage propio con su package.json —
 Vite+React+Tailwind+Vitest, mismo stack que el app-skeleton). Hash
 routing (`#/` lista, `#/p/<slug>` detalle), polling 4-5s. `dev.js`
-lanza API+Vite en un proceso; la UI es un consumidor más de la API —
-no conoce paths del FS ni los registries directamente.
+lanza API+Vite+worker (`queue.js watch`) en un proceso — los jobs
+encolados desde la UI se procesan solos; la UI es un consumidor más de
+la API — no conoce paths del FS ni los registries directamente.
 
 ## Dockerfile por app
 
@@ -225,9 +226,13 @@ del frontend → `dist|`out/` servido por el mismo Express), `frontend`
 (build → nginx:alpine + `nginx.conf` con SPA fallback). El dir de
 salida viene de `stack.buildDir` (placeholder `@OUT_DIR@` en los
 templates). En `--resume` la variante y el outDir se detectan por el
-filesystem (`vite.config.js`/`next.config.*`/`server/`).
+filesystem (`vite.config.js`/`next.config.*`/`server/`). Los `FROM`
+usan nombres fully-qualified (`docker.io/library/...`) — podman sin
+unqualified-search registries rechaza short-names (docker los
+resuelve igual, no cambia nada).
 `--verify-docker` corre `docker build` en `finalVerify` solo si hay
-daemon (ausente → omite sin fallar).
+daemon **docker** (ausente → omite sin fallar; es docker-only — en
+hosts con solo podman se omite siempre).
 
 `npm install` corre **lazy en background** (`src/tools/install.js`:
 `startInstall`/`awaitInstall`/`isInstalling`, registry por projectDir) —

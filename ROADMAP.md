@@ -8,6 +8,13 @@ semáforo global Devin, pool ACP, cola de jobs, reportes de run,
 `validate:pr` automático, CI en PRs. Registro histórico y decisiones:
 `docs/archive/ROADMAP-v1.md`.
 
+Post-v2 (oct 2026) el dashboard quedó endurecido: `npm run dashboard`
+levanta API+UI+worker (los jobs ya no quedan pending sin consumidor),
+logs por job (`jobs/<id>.log` + endpoints + acordeón en el detalle),
+detalle con prompt/comandos/runner de tests, runtime de containers
+docker **o podman** (engine detectado, build/run/logs por el mismo
+binario) y spinners de feedback en acciones async.
+
 ## Visión v2
 
 **Dashboard de control**: una UI propia para lanzar generaciones sin CLI,
