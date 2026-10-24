@@ -1,7 +1,16 @@
 # MetaBuilder — candidatos y próximos pasos
 
-Estado: T1–T7 + `api-skeleton` completados. Pipeline end-to-end validado
-(`casa-comidas` → repo + GitHub Pages live).
+Estado: T1–T7 + `api-skeleton` + semáforo Devin completados. Pipeline
+end-to-end validado dos veces: `casa-comidas` (orders frontend → repo +
+GitHub Pages live) y `tienda-stock` (custom fullstack con concurrencia
+de stock).
+
+## Validaciones E2E realizadas
+
+| Run | Tipo | Resultado |
+| --- | --- | --- |
+| `casa-comidas` | orders / frontend | Repo + GitHub Pages live |
+| `tienda-stock` | custom / fullstack | ~10 min, 6 pasos verdes al primer intento (planner LLM + build + vitest + e2e), QA aprobado. Backend sobre api-skeleton: `POST /api/orders` con decremento atómico de stock (`UPDATE ... WHERE stock >= qty` en transacción, rollback → 409). Concurrencia verificada en vivo: 2 POST simultáneos por el último stock → 1×201 + 1×409, stock nunca negativo. |
 
 ## Implementado: `api-skeleton` — backend predefinido
 
@@ -26,7 +35,7 @@ se serializan solos — nunca más de una sesión `devin acp` a la vez.
 | # | Candidato | Descripción | Valor |
 | --- | --- | --- | --- |
 | ~~A~~ | ~~**Tests del orquestador**~~ ✅ | Implementado: `tests/` con 42 tests — validator+verticales, `ghAuthArgs`/sanitize, commit idempotente (git real en tmp), `parseReviewResult`, serialización ACP con stub `devin`, semáforo, install lazy, `copyApiSkeleton`, slug, shell | ~5s, sin tocar Devin ni red |
-| B | **orders fullstack real** | El template fullstack existe pero nunca corrió E2E con Devin (Express+SQLite + frontend consumiéndolo). En validación | Completaría el segundo vertical en su forma real |
+| B | **orders fullstack real** | Parcialmente validado: `tienda-stock` corrió el camino api-skeleton E2E (custom). Falta correr el vertical `orders` fullstack propiamente (overlay schema/seed/routes + paso generativo-lite) | Completaría el segundo vertical en su forma real |
 | C | **Nuevo vertical** (blog/portfolio/catálogo) | Carpeta `src/verticals/<nuevo>` con plan + secciones + checks e2e | Amplía el catálogo sin tocar el grafo |
 | D | **Robustez de Pages** | Reintentar `enablePages` ante 500 transitorio y tratar 409 como éxito | Pulir el único fallo "ruidoso" observado |
 | E | **orders con delivery real** | Costo de envío por zona/mapa, persistir pedido en Sheets, panel admin | Más complejo; probablemente fuera del scope "apps básicas" |
@@ -81,5 +90,11 @@ Devin que el límite configurado.
 - ~~Semáforo de sesiones Devin~~ → implementado (`tools/devin-lock.js`,
   slots mkdir-atómicos + pid file, `MAX_CONCURRENT_DEVIN_SESSIONS=1`
   configurable). Falta solo si se quiere la cola formal de jobs.
+- ~~Paralelismo dentro de un run~~ → **descartado** (decidido 2026-10-23):
+  backend/frontend tienen dirs disjuntos pero colisionan en
+  `package.json`, `plan.json` y la semántica de verify/fixer; el ahorro
+  (~1.5 min/run) no justifica la complejidad. Throughput se gana con
+  `MAX_CONCURRENT_DEVIN_SESSIONS>1` entre runs (dirs distintos, cero
+  colisión).
 - ¿Worker con cola (`jobs.json`) o mantener invocación directa (ya
-  serializada por el semáforo)?
+  serializada por el semáforo)? — única decisión abierta.
