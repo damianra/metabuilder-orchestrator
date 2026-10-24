@@ -22,8 +22,10 @@ npm run queue -- add --idea "..." [-y]   # encola (args = los de npm start)
 npm run queue -- list|clear              # estado / limpieza
 npm run worker                           # procesa jobs/ en orden
 
-# API del dashboard (UI viene en roadmap #5):
-npm run dashboard:api                    # http://127.0.0.1:4100 (DASHBOARD_PORT/HOST)
+# Dashboard (API + UI): API en :4100, UI Vite en :4173 con proxy /api
+npm run dashboard                        # levanta ambos (Ctrl+C mata ambos)
+npm run dashboard:api                    # solo la API (DASHBOARD_PORT/HOST)
+npm --prefix dashboard run dev           # solo la UI
 ```
 
 Verificación rápida de tools sin tocar el grafo:
@@ -150,6 +152,14 @@ fina sobre la infra existente:
   filesystem + `docker build` async si hay daemon → estado en
   docker-build.json, log en docker-build.log; sin daemon → skipped),
   `open-repo` (devuelve la URL https del remote para que la UI la abra).
+- `GET /api/options` — scopes/verticales/archs/stacks leídos de los
+  registries; la UI alimenta sus pickers de acá (nada hardcodeado).
+
+La UI vive en `dashboard/` (subpackage propio con su package.json —
+Vite+React+Tailwind+Vitest, mismo stack que el app-skeleton). Hash
+routing (`#/` lista, `#/p/<slug>` detalle), polling 4-5s. `dev.js`
+lanza API+Vite en un proceso; la UI es un consumidor más de la API —
+no conoce paths del FS ni los registries directamente.
 
 ## Dockerfile por app
 

@@ -69,21 +69,38 @@ npm run queue -- clear       # borra jobs terminados
 
 Cada job es un archivo en `jobs/` (gitignored); el worker spawnea `node src/index.js` por job — equivale a correr `npm start` a mano, en serie. Un job `failed` se retoma con `--resume generated-apps/<slug>`. El semáforo de sesiones Devin sigue siendo la red de seguridad para runs sueltos.
 
-## API del dashboard
+## Dashboard
+
+Dos componentes locales en el propio repo:
+
+| Componente | Dónde | Cómo levantarlo |
+| --- | --- | --- |
+| **Backend (API)** | `src/dashboard/server.js` — Express 5 | `npm run dashboard:api` → `http://127.0.0.1:4100` (`DASHBOARD_PORT`/`DASHBOARD_HOST` para cambiar) |
+| **Frontend (UI)** | `dashboard/` — subpackage Vite+React+Tailwind con su propio `package.json` | `npm --prefix dashboard install` (una vez) y `npm --prefix dashboard run dev` → `http://127.0.0.1:4173` (proxy `/api` → :4100) |
+
+O ambos juntos con un solo comando (recomendado — `Ctrl+C` mata los dos):
 
 ```bash
-npm run dashboard:api   # http://127.0.0.1:4100 (DASHBOARD_PORT / DASHBOARD_HOST)
+npm install                        # deps del orquestador
+npm --prefix dashboard install     # deps de la UI (una sola vez)
+npm run dashboard                  # API :4100 + UI http://127.0.0.1:4173
+npm run worker                     # en otra terminal: procesa los jobs encolados
 ```
 
-API local que el dashboard (roadmap #5) consume — capa fina sobre `queue.js`, `plan.json`/`status.json` y los reportes:
+La UI (mismo stack que las apps generadas) sirve para lanzar generaciones y supervisar `generated-apps/`:
 
-- `GET /api/projects` — resumen de cada app en `generated-apps/` (status, pasos done/total, scope, arch, `hasDockerfile`).
-- `GET /api/projects/:slug` — detalle: pasos del plan, reporte del último run, `repoUrl`, estado del último docker build.
-- `GET /api/jobs` — la cola tal cual la ve el worker.
-- `POST /api/runs` — encola una generación (`{idea, scope?, appType?, name?, arch?, phone?, github?, ghpages?, verifyDocker?}` — valida enums/slug y encola con `--yes`).
-- `POST /api/projects/:slug/actions` — `{action: "resume"|"dockerize"|"open-repo"}`: resume encola `--resume <slug> -y`; dockerize re-escribe el `Dockerfile` y corre `docker build` async si hay daemon (estado en `docker-build.json`, log en `docker-build.log`; sin daemon → `skipped`); open-repo devuelve la URL web del remote git.
+- **Nueva app** — formulario con idea + pickers de scope/vertical/arquitectura (alimentados de `GET /api/options`, que lee los registries — nada hardcodeado) + flags GitHub/Pages/verify-docker. Encola el job; `npm run worker` lo procesa en otra terminal.
+- **Proyectos** — cards con status, pasos done/total con barra, scope/arch, badge docker; click → detalle.
+- **Detalle** (`#/p/<slug>`) — idea, tabla de pasos con intentos/verify, acciones **Resume** (opción con GitHub) / **Dockerize** (build async si hay daemon) / **Abrir repo**, y el reporte del último run.
+- **Cola** — jobs activos y recientes; indicador de API caída en el header.
 
-Los jobs encolados se procesan con `npm run worker` como siempre — la API solo encola, no ejecuta.
+Endpoints de la API:
+
+- `GET /api/projects` · `GET /api/projects/:slug` · `GET /api/jobs` · `GET /api/options` · `GET /api/health`
+- `POST /api/runs` — `{idea, scope?, appType?, name?, arch?, phone?, github?, ghpages?, verifyDocker?}` (valida enums/slug, encola con `--yes`)
+- `POST /api/projects/:slug/actions` — `{action: "resume"|"dockerize"|"open-repo"}`
+
+La API solo encola, no ejecuta — el worker procesa los jobs como siempre.
 
 ## Flags
 

@@ -59,6 +59,18 @@ afterEach(async () => {
   rmSync(base, { recursive: true, force: true });
 });
 
+describe('GET /api/options', () => {
+  it('expone los registries para los pickers de la UI', async () => {
+    const { status, body } = await api('/api/options');
+    expect(status).toBe(200);
+    expect(body.scopes).toEqual(['frontend', 'backend', 'fullstack']);
+    expect(body.appTypes).toContain('custom');
+    expect(body.archs).toContain('flat');
+    expect(body.stacks.frontend).toContain('vite-react');
+    expect(body.stacks.backend).toContain('express-sqlite');
+  });
+});
+
 describe('GET /api/projects', () => {
   it('lista generated-apps con resumen de plan/status', async () => {
     seedApp('app-uno');

@@ -19,7 +19,8 @@ import { addJob, readJobs } from '../queue.js';
 import { buildReport, resolveRunId } from '../report.js';
 import { writeDockerFiles } from '../tools/docker.js';
 import { listArchs } from '../arch/index.js';
-import { getVertical } from '../verticals/index.js';
+import { getVertical, listVerticals } from '../verticals/index.js';
+import { listStacks } from '../stacks/index.js';
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,60}$/;
 const SCOPES = ['frontend', 'backend', 'fullstack'];
@@ -126,6 +127,21 @@ export function createDashboardApp({
   };
 
   app.get('/api/health', (req, res) => res.json({ ok: true }));
+
+  // Opciones para los pickers de la UI — leídas de los registries, no
+  // hardcodeadas en el frontend (un stack/vertical/arch nuevo aparece
+  // solo al registrarse).
+  app.get('/api/options', (req, res) =>
+    res.json({
+      scopes: SCOPES,
+      appTypes: [...listVerticals(), 'custom'],
+      archs: listArchs(),
+      stacks: {
+        frontend: listStacks('frontend').map((s) => s.id),
+        backend: listStacks('backend').map((s) => s.id),
+      },
+    }),
+  );
 
   app.get('/api/projects', (req, res) => {
     const slugs = existsSync(appsDir)

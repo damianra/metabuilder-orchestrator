@@ -12,7 +12,8 @@
     "queue": "node src/queue.js",
     "worker": "node src/queue.js run",
     "report": "node src/report.js",
-    "dashboard:api": "node src/dashboard/server.js"
+    "dashboard:api": "node src/dashboard/server.js",
+    "dashboard": "node src/dashboard/dev.js"
   },
   "repository": {
     "type": "git",
