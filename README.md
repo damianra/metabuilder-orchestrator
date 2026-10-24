@@ -106,15 +106,15 @@ La UI (mismo stack que las apps generadas) sirve para lanzar generaciones y supe
 - **Nueva app** — formulario con nombre/idea + pickers de scope/vertical/arquitectura/stacks (alimentados de `GET /api/options`, que lee los registries — nada hardcodeado) + flags GitHub/Pages/verify-docker. Encola el job; el worker del dashboard lo procesa.
 - **Cola** — cada job muestra su estado con progreso en vivo (`running · paso X/Y · nodo` leído del `status.json` de la app). Si hay jobs `pending` y el worker no está vivo (heartbeat `jobs/.worker`), avisa "sin worker consumiendo la cola".
 - **Proyectos** — cards con status, pasos done/total con barra, scope/arch, badge docker; click → detalle.
-- **Detalle** (`#/p/<slug>`) — acciones **Resume** (opción con GitHub) / **Dockerize** (build async si hay daemon) / **Ejecutar tests** (`npm test` + opcional `test:e2e`, async → `test-run.json`/`test-run.log` en la app) / **Abrir repo**; acordeón del prompt original con los parámetros del plan, tabla de comandos del package.json, log del run del pipeline, output del último test run y reporte del último run.
+- **Detalle** (`#/p/<slug>`) — acciones **Resume** (opción con GitHub) / **Dockerize** (build async con docker o podman) / **Ejecutar tests** (`npm test` + opcional `test:e2e`, async → `test-run.json`/`test-run.log` en la app) / **Abrir repo**; acordeón del prompt original con los parámetros del plan, tabla de comandos del package.json, sección **Contenedor** (crear/detener/ver logs del container — detecta docker o podman, deshabilitado si no hay engine o si falta la imagen), log del run del pipeline, output del último test run y reporte del último run.
 - **Cola** — jobs activos y recientes; indicador de API caída en el header.
 
 Endpoints de la API:
 
 - `GET /api/projects` · `GET /api/projects/:slug` · `GET /api/jobs` · `GET /api/options` · `GET /api/health`
-- `GET /api/jobs/:id/log?tail=N` — tail del log del worker para ese job (`jobs/<id>.log`); `GET /api/projects/:slug/log` — idem resolviendo el último job del proyecto; `GET /api/projects/:slug/test-log` — tail del output del último test run (`test-run.log` en la app)
+- `GET /api/jobs/:id/log?tail=N` — tail del log del worker para ese job (`jobs/<id>.log`); `GET /api/projects/:slug/log` — idem resolviendo el último job del proyecto; `GET /api/projects/:slug/test-log` — tail del output del último test run (`test-run.log` en la app); `GET /api/runtime` — engine de containers (`docker`/`podman`/`null`); `GET /api/projects/:slug/container-log` — `docker logs --tail` del container si corre
 - `POST /api/runs` — `{idea, scope?, appType?, name?, arch?, stackFrontend?, stackBackend?, phone?, github?, ghpages?, verifyDocker?}` (valida enums/slug, encola con `--yes`)
-- `POST /api/projects/:slug/actions` — `{action: "resume"|"dockerize"|"test"|"open-repo"}` (`test` acepta `e2e: true` para encadenar `npm run test:e2e`)
+- `POST /api/projects/:slug/actions` — `{action: "resume"|"dockerize"|"test"|"run-container"|"stop-container"|"open-repo"}` (`test` acepta `e2e: true`; `run-container` acepta `port` para el puerto host — default 4000 o 8080 según la variante)
 
 La API solo encola, no ejecuta — el worker procesa los jobs como siempre.
 

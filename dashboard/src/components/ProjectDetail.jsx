@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Container, ExternalLink, FileText, FlaskConical, Play } from 'lucide-react';
+import { ArrowLeft, Container, ExternalLink, FileText, FlaskConical, Play, Square } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import { api } from '../api.js';
 import { timeAgo } from '../util.js';
@@ -19,6 +19,9 @@ export default function ProjectDetail({ slug, onChanged }) {
   const [withE2e, setWithE2e] = useState(false);
   const [showTestOut, setShowTestOut] = useState(false);
   const [testOut, setTestOut] = useState(null);
+  const [hostPort, setHostPort] = useState('');
+  const [showContainerLog, setShowContainerLog] = useState(false);
+  const [containerLog, setContainerLog] = useState(null);
   const [notice, setNotice] = useState(null);
 
   const load = () =>
@@ -51,6 +54,16 @@ export default function ProjectDetail({ slug, onChanged }) {
     return () => clearInterval(t);
   }, [showTestOut, slug]);
 
+  // Logs del container en vivo: solo con el acordeón abierto y
+  // mientras el container siga corriendo.
+  useEffect(() => {
+    if (!showContainerLog) return;
+    const loadCLog = () => api.containerLog(slug).then(setContainerLog).catch(() => {});
+    loadCLog();
+    const t = setInterval(loadCLog, 4000);
+    return () => clearInterval(t);
+  }, [showContainerLog, slug]);
+
   const act = async (body, okMsg) => {
     setBusy(true);
     setNotice(null);
@@ -82,6 +95,13 @@ export default function ProjectDetail({ slug, onChanged }) {
   const testRun = project.testRun;
   // 'running' + stale = proceso muerto (dashboard caído) → se puede relanzar.
   const testRunning = testRun?.status === 'running' && !testRun.stale;
+  const runtime = project.runtime;
+  const engine = runtime?.engine ?? null;
+  const container = runtime?.container ?? null;
+  const suggestedPort = runtime?.suggested?.suggestedHostPort ?? 4000;
+  // imagen <slug>:local — la fuente es `image inspect` (server), no
+  // docker-build.json: cubre builds por podman o hechas a mano por CLI.
+  const imageReady = runtime?.image === true;
   const hasTestScript = (project.scripts ?? []).some((s) => s.name === 'test');
   const hasE2eScript = (project.scripts ?? []).some((s) => s.name === 'test:e2e');
   // done = pipeline terminado; no-plan = sin plan.json (resume imposible).
@@ -184,6 +204,88 @@ export default function ProjectDetail({ slug, onChanged }) {
             {testRun.command ? ` (${testRun.command})` : ''}
             {testRun.exitCode !== undefined ? ` exit ${testRun.exitCode}` : ''}
           </p>
+        )}
+      </section>
+
+      <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800">
+          <Container size={16} /> Contenedor
+        </h3>
+        {!engine ? (
+          <div className="mt-3 flex items-center gap-2">
+            <button className={btn} disabled title="docker/podman no instalado en esta máquina">
+              <Container size={15} /> Crear contenedor
+            </button>
+            <span className="text-xs text-slate-400">docker/podman no instalado</span>
+          </div>
+        ) : container ? (
+          <div className="mt-2">
+            <p className="text-xs text-slate-500">
+              corriendo ({engine}) ·{' '}
+              <a
+                href={`http://localhost:${container.hostPort ?? suggestedPort}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-sky-700 hover:underline"
+              >
+                localhost:{container.hostPort ?? suggestedPort}
+              </a>
+              {container.containerPort ? ` → :${container.containerPort}` : ''}
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <button className={btn} onClick={() => setShowContainerLog((v) => !v)}>
+                <FileText size={15} /> Ver logs {showContainerLog ? '▾' : '▸'}
+              </button>
+              <button
+                className={btn}
+                disabled={busy}
+                onClick={() => act({ action: 'stop-container' }, () => 'container detenido')}
+              >
+                <Square size={15} /> Detener
+              </button>
+            </div>
+            {showContainerLog &&
+              (containerLog?.log ? (
+                <pre className="mt-3 max-h-96 overflow-auto rounded-lg bg-slate-900 p-4 text-xs text-slate-100 whitespace-pre-wrap">
+                  {containerLog.log.lines.join('\n')}
+                </pre>
+              ) : (
+                <p className="mt-3 text-xs text-slate-500">
+                  {containerLog?.error ?? 'sin output todavía — el container está arrancando'}
+                </p>
+              ))}
+          </div>
+        ) : (
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              type="number"
+              min="1"
+              max="65535"
+              placeholder={String(suggestedPort)}
+              value={hostPort}
+              onChange={(e) => setHostPort(e.target.value)}
+              className="w-24 rounded-lg px-2 py-1.5 text-sm ring-1 ring-slate-300"
+              title="Puerto host (default sugerido según la variante)"
+            />
+            <button
+              className={btn}
+              disabled={busy || !imageReady}
+              title={
+                !imageReady
+                  ? 'Primero Dockerize — no hay imagen buildeada'
+                  : `docker/podman run -d -p <host>:<container>`
+              }
+              onClick={() =>
+                act(
+                  { action: 'run-container', port: hostPort ? Number(hostPort) : undefined },
+                  (r) => `container corriendo en localhost:${r.container.hostPort}`,
+                )
+              }
+            >
+              <Container size={15} /> Crear contenedor
+            </button>
+            {!imageReady && <span className="text-xs text-slate-400">primero Dockerize</span>}
+          </div>
         )}
       </section>
 
