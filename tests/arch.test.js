@@ -6,6 +6,7 @@ import {
   getArch,
   listArchs,
   resolveArch,
+  resolveArchSafe,
 } from '../src/arch/index.js';
 import { validatePlan } from '../src/agents/validator.js';
 import { buildPlan as ordersPlan } from '../src/verticals/orders/index.js';
@@ -31,6 +32,12 @@ describe('resolveArch', () => {
     expect(() => resolveArch('hexagonal')).toThrow('hexagonal');
     expect(getArch('hexagonal')).toBeNull();
     expect(listArchs()).toEqual(['flat', 'mvc', 'layers', 'feature']);
+  });
+
+  it('resolveArchSafe: cadena de fallback sin lanzar (ids de plan.json con typo)', () => {
+    expect(resolveArchSafe('mvcc', 'mvc').id).toBe('mvc');
+    expect(resolveArchSafe('nope', 'tampoco').id).toBe('flat');
+    expect(resolveArchSafe('feature', 'flat').id).toBe('feature');
   });
 });
 

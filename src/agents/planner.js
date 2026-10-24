@@ -1,5 +1,5 @@
 import { config } from '../config.js';
-import { applyArch, archRuleBullet, resolveArch } from '../arch/index.js';
+import { applyArch, archRuleBullet, resolveArch, resolveArchSafe } from '../arch/index.js';
 import { stackRuleBullets } from '../stacks/index.js';
 import { runDevinPrompt } from '../tools/devin.js';
 import { getVertical } from '../verticals/index.js';
@@ -30,7 +30,7 @@ export async function plannerNode(state) {
     existing.projectName = state.projectSlug || existing.projectName;
     // Arquitectura: la del plan guardado manda; --arch explícita solo
     // aplica si el plan no declara una (planes pre-arch → se parchean).
-    const arch = resolveArch(existing.arch ?? state.arch);
+    const arch = resolveArchSafe(existing.arch, state.arch);
     applyArch(existing, arch);
     writePlan(state.projectDir, existing);
     const done = existing.steps.filter((s) => s.status === 'done').length;

@@ -26,6 +26,19 @@ export function resolveArch(id = DEFAULT_ARCH) {
 }
 
 /**
+ * Variante no-letal: resuelve el primer id válido de la cadena
+ * (prioridad de izquierda a derecha) y cae al DEFAULT si ninguno
+ * existe — para ids leídos de plan.json, que pueden venir con typo.
+ */
+export function resolveArchSafe(...ids) {
+  for (const id of ids) {
+    const a = ARCHS.get(id);
+    if (a) return a;
+  }
+  return ARCHS.get(DEFAULT_ARCH);
+}
+
+/**
  * Garantiza que cada paso `backend` del plan declare su arquitectura:
  * si la descripción ya la menciona ("arquitectura <id>") la respeta;
  * si no, appenda el bloque canónico de instrucciones del patrón.

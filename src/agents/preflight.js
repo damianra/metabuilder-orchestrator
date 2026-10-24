@@ -5,10 +5,10 @@ import { run } from '../tools/shell.js';
 import { checkDevinAuth } from '../tools/devin.js';
 import { startInstall } from '../tools/install.js';
 import { ensureProjectDir } from '../tools/slug.js';
-import { resolveArch } from '../arch/index.js';
+import { resolveArch, resolveArchSafe } from '../arch/index.js';
 import { resolveStacks } from '../stacks/index.js';
 import { getVertical } from '../verticals/index.js';
-import { activity, log } from './common.js';
+import { activity, log, readPlan } from './common.js';
 
 const REQUIRED_BINS = ['devin', 'node', 'npm', 'git'];
 
@@ -102,9 +102,17 @@ export async function preflightNode(state) {
     const runDir = join(config.runsDir, runId);
     mkdirSync(join(runDir, 'prompts'), { recursive: true });
 
+    // El arch real vive en plan.json (state.arch es solo el flag,
+    // default flat — planner lo restaura recién después de este nodo).
+    let planArch;
+    try {
+      planArch = readPlan(dir)?.arch;
+    } catch {
+      /* plan.json ilegible: cae al flag */
+    }
     writeAgentsMd(dir, {
       withBackend: existsSync(join(dir, 'server')),
-      arch,
+      arch: resolveArchSafe(planArch, state.arch),
     });
     if (existsSync(join(dir, 'package.json'))) {
       startInstall(dir);
