@@ -72,11 +72,38 @@ export async function finalVerifyNode(state) {
       };
     }
   }
+
+  const history = [log('finalVerify', `OK: ${cmds.join(' && ')}`)];
+
+  // --verify-docker: build de la imagen como check extra. Sin daemon
+  // se omite (es un flag opt-in, no debe fallar el run por ambiente).
+  if (state.verifyDocker) {
+    const probe = await run('docker info', { cwd: state.projectDir, timeoutMs: 15_000 });
+    if (!probe.ok) {
+      history.push(log('finalVerify', 'docker no disponible — verify-docker omitido'));
+    } else {
+      const tag = `${state.projectSlug || 'app'}:verify`;
+      const build = await run(`docker build -t ${tag} .`, {
+        cwd: state.projectDir,
+        timeoutMs: config.verifyTimeoutMs * 3,
+      });
+      if (!build.ok) {
+        return {
+          verifying: 'final',
+          lastError: `finalVerify "docker build" falló (exit ${build.exitCode ?? 'timeout'})`,
+          lastOutput: (build.stdout + '\n' + build.stderr).slice(-4000),
+          history: [log('finalVerify', 'FAIL: docker build')],
+        };
+      }
+      history.push(log('finalVerify', `docker build OK (${tag})`));
+    }
+  }
+
   return {
     verifying: 'final',
     lastError: null,
     status: 'verified',
-    history: [log('finalVerify', `OK: ${cmds.join(' && ')}`)],
+    history,
   };
 }
 

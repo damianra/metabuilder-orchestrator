@@ -1,0 +1,17 @@
+# Backend-only: Express + SQLite (better-sqlite3) en un solo proceso.
+# node:22 (Debian) para deps — compila módulos nativos si no hay prebuild;
+# node:22-slim (mismo glibc) para runtime.
+FROM node:22 AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+FROM node:22-slim
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY package*.json ./
+COPY server ./server
+
+EXPOSE 4000
+CMD ["node", "server/index.js"]

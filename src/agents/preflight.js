@@ -5,6 +5,7 @@ import { run } from '../tools/shell.js';
 import { checkDevinAuth } from '../tools/devin.js';
 import { startInstall } from '../tools/install.js';
 import { ensureProjectDir } from '../tools/slug.js';
+import { writeDockerFiles } from '../tools/docker.js';
 import { resolveArch, resolveArchSafe } from '../arch/index.js';
 import { resolveStacks } from '../stacks/index.js';
 import { getVertical } from '../verticals/index.js';
@@ -114,6 +115,13 @@ export async function preflightNode(state) {
       withBackend: existsSync(join(dir, 'server')),
       arch: resolveArchSafe(planArch, state.arch),
     });
+    // Dockerfile determinístico según lo que ya tiene el dir
+    // (apps pre-docker lo reciben al resumir).
+    const dockerVariant = writeDockerFiles(dir, {
+      frontend: existsSync(join(dir, 'vite.config.js')),
+      backend: existsSync(join(dir, 'server')),
+    });
+    history.push(log('preflight', `Dockerfile escrito (${dockerVariant})`));
     if (existsSync(join(dir, 'package.json'))) {
       startInstall(dir);
       history.push(log('preflight', 'npm install corriendo en background (resume)'));
@@ -136,6 +144,11 @@ export async function preflightNode(state) {
   mkdirSync(join(runDir, 'prompts'), { recursive: true });
 
   writeAgentsMd(dir, { withBackend: state.scope !== 'frontend', arch });
+  const dockerVariant = writeDockerFiles(dir, {
+    frontend: state.scope !== 'backend',
+    backend: state.scope !== 'frontend',
+  });
+  history.push(log('preflight', `Dockerfile escrito (${dockerVariant})`));
 
   // Vertical conocido con frontend → copiar el skeleton del stack
   // frontend activo. Scope con backend → skeleton del stack backend;

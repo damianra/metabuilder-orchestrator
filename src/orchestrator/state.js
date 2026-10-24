@@ -43,6 +43,8 @@ export const OrchestratorState = Annotation.Root({
   deployGithub: Annotation({ reducer: replace, default: () => false }),
   deployPages: Annotation({ reducer: replace, default: () => false }),
   whatsappPhone: Annotation({ reducer: replace, default: () => '' }),
+  // --verify-docker: en finalVerify corre `docker build` si hay daemon
+  verifyDocker: Annotation({ reducer: replace, default: () => false }),
 
   status: Annotation({ reducer: replace, default: () => 'pending' }),
   history: Annotation({ reducer: append, default: () => [] }),
