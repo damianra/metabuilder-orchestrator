@@ -168,12 +168,16 @@ fina sobre la infra existente:
 - `GET /api/projects/:slug/test-log` — tail del `test-run.log` de la
   app + el estado del último test run (mismo formato que el log de job).
 - `GET /api/runtime` — `{engine: 'docker'|'podman'|null}` (probe
-  `docker info` → `podman info`, cacheado por instancia). El mismo
+  `docker info` → `podman info`; positivo cacheado permanente, `null`
+  re-probea pasados 30s — el daemon puede aparecer después). El mismo
   binario sirve para todas las acciones de containers (CLI-compatible).
 - `GET /api/projects/:slug/container-log?tail=N` — `<engine> logs
   --tail` del container `<slug>` si corre (`docker ps` filtrado por
   nombre es la fuente de verdad — no hay estado persistido);
-  `running:false` si no hay engine o no corre.
+  `running:false` si no hay engine o no corre. El detalle también
+  expone `runtime.image` (`<engine> image inspect <slug>:local`) — la
+  UI habilita "Crear contenedor" por imagen presente, no por
+  docker-build.json (cubre builds por podman o CLI manual).
 - `GET /api/jobs` — `{ jobs, worker }`: cada job enriquecido con
   `projectSlug` (derivado de `--name`/`--resume`/slug de la idea) y
   `progress` (node/step/totalSteps del `status.json` de la app);
@@ -189,8 +193,9 @@ fina sobre la infra existente:
   también salta las preguntas github/ghpages en collectArgs).
 - `POST /api/projects/:slug/actions` — `resume` (encola
   `--resume <slug> --yes`), `dockerize` (re-escribe Dockerfile según
-  filesystem + `docker build` async si hay daemon → estado en
-  docker-build.json, log en docker-build.log; sin daemon → skipped),
+  filesystem + `<engine> build` async si hay engine (docker o podman)
+  → estado en docker-build.json, log en docker-build.log; sin engine →
+  skipped),
   `test` (corre `npm test` [+ `npm run test:e2e` si `e2e:true`] async →
   test-run.json/test-run.log en la app; 400 si faltan los scripts, 409
   si hay un run en curso **con pid vivo** — un `running` con pid muerto

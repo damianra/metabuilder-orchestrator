@@ -99,8 +99,9 @@ export default function ProjectDetail({ slug, onChanged }) {
   const engine = runtime?.engine ?? null;
   const container = runtime?.container ?? null;
   const suggestedPort = runtime?.suggested?.suggestedHostPort ?? 4000;
-  // imagen <slug>:local existe solo si dockerize terminó un build ok
-  const imageReady = build?.status === 'done';
+  // imagen <slug>:local — la fuente es `image inspect` (server), no
+  // docker-build.json: cubre builds por podman o hechas a mano por CLI.
+  const imageReady = runtime?.image === true;
   const hasTestScript = (project.scripts ?? []).some((s) => s.name === 'test');
   const hasE2eScript = (project.scripts ?? []).some((s) => s.name === 'test:e2e');
   // done = pipeline terminado; no-plan = sin plan.json (resume imposible).
