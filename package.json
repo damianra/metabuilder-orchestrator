@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/index.js",
     "build:app": "node src/index.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "validate:pr": "node src/validate-pr.js"
   },
   "repository": {
     "type": "git",
