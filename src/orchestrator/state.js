@@ -16,6 +16,8 @@ export const OrchestratorState = Annotation.Root({
   projectSlug: Annotation({ reducer: replace, default: () => '' }),
   projectDir: Annotation({ reducer: replace, default: () => '' }),
   runDir: Annotation({ reducer: replace, default: () => '' }),
+  // --resume <dir>: reanudar un run desde su plan.json
+  resumeDir: Annotation({ reducer: replace, default: () => '' }),
 
   // plan.json
   plan: Annotation({ reducer: replace, default: () => null }),

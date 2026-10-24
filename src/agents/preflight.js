@@ -77,6 +77,31 @@ export async function preflightNode(state) {
     };
   }
 
+  // --resume: el directorio ya existe con plan.json — no se crea ni
+  // se copia nada; se re-lanza npm install (idempotente) por si
+  // node_modules quedó a medias o borrado.
+  if (state.resumeDir) {
+    const dir = state.resumeDir;
+    const slug = basename(dir);
+    const runId = `${new Date().toISOString().replace(/[:.]/g, '-')}-${slug}-resume`;
+    const runDir = join(config.runsDir, runId);
+    mkdirSync(join(runDir, 'prompts'), { recursive: true });
+
+    copyFileSync(join(config.templatesDir, 'AGENTS.md'), join(dir, 'AGENTS.md'));
+    if (existsSync(join(dir, 'package.json'))) {
+      startInstall(dir);
+      history.push(log('preflight', 'npm install corriendo en background (resume)'));
+    }
+
+    return {
+      projectSlug: slug,
+      projectDir: dir,
+      runDir,
+      status: 'preflighted',
+      history: [...history, log('preflight', `reanudando proyecto: ${dir}`)],
+    };
+  }
+
   const name = state.projectSlug || state.idea || 'app';
   const { slug, dir } = ensureProjectDir(config.generatedAppsDir, name);
 

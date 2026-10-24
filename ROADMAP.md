@@ -55,7 +55,7 @@ se serializan solos — nunca más de una sesión `devin acp` a la vez.
 
 | # | Candidato | Descripción | Valor |
 | --- | --- | --- | --- |
-| F | **`--resume <dir>`** | Hoy NO hay forma de reanudar un run: `MemorySaver` muere con el proceso y no hay flag de re-entrada. `plan.json` ya persiste status/attempts por paso — un `--resume` que lea el checkpoint, reconstruya el estado mínimo y re-ingrese al grafo en el paso pendiente | **Alto**: un Ctrl+C/timeout/crash hoy pierde el run completo y re-gasta todas las sesiones Devin |
+| ~~F~~ | ~~**`--resume <dir>`**~~ ✅ | Implementado: `npm start -- --resume <dir|slug>` — `resolveResumeDir` (ruta o slug), preflight reanuda sin re-copiar, planner normaliza pasos no-done → `pending` y retoma en el primero (todo done → `finalVerify`), restaura scope/appType/idea del plan (`idea` persistido en plan.json). Validado E2E | Un Ctrl+C/timeout ya no pierde el run |
 | G | **CI: `npm test` en PRs** | No existe `.github/workflows`. La suite corre en ~5s sin Devin ni red — compuerta determinística y gratis que complementa al sub-agente `validate:pr` (que cuesta sesiones) | **Alto y barato**: workflow de ~20 líneas |
 | H | **Pool de procesos `devin acp`** | Cada paso paga initialize + authenticate + session/new + set_config (overhead por paso). Mantener el proceso ACP vivo entre pasos del mismo run — `session/new` por paso sigue aislando el contexto — recorta ese costo | Medio: performance, sin cambio semántico |
 | I | **Automatizar `validate:pr`** | Hoy es manual (`npm run validate:pr -- <N>`). Opciones: hook post-push local, GitHub Action (requeriría credenciales Devin en secrets — evaluar) o cron | Medio: conveniencia; el camino CI tiene consideraciones de secretos |
