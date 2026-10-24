@@ -22,6 +22,7 @@ agente. Validado en vivo sobre PR #8 y PR #9 (dogfooding).
 | --- | --- | --- |
 | `casa-comidas` | orders / frontend | Repo + GitHub Pages live |
 | `tienda-stock` | custom / fullstack | ~10 min, 6 pasos verdes al primer intento (planner LLM + build + vitest + e2e), QA aprobado. Backend sobre api-skeleton: `POST /api/orders` con decremento atómico de stock (`UPDATE ... WHERE stock >= qty` en transacción, rollback → 409). Concurrencia verificada en vivo: 2 POST simultáneos por el último stock → 1×201 + 1×409, stock nunca negativo. |
+| `rotiseria-esquina` | **orders / fullstack** | ~13 min, 5/5 pasos verdes al primer intento, QA aprobado. Overlay api/ intacto (routes no tocadas por Devin), seed personalizado (29 productos, business, WhatsApp real), `api.test.js` generado, POST /api/orders 201 con total server-side + transacción, frontend con carrito + checkout wa.me. |
 
 ## Implementado: `api-skeleton` — backend predefinido
 
@@ -49,7 +50,7 @@ Ordenado por impacto/esfuerzo. **El #1 es la recomendación actual.**
 | --- | --- | --- | --- |
 | ~~1~~ | ~~**`--resume <dir>`**~~ (F) ✅ | Implementado y validado E2E — ver sección Completados | Un Ctrl+C/timeout ya no pierde el run |
 | ~~2~~ | ~~**CI: `npm test` en PRs**~~ (G) ✅ | Implementado: `.github/workflows/test.yml` corre la suite (52 tests, ~5s) en cada PR y push a main — compuerta determinística gratis que complementa al sub-agente `validate:pr` | Hecho |
-| **3** | **orders fullstack real** (B) | Parcialmente validado: `tienda-stock` corrió el camino api-skeleton E2E (custom). Falta correr el vertical `orders` fullstack propiamente (overlay schema/seed/routes + paso generativo-lite) | Completaría el segundo vertical en su forma real |
+| ~~3~~ | ~~**orders fullstack real**~~ (B) ✅ | Validado E2E con `rotiseria-esquina`: 5/5 pasos verdes al primer intento, overlay api/ aplicado intacto, generativo-lite personalizó seed (29 productos con sabor de la idea + business + WhatsApp) y agregó `api.test.js`, POST /api/orders con total server-side → 201, frontend consume `/api/*` + checkout wa.me con items | Segundo vertical en su forma real |
 | **4** | **Nuevo vertical** (C) | Carpeta `src/verticals/<nuevo>` (blog/portfolio/catálogo) con plan + secciones + checks e2e + overlay `api/` — es el que demuestra el patrón overlay: un blog es `schema.sql` grande + routes, mismo motor | Amplía el catálogo sin tocar el grafo |
 | **5** | **Pool de procesos `devin acp`** (H) | Cada paso paga initialize + authenticate + session/new + set_config (overhead por paso). Mantener el proceso ACP vivo entre pasos del mismo run — `session/new` por paso sigue aislando el contexto — recorta ese costo | Medio: performance, sin cambio semántico |
 | **6** | **Automatizar `validate:pr`** (I) | Hoy es manual (`npm run validate:pr -- <N>`). Opciones: hook post-push local, GitHub Action (requeriría credenciales Devin en secrets — evaluar) o cron | Medio: conveniencia; el camino CI tiene consideraciones de secretos |
