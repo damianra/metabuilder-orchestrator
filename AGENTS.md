@@ -21,6 +21,9 @@ npm start -- --resume generated-apps/<slug> [--github] [--no-push] [-y]
 npm run queue -- add --idea "..." [-y]   # encola (args = los de npm start)
 npm run queue -- list|clear              # estado / limpieza
 npm run worker                           # procesa jobs/ en orden
+
+# API del dashboard (UI viene en roadmap #5):
+npm run dashboard:api                    # http://127.0.0.1:4100 (DASHBOARD_PORT/HOST)
 ```
 
 Verificación rápida de tools sin tocar el grafo:
@@ -126,6 +129,27 @@ Secretos: `.env` (gitignored) leído via `dotenv/config` en
 `server/index.js`; `.env.example` commiteado declara las variables.
 `app.js` además sirve `<proyecto>/dist/` estático + SPA fallback GET
 cuando `dist/index.html` existe (deploy single-server y Docker).
+
+## API del dashboard (`src/dashboard/server.js`)
+
+Express local (127.0.0.1:4100, `DASHBOARD_PORT`/`DASHBOARD_HOST`) — capa
+fina sobre la infra existente:
+
+- `GET /api/projects` — resumen por app en `generated-apps/` (plan.json +
+  status.json → status, pasos done/total, arch, hasDockerfile).
+- `GET /api/projects/:slug` — detalle: pasos, reporte del último run
+  (buildReport en vivo), repoUrl (ssh→https), docker-build.json.
+- `GET /api/jobs` — cola (readJobs).
+- `POST /api/runs` — encola una generación: whitelist de campos
+  (idea/scope/appType/name/arch/phone + flags github/ghpages/
+  verifyDocker) → args del CLI + `--yes` siempre (un job bajo el worker
+  hereda el TTY y los prompts de deploy lo colgarían — por eso `--yes`
+  también salta las preguntas github/ghpages en collectArgs).
+- `POST /api/projects/:slug/actions` — `resume` (encola
+  `--resume <slug> --yes`), `dockerize` (re-escribe Dockerfile según
+  filesystem + `docker build` async si hay daemon → estado en
+  docker-build.json, log en docker-build.log; sin daemon → skipped),
+  `open-repo` (devuelve la URL https del remote para que la UI la abra).
 
 ## Dockerfile por app
 

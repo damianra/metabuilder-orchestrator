@@ -53,14 +53,16 @@ async function collectArgs(args) {
   const asker = createAsker();
   try {
     // --resume: idea/scope/appType/name/phone salen del plan.json —
-    // solo se preguntan las decisiones de deploy.
+    // solo se preguntan las decisiones de deploy. --yes también las
+    // salta: un run encolado (dashboard/queue) heredaría el TTY del
+    // worker y se colgaría esperando input que nadie ve.
     if (args.resume) {
-      if (!args.github && !args.noPush && interactive) {
+      if (!args.github && !args.noPush && interactive && !args.yes) {
         const g = await asker.ask('¿Crear repo en GitHub? [s/N] ');
         args.github = /^s/i.test(g);
         if (!args.github) args.noPush = true;
       }
-      if (args.github && !args.ghpages && interactive) {
+      if (args.github && !args.ghpages && interactive && !args.yes) {
         const p = await asker.ask('¿Publicar en GitHub Pages? [s/N] ');
         args.ghpages = /^s/i.test(p);
       }
@@ -100,12 +102,12 @@ async function collectArgs(args) {
     if (!args.phone && interactive) {
       args.phone = await asker.ask('WhatsApp del negocio (ej. 5491155500000, vacío = placeholder): ');
     }
-    if (!args.github && !args.noPush && interactive) {
+    if (!args.github && !args.noPush && interactive && !args.yes) {
       const g = await asker.ask('¿Crear repo en GitHub? [s/N] ');
       args.github = /^s/i.test(g);
       if (!args.github) args.noPush = true;
     }
-    if (args.github && !args.ghpages && interactive && args.scope !== 'backend') {
+    if (args.github && !args.ghpages && interactive && !args.yes && args.scope !== 'backend') {
       const p = await asker.ask('¿Publicar en GitHub Pages? [s/N] ');
       args.ghpages = /^s/i.test(p);
     }
