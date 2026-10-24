@@ -110,15 +110,19 @@ async function listPendingPRs(owner, repo) {
 
 const main = async () => {
   const args = process.argv.slice(2);
+  const watchArg = args.find((a) => a === '--watch' || a.startsWith('--watch='));
   const watchIdx = args.indexOf('--watch');
-  const watchMin = watchIdx >= 0 ? Number(args[watchIdx + 1]) || 5 : 0;
+  // --watch=10 | --watch 10 | --watch (default 5). Valores <= 0 → default.
+  const watchMin = watchArg
+    ? Math.max(1, Number(watchArg.split('=')[1] ?? args[watchIdx + 1]) || 5)
+    : 0;
   const prNumber = Number(args[0]);
 
   if (!config.githubToken) {
     console.error('GITHUB_TOKEN requerido en .env');
     process.exit(1);
   }
-  if (watchIdx >= 0 && prNumber) {
+  if (watchArg && prNumber) {
     console.error('uso: npm run validate:pr -- [<numero> | --watch [minutos]]');
     process.exit(1);
   }
@@ -140,8 +144,18 @@ const main = async () => {
   // Modo automático: validar todos los PRs abiertos pendientes, una y
   // otra vez si se pasó --watch (polling cada N minutos, default 5).
   for (;;) {
-    const pending = await listPendingPRs(owner, repo);
-    if (pending.length === 0) {
+    let pending;
+    try {
+      pending = await listPendingPRs(owner, repo);
+    } catch (err) {
+      // Error transitorio de la API (rate limit, red) — en modo watch
+      // no debe abortar el loop.
+      console.error(`⚠ listando PRs: ${err.message}`);
+      pending = null;
+    }
+    if (pending === null) {
+      /* reintentar en la próxima pasada */
+    } else if (pending.length === 0) {
       console.log(`✔ sin PRs pendientes de validación`);
     } else {
       console.log(`PRs pendientes: ${pending.map((n) => `#${n}`).join(', ')}`);
