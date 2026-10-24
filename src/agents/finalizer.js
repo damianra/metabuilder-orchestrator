@@ -20,6 +20,28 @@ export const ghAuthArgs = (token = config.githubToken) =>
       }"`
     : '';
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// POST /pages puede dar 5xx transitorio justo después del push de
+// gh-pages (GitHub provisiona async). Reintenta solo ante 500/502/503 —
+// un 409 "already enabled" no se reintenta: cae directo al GET de
+// confirmación en el caller.
+export async function enablePagesWithRetry(
+  token,
+  owner,
+  repo,
+  { retries = 3, delayMs = 4000, enable = enablePages } = {},
+) {
+  for (let i = 0; ; i++) {
+    try {
+      return await enable(token, owner, repo);
+    } catch (e) {
+      if (![500, 502, 503].includes(e.status) || i >= retries) throw e;
+      await sleep(delayMs);
+    }
+  }
+}
+
 /**
  * Batería de verificación final sobre el proyecto terminado.
  * frontend/fullstack: build + vitest + e2e. backend: vitest.
@@ -258,7 +280,7 @@ async function deployPages(git, distDir, remoteUrl, owner, repoName) {
   }
   const pagesUrl = `https://${owner}.github.io/${repoName}/`;
   try {
-    const pages = await enablePages(config.githubToken, owner, repoName);
+    const pages = await enablePagesWithRetry(config.githubToken, owner, repoName);
     logs.push(
       log(
         'finalize',
@@ -267,8 +289,9 @@ async function deployPages(git, distDir, remoteUrl, owner, repoName) {
       ),
     );
   } catch (e) {
-    // El push de gh-pages suele auto-habilitar Pages: el POST puede dar
-    // 409 "already enabled" o 500 transitorio — la URL igual es válida.
+    // El POST ya reintentó los 5xx transitorios: si llegó acá es un
+    // 409 "already enabled" (el push suele auto-habilitarla) o un fallo
+    // persistente — el GET confirma; la URL igual es válida.
     try {
       const pages = await getPages(config.githubToken, owner, repoName);
       logs.push(

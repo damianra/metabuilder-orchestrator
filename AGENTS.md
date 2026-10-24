@@ -286,6 +286,7 @@ solo vitest). Falla → loop `fix` (finalRetries) → `fail`.
   `agents/finalizer.js`). El token nunca entra al remote ni a los logs.
 - **Pages**: pushear la rama `gh-pages` suele auto-habilitar Pages; el
   POST a `/repos/{o}/{r}/pages` puede devolver 500 transitorio o 409
-  "already enabled" — ambos son OK, verificar con GET.
+  "already enabled" — `enablePagesWithRetry` reintenta los 5xx (3×4s),
+  un 409 o fallo persistente cae al GET de confirmación.
 - **Commit en re-runs**: si la app ya tiene todo commiteado, el finalize
   salta el commit vía `git diff --cached --quiet`.
