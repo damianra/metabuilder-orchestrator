@@ -228,3 +228,44 @@ describe('GET /api/jobs — enriquecido', () => {
     expect((await api('/api/jobs')).body.worker.alive).toBe(true);
   });
 });
+
+describe('logs del run', () => {
+  const seedJob = async (args, status = 'running') => {
+    const { writeFileSync } = await import('node:fs');
+    mkdirSync(join(base, 'jobs'), { recursive: true });
+    writeJson(join(base, 'jobs', '9.json'), { id: 9, args, status, createdAt: '2026-01-01T00:00:00Z' });
+    writeFileSync(join(base, 'jobs', '9.log'), Array.from({ length: 250 }, (_, i) => `linea-${i}`).join('\n'));
+  };
+
+  it('GET /api/jobs/:id/log devuelve el tail del log del job', async () => {
+    await seedJob(['--idea', 'x', '--name', 'mi-app']);
+    const { status, body } = await api('/api/jobs/9/log?tail=10');
+    expect(status).toBe(200);
+    expect(body.jobId).toBe(9);
+    expect(body.jobStatus).toBe('running');
+    expect(body.log.lines).toHaveLength(10);
+    expect(body.log.lines.at(-1)).toBe('linea-249');
+    expect(body.log.truncated).toBe(true);
+    expect(body.projectSlug).toBe('mi-app');
+  });
+
+  it('GET /api/jobs/:id/log con job inexistente → 404', async () => {
+    expect((await api('/api/jobs/99/log')).status).toBe(404);
+  });
+
+  it('GET /api/projects/:slug/log resuelve el job del proyecto por slug', async () => {
+    seedApp('mi-app');
+    await seedJob(['--idea', 'x', '--name', 'mi-app'], 'done');
+    const { status, body } = await api('/api/projects/mi-app/log?tail=3');
+    expect(status).toBe(200);
+    expect(body.jobId).toBe(9);
+    expect(body.log.lines).toEqual(['linea-247', 'linea-248', 'linea-249']);
+  });
+
+  it('proyecto sin job → log null', async () => {
+    seedApp('sin-job');
+    const { body } = await api('/api/projects/sin-job/log');
+    expect(body.jobId).toBeNull();
+    expect(body.log).toBeNull();
+  });
+});

@@ -13,6 +13,8 @@ export default function ProjectDetail({ slug, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [withGithub, setWithGithub] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [showLog, setShowLog] = useState(false);
+  const [logData, setLogData] = useState(null);
   const [notice, setNotice] = useState(null);
 
   const load = () =>
@@ -24,6 +26,16 @@ export default function ProjectDetail({ slug, onChanged }) {
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
+
+  // Log del run del pipeline: solo se pide con el acordeón abierto —
+  // polling para ver el avance en vivo mientras el job corre.
+  useEffect(() => {
+    if (!showLog) return;
+    const loadLog = () => api.projectLog(slug).then(setLogData).catch(() => {});
+    loadLog();
+    const t = setInterval(loadLog, 4000);
+    return () => clearInterval(t);
+  }, [showLog, slug]);
 
   const act = async (body, okMsg) => {
     setBusy(true);
@@ -121,6 +133,31 @@ export default function ProjectDetail({ slug, onChanged }) {
             {build.reason ? ` — ${build.reason}` : ''}
           </p>
         )}
+      </section>
+
+      <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
+        <button
+          className="flex items-center gap-2 text-sm font-bold text-slate-800"
+          onClick={() => setShowLog((v) => !v)}
+        >
+          <FileText size={16} /> Log del run {showLog ? '▾' : '▸'}
+        </button>
+        {showLog &&
+          (logData?.log ? (
+            <>
+              <p className="mt-2 text-xs text-slate-500">
+                job #{logData.jobId} · {logData.jobStatus}
+                {logData.log.truncated ? ' · (últimas líneas — log truncado)' : ''}
+              </p>
+              <pre className="mt-2 max-h-96 overflow-auto rounded-lg bg-slate-900 p-4 text-xs text-slate-100 whitespace-pre-wrap">
+                {logData.log.lines.join('\n')}
+              </pre>
+            </>
+          ) : (
+            <p className="mt-2 text-xs text-slate-500">
+              sin log todavía — aparece cuando un worker corre un job de este proyecto
+            </p>
+          ))}
       </section>
 
       <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">

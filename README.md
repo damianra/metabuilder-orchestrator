@@ -80,7 +80,7 @@ npm run worker               # procesa la cola en orden, logs en vivo
 npm run queue -- clear       # borra jobs terminados
 ```
 
-Cada job es un archivo en `jobs/` (gitignored); el worker spawnea `node src/index.js` por job — equivale a correr `npm start` a mano, en serie. Un job `failed` se retoma con `--resume generated-apps/<slug>`. El semáforo de sesiones Devin sigue siendo la red de seguridad para runs sueltos.
+Cada job es un archivo en `jobs/` (gitignored); el worker spawnea `node src/index.js` por job — equivale a correr `npm start` a mano, en serie — y captura su stdout/stderr en `jobs/<id>.log`. Un job `failed` se retoma con `--resume generated-apps/<slug>`. El semáforo de sesiones Devin sigue siendo la red de seguridad para runs sueltos.
 
 ## Dashboard
 
@@ -112,6 +112,7 @@ La UI (mismo stack que las apps generadas) sirve para lanzar generaciones y supe
 Endpoints de la API:
 
 - `GET /api/projects` · `GET /api/projects/:slug` · `GET /api/jobs` · `GET /api/options` · `GET /api/health`
+- `GET /api/jobs/:id/log?tail=N` — tail del log del worker para ese job (`jobs/<id>.log`); `GET /api/projects/:slug/log` — idem resolviendo el último job del proyecto
 - `POST /api/runs` — `{idea, scope?, appType?, name?, arch?, stackFrontend?, stackBackend?, phone?, github?, ghpages?, verifyDocker?}` (valida enums/slug, encola con `--yes`)
 - `POST /api/projects/:slug/actions` — `{action: "resume"|"dockerize"|"open-repo"}`
 

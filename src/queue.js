@@ -15,6 +15,7 @@
 // murió a mitad → se marca `failed` (la app se retoma con --resume).
 
 import {
+  createWriteStream,
   existsSync,
   linkSync,
   mkdirSync,
@@ -94,14 +95,36 @@ export async function runJob(
   const startedAt = new Date().toISOString();
   writeJob({ ...job, status: 'running', startedAt }, baseDir);
 
+  // El output del pipeline se tee-ea a jobs/<id>.log — el dashboard lo
+  // sirve por GET /api/jobs/:id/log (stdio 'inherit' lo perdía todo).
+  const logStream = createWriteStream(
+    jobPath(job.id, baseDir).replace(/\.json$/, '.log'),
+    { flags: 'a' },
+  );
+  logStream.write(`\n━━ job #${job.id} · ${startedAt} · ${job.args.join(' ')}\n`);
+
   const exitCode = await new Promise((resolveCode) => {
     const child = spawn(cmd[0], [...cmd.slice(1), ...job.args], {
       cwd: config.rootDir,
-      stdio: 'inherit',
+      stdio: ['inherit', 'pipe', 'pipe'],
       env: process.env,
     });
-    child.on('close', (code) => resolveCode(code ?? 1));
-    child.on('error', () => resolveCode(1));
+    child.stdout.on('data', (d) => {
+      process.stdout.write(d);
+      logStream.write(d);
+    });
+    child.stderr.on('data', (d) => {
+      process.stderr.write(d);
+      logStream.write(d);
+    });
+    child.on('close', (code) => {
+      logStream.end();
+      resolveCode(code ?? 1);
+    });
+    child.on('error', () => {
+      logStream.end();
+      resolveCode(1);
+    });
   });
 
   const done = exitCode === 0;

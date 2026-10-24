@@ -104,3 +104,15 @@ describe('heartbeat del worker', () => {
     expect(readWorker(dir).alive).toBe(false);
   });
 });
+
+describe('log del job', () => {
+  it('runJob tee-ea stdout+stderr del hijo a jobs/<id>.log', async () => {
+    const echo = fileURLToPath(new URL('./fixtures/queue-child-echo.mjs', import.meta.url));
+    const job = addJob(['--idea', 'x'], dir);
+    await runJob(job, { baseDir: dir, cmd: [process.execPath, echo] });
+    const log = readFileSync(join(dir, 'jobs', `${job.id}.log`), 'utf8');
+    expect(log).toContain('MARK-STDOUT');
+    expect(log).toContain('MARK-STDERR');
+    expect(log).toContain(`job #${job.id}`);
+  });
+});

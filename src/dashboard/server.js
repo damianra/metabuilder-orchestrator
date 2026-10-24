@@ -8,14 +8,14 @@
 // docker-build.json dentro de la app. Bindea a 127.0.0.1 por default —
 // es una herramienta local, no un servicio expuesto.
 
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync, createWriteStream } from 'node:fs';
+import { existsSync, openSync, readSync, closeSync, readdirSync, readFileSync, statSync, writeFileSync, createWriteStream } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
-import { addJob, readJobs, readWorker } from '../queue.js';
+import { addJob, jobsDir, readJobs, readWorker } from '../queue.js';
 import { slugify } from '../tools/slug.js';
 import { buildReport, resolveRunId } from '../report.js';
 import { writeDockerFiles, detectFrontend, detectOutDir } from '../tools/docker.js';
@@ -162,7 +162,11 @@ export function createDashboardApp({
     };
     const resume = at('--resume');
     if (resume) return basename(resume.replace(/\/+$/, ''));
-    const base = slugify(at('--name') ?? at('--idea') ?? '');
+    // --name es el slug directo (el CLI lo slugifica igual) — se
+    // resuelve aunque la app todavía no exista (job pending).
+    const name = at('--name');
+    if (name) return slugify(name);
+    const base = slugify(at('--idea') ?? '');
     if (!base) return null;
     for (let i = 0; i < 5; i++) {
       const slug = i === 0 ? base : `${base}-${i + 1}`;
@@ -191,6 +195,44 @@ export function createDashboardApp({
       };
     });
     res.json({ jobs, worker: readWorker(baseDir) });
+  });
+
+  // Últimas `lines` de un log sin cargar el archivo entero: lee los
+  // últimos `maxBytes` desde el final y devuelve líneas sueltas.
+  const tailFile = (file, { lines = 200, maxBytes = 128 * 1024 } = {}) => {
+    if (!existsSync(file)) return null;
+    const size = statSync(file).size;
+    const from = Math.max(0, size - maxBytes);
+    const fd = openSync(file, 'r');
+    try {
+      const buf = Buffer.alloc(size - from);
+      readSync(fd, buf, 0, buf.length, from);
+      const all = buf.toString('utf8').split('\n');
+      // Si cortamos a mitad de línea, la primera queda parcial: descartarla.
+      const sliced = from > 0 ? all.slice(1) : all;
+      const tail = sliced.slice(-lines);
+      return { lines: tail, truncated: tail.length < all.length || from > 0 };
+    } finally {
+      closeSync(fd);
+    }
+  };
+
+  app.get('/api/jobs/:id/log', (req, res) => {
+    const job = readJobs(baseDir).find((j) => j.id === Number(req.params.id));
+    if (!job) return res.status(404).json({ error: 'job no encontrado' });
+    const log = tailFile(join(jobsDir(baseDir), `${job.id}.log`), { lines: Number(req.query.tail) || 200 });
+    res.json({ jobId: job.id, jobStatus: job.status, projectSlug: jobProjectSlug(job.args), log });
+  });
+
+  // Log del pipeline del proyecto: el job más reciente cuyo slug matchea.
+  app.get('/api/projects/:slug/log', (req, res) => {
+    const slug = validSlug(req, res);
+    if (!slug) return;
+    const jobs = readJobs(baseDir).filter((j) => jobProjectSlug(j.args) === slug);
+    const job = jobs.findLast((j) => j.status === 'running') ?? jobs.at(-1);
+    if (!job) return res.json({ jobId: null, jobStatus: null, log: null });
+    const log = tailFile(join(jobsDir(baseDir), `${job.id}.log`), { lines: Number(req.query.tail) || 200 });
+    res.json({ jobId: job.id, jobStatus: job.status, log });
   });
 
   app.get('/api/projects/:slug', async (req, res) => {

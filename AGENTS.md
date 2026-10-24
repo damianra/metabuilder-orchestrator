@@ -24,6 +24,7 @@ npm run queue -- add --idea "..." [-y]   # encola (args = los de npm start)
 npm run queue -- list|clear              # estado / limpieza
 npm run worker                           # procesa jobs/ en orden (una pasada)
 npm run queue -- watch                   # idem en loop + heartbeat jobs/.worker
+                                         # + stdout/stderr de cada job → jobs/<id>.log
                                          # (es el modo que levanta npm run dashboard)
 
 # Dashboard (API + UI): API en :4100, UI Vite en :4173 con proxy /api
@@ -167,6 +168,10 @@ fina sobre la infra existente:
   `projectSlug` (derivado de `--name`/`--resume`/slug de la idea) y
   `progress` (node/step/totalSteps del `status.json` de la app);
   `worker` = liveness leído del heartbeat `jobs/.worker`.
+- `GET /api/jobs/:id/log?tail=N` — tail (default 200 líneas) del log que
+  el worker captura en `jobs/<id>.log` (stdout+stderr del `npm start` del
+  job). `GET /api/projects/:slug/log` — idem resolviendo el job más
+  reciente cuyo `projectSlug` coincide con el slug.
 - `POST /api/runs` — encola una generación: whitelist de campos
   (idea/scope/appType/name/arch/phone + flags github/ghpages/
   verifyDocker) → args del CLI + `--yes` siempre (un job bajo el worker
