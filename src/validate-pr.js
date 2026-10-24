@@ -1,12 +1,16 @@
 // Sub-agente de validación de PRs del orquestador.
-// Uso: npm run validate:pr -- <numero>
+// Uso:
+//   npm run validate:pr -- <numero>   un PR puntual
+//   npm run validate:pr               todos los PRs abiertos pendientes
+//   npm run validate:pr -- --watch [minutos]   polling continuo
 //
 // 1. Trae el PR de GitHub (head/base/title).
 // 2. Crea un worktree temporal del head — no toca el checkout del usuario.
 // 3. npm install + una sesión Devin (prompts/pr-validator.md) que revisa
 //    el diff y corre la validación funcional en el worktree.
-// 4. Comenta el veredicto en el PR. El GITHUB_TOKEN nunca llega al agente:
-//    solo este script lo usa, para leer el PR y comentar.
+// 4. Comenta el veredicto en el PR con el head SHA embebido — un push
+//    nuevo vuelve a marcar el PR como pendiente. El GITHUB_TOKEN nunca
+//    llega al agente: solo este script lo usa, para leer y comentar.
 
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -15,8 +19,11 @@ import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import { run } from './tools/shell.js';
 import { runDevinPrompt } from './tools/devin.js';
-import { commentOnPR, getPR } from './tools/github.js';
+import { commentOnPR, getPR, getPRComments, listOpenPRs } from './tools/github.js';
 import { activity, loadPrompt } from './agents/common.js';
+
+const VERDICT_MARKER = '## Validación funcional';
+const shaTag = (sha) => `head:${sha.slice(0, 7)}`;
 
 // Del resultado del agente extrae solo el bloque "## Validación funcional"
 // (sin la narración de trabajo). Sin bloque o con error → ⚠️.
@@ -24,31 +31,20 @@ export const extractVerdictComment = (res) => {
   if (!res.ok) {
     return `## Validación funcional (sub-agente)\n\n⚠️ El sub-agente de validación falló: ${res.error}\n\nVeredicto: ⚠️ REQUIERE REVISIÓN`;
   }
-  const marker = res.text.lastIndexOf('## Validación funcional');
+  const marker = res.text.lastIndexOf(VERDICT_MARKER);
   if (marker >= 0) return res.text.slice(marker);
   return `## Validación funcional (sub-agente)\n\n⚠️ El sub-agente no devolvió el bloque de veredicto requerido. Salida:\n\n${res.text.slice(-2000)}\n\nVeredicto: ⚠️ REQUIERE REVISIÓN`;
 };
 
-const main = async () => {
-  const prNumber = Number(process.argv[2]);
-  if (!prNumber) {
-    console.error('uso: npm run validate:pr -- <numero>');
-    process.exit(1);
-  }
-  if (!config.githubToken) {
-    console.error('GITHUB_TOKEN requerido en .env');
-    process.exit(1);
-  }
+// Un PR está pendiente si ningún comentario de validación corresponde a
+// su head actual. El veredicto embebe <!-- head:<sha7> --> — un push
+// posterior cambia el sha y el PR vuelve a necesitar validación.
+export const prNeedsValidation = (comments, headSha) =>
+  !comments.some((c) => c.body?.includes(VERDICT_MARKER) && c.body.includes(shaTag(headSha)));
 
-  // owner/repo desde el remote origin (git@github.com:o/r.git o https)
-  const remote = (await run('git remote get-url origin', { cwd: config.rootDir })).stdout.trim();
-  const m = remote.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
-  if (!m) {
-    console.error(`no pude parsear owner/repo de origin: ${remote}`);
-    process.exit(1);
-  }
-  const [, owner, repo] = m;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+async function validateOnePR({ prNumber, owner, repo }) {
   console.log(`\n🔍 validate:pr — PR #${prNumber} en ${owner}/${repo}\n`);
 
   const pr = await getPR(config.githubToken, owner, repo, prNumber);
@@ -63,7 +59,7 @@ const main = async () => {
     const add = await run(`git worktree add ${worktree} origin/${head}`, { cwd: config.rootDir });
     if (!add.ok) {
       console.error(`git worktree add falló: ${add.stderr}`);
-      process.exit(1);
+      return false;
     }
     console.log(`   worktree: ${worktree}`);
 
@@ -92,10 +88,74 @@ const main = async () => {
       onActivity: activity,
     });
 
-    await commentOnPR(config.githubToken, owner, repo, prNumber, extractVerdictComment(res));
+    const verdict = extractVerdictComment(res) + `\n\n<!-- validate-pr ${shaTag(pr.head.sha)} -->`;
+    await commentOnPR(config.githubToken, owner, repo, prNumber, verdict);
     console.log(`\n✔ veredicto comentado en PR #${prNumber} — ${pr.html_url}`);
+    return true;
   } finally {
     await run(`git worktree remove --force ${worktree}`, { cwd: config.rootDir });
+  }
+}
+
+// PRs abiertos cuyo head actual todavía no tiene veredicto del sub-agente.
+async function listPendingPRs(owner, repo) {
+  const prs = await listOpenPRs(config.githubToken, owner, repo);
+  const pending = [];
+  for (const pr of prs) {
+    const comments = await getPRComments(config.githubToken, owner, repo, pr.number);
+    if (prNeedsValidation(comments, pr.head.sha)) pending.push(pr.number);
+  }
+  return pending;
+}
+
+const main = async () => {
+  const args = process.argv.slice(2);
+  const watchIdx = args.indexOf('--watch');
+  const watchMin = watchIdx >= 0 ? Number(args[watchIdx + 1]) || 5 : 0;
+  const prNumber = Number(args[0]);
+
+  if (!config.githubToken) {
+    console.error('GITHUB_TOKEN requerido en .env');
+    process.exit(1);
+  }
+  if (watchIdx >= 0 && prNumber) {
+    console.error('uso: npm run validate:pr -- [<numero> | --watch [minutos]]');
+    process.exit(1);
+  }
+
+  // owner/repo desde el remote origin (git@github.com:o/r.git o https)
+  const remote = (await run('git remote get-url origin', { cwd: config.rootDir })).stdout.trim();
+  const m = remote.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
+  if (!m) {
+    console.error(`no pude parsear owner/repo de origin: ${remote}`);
+    process.exit(1);
+  }
+  const [, owner, repo] = m;
+
+  if (prNumber) {
+    const ok = await validateOnePR({ prNumber, owner, repo });
+    process.exit(ok ? 0 : 1);
+  }
+
+  // Modo automático: validar todos los PRs abiertos pendientes, una y
+  // otra vez si se pasó --watch (polling cada N minutos, default 5).
+  for (;;) {
+    const pending = await listPendingPRs(owner, repo);
+    if (pending.length === 0) {
+      console.log(`✔ sin PRs pendientes de validación`);
+    } else {
+      console.log(`PRs pendientes: ${pending.map((n) => `#${n}`).join(', ')}`);
+      for (const n of pending) {
+        try {
+          await validateOnePR({ prNumber: n, owner, repo });
+        } catch (err) {
+          console.error(`PR #${n}: validación abortada — ${err.message}`);
+        }
+      }
+    }
+    if (!watchMin) break;
+    console.log(`\n⏳ próxima pasada en ${watchMin} min (Ctrl+C para salir)`);
+    await sleep(watchMin * 60_000);
   }
 };
 

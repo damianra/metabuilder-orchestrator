@@ -215,11 +215,16 @@ Aplica a cualquier agente/persona que modifique el orquestador.
    Node 22, sin secrets) — compuerta determinística automática.
 
 5. **Validación funcional antes de merge — la hace un sub-agente**:
-   `npm run validate:pr -- <N>` crea un worktree temporal del head,
-   corre una sesión Devin (`prompts/pr-validator.md`) que revisa el
-   diff + ejecuta la validación (`npm test`, `node --check`, smokes
-   dirigidos) y comenta el veredicto en el PR. El `GITHUB_TOKEN` nunca
-   llega al agente — solo lo usa el script para leer el PR y comentar.
+   `npm run validate:pr -- <N>` valida un PR puntual; `npm run
+   validate:pr` sin args valida **todos los PRs abiertos pendientes**
+   (auto-descubrimiento); `--watch [min]` hace polling continuo
+   (default 5 min). En todos los casos crea un worktree temporal del
+   head, corre una sesión Devin (`prompts/pr-validator.md`) que revisa
+   el diff + ejecuta la validación (`npm test`, `node --check`, smokes
+   dirigidos) y comenta el veredicto en el PR — embebido con
+   `<!-- validate-pr head:<sha7> -->`, así un push nuevo vuelve a
+   marcar el PR como pendiente. El `GITHUB_TOKEN` nunca llega al
+   agente — solo lo usa el script para leer el PR y comentar.
    Solo se mergea con `✅ APROBADO PARA MERGE`.
 
 Las **apps generadas** (`generated-apps/<slug>/`) NO siguen este flujo:

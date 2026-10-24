@@ -104,7 +104,7 @@ cp .env.example .env
 - `src/agents/` — nodos: preflight, planner, validator, confirm, builder, verifier, fixer, reviewer, finalizer.
 - `src/tools/` — `devin.js` (cliente ACP), `shell.js` (execa), `slug.js`, `github.js` (REST: repos, Pages, PRs), `install.js` (npm install lazy en background).
 - `src/prompts/` — builder/fixer/planner/plan-repair/reviewer/pr-validator.md.
-- `src/validate-pr.js` — `npm run validate:pr -- <N>`: sub-agente Devin que valida PRs del orquestador en un worktree aislado y comenta el veredicto (el `GITHUB_TOKEN` nunca llega al agente).
+- `src/validate-pr.js` — sub-agente Devin que valida PRs del orquestador en un worktree aislado y comenta el veredicto (el `GITHUB_TOKEN` nunca llega al agente). `npm run validate:pr -- <N>` valida uno; sin args valida todos los abiertos pendientes (detecta por el head SHA embebido en el veredicto — un push nuevo lo marca pendiente otra vez); `--watch [min]` hace polling continuo.
 - `src/verticals/` — paquetes por tipo de app (`landing`, `orders`, `blog`): `buildPlan()` determinístico; `orders` y `blog` traen overlay `api/` (schema + seed + routes) para el api-skeleton.
 - `src/templates/` — `AGENTS.md` (reglas UI + guía de diseño copiadas a cada app), `README.md`, `app-skeleton/` (frontend), `api-skeleton/` (backend Express+SQLite+uploads).
 - `src/verticals/<v>/api/` — overlay de backend por vertical (schema.sql + seed-data.js + routes/) que se copia sobre `server/`.
