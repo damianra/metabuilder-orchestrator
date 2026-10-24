@@ -34,7 +34,7 @@ se serializan solos — nunca más de una sesión `devin acp` a la vez.
 
 | # | Candidato | Descripción | Valor |
 | --- | --- | --- | --- |
-| A | **Tests del orquestador** | Vitest: `ghAuthArgs` (header Basic), commit idempotente, templates de plan, parsing de `RESULT:` del reviewer, serialización de mensajes | El código crítico de git/API hoy solo se prueba en vivo — una regresión silenciosa rompería el pipeline |
+| ~~A~~ | ~~**Tests del orquestador**~~ ✅ | Implementado: `tests/` con 42 tests — validator+verticales, `ghAuthArgs`/sanitize, commit idempotente (git real en tmp), `parseReviewResult`, serialización ACP con stub `devin`, semáforo, install lazy, `copyApiSkeleton`, slug, shell | ~5s, sin tocar Devin ni red |
 | B | **orders fullstack real** | Parcialmente validado: `tienda-stock` corrió el camino api-skeleton E2E (custom). Falta correr el vertical `orders` fullstack propiamente (overlay schema/seed/routes + paso generativo-lite) | Completaría el segundo vertical en su forma real |
 | C | **Nuevo vertical** (blog/portfolio/catálogo) | Carpeta `src/verticals/<nuevo>` con plan + secciones + checks e2e | Amplía el catálogo sin tocar el grafo |
 | D | **Robustez de Pages** | Reintentar `enablePages` ante 500 transitorio y tratar 409 como éxito | Pulir el único fallo "ruidoso" observado |

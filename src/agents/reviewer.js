@@ -29,7 +29,8 @@ export async function reviewerNode(state) {
     };
   }
 
-  if (/RESULT:\s*APPROVED/i.test(res.text)) {
+  const result = parseReviewResult(res.text);
+  if (result.approved) {
     return {
       lastError: null,
       status: 'reviewed',
@@ -37,10 +38,20 @@ export async function reviewerNode(state) {
     };
   }
 
-  const issues = res.text.match(/RESULT:\s*ISSUES([\s\S]*)$/i)?.[1]?.trim() || res.text;
   return {
     lastError: 'QA encontró issues',
-    lastOutput: issues.slice(-3000),
-    history: [log('review', `issues reportados: ${issues.slice(0, 200)}`)],
+    lastOutput: result.issues.slice(-3000),
+    history: [log('review', `issues reportados: ${result.issues.slice(0, 200)}`)],
   };
+}
+
+/**
+ * Clasifica la respuesta del QA: 'RESULT: APPROVED' → aprobado;
+ * 'RESULT: ISSUES' + detalle → issues (o el texto completo si el
+ * agente no emitió el marcador).
+ */
+export function parseReviewResult(text) {
+  if (/RESULT:\s*APPROVED/i.test(text)) return { approved: true };
+  const issues = text.match(/RESULT:\s*ISSUES([\s\S]*)$/i)?.[1]?.trim() || text;
+  return { approved: false, issues };
 }

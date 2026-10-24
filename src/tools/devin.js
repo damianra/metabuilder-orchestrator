@@ -35,7 +35,7 @@ export function loadCredentials(credentialsPath = config.devinCredentialsPath) {
   return { apiKey, apiServerUrl };
 }
 
-class AcpClient {
+export class AcpClient {
   #proc;
   #buffer = '';
   #pending = new Map();

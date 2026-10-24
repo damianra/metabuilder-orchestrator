@@ -8,9 +8,9 @@ import { run } from './shell.js';
 const pending = new Map();
 const results = new Map();
 
-export function startInstall(dir) {
+export function startInstall(dir, cmd = 'npm install') {
   if (!pending.has(dir)) {
-    pending.set(dir, run('npm install', { cwd: dir, timeoutMs: 300_000 }));
+    pending.set(dir, run(cmd, { cwd: dir, timeoutMs: 300_000 }));
   }
   return pending.get(dir);
 }

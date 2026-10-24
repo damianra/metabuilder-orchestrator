@@ -39,8 +39,13 @@ function slotIsStale(dir) {
  * función release(). max viene de config.maxDevinSessions
  * (MAX_CONCURRENT_DEVIN_SESSIONS, default 1 → serial total).
  */
-export async function acquireDevinSlot({ max = config.maxDevinSessions, pollMs = 2000, onWait } = {}) {
-  const base = devinSlotsDir();
+export async function acquireDevinSlot({
+  max = config.maxDevinSessions,
+  pollMs = 2000,
+  onWait,
+  baseDir,
+} = {}) {
+  const base = baseDir ?? devinSlotsDir();
   mkdirSync(base, { recursive: true });
   let waited = false;
   for (;;) {

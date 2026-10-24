@@ -7,16 +7,16 @@ import { getGitHubUser, createRepo, enablePages, getPages } from '../tools/githu
 import { activity, log, loadTemplate } from './common.js';
 
 // Nunca loguear el token: sanitiza cualquier salida que pueda contenerlo.
-const sanitize = (s) =>
-  config.githubToken ? String(s).replaceAll(config.githubToken, '***') : String(s);
+export const sanitize = (s, token = config.githubToken) =>
+  token ? String(s).replaceAll(token, '***') : String(s);
 
 // GitHub HTTPS no acepta "Bearer" en http.extraHeader para git —
 // necesita Basic base64(x-access-token:TOKEN), y el header debe
 // matchear el host para que git lo use sin pedir credenciales.
-const ghAuthArgs = () =>
-  config.githubToken
+export const ghAuthArgs = (token = config.githubToken) =>
+  token
     ? `-c http.https://github.com.extraHeader="Authorization: Basic ${
-        Buffer.from(`x-access-token:${config.githubToken}`).toString('base64')
+        Buffer.from(`x-access-token:${token}`).toString('base64')
       }"`
     : '';
 
