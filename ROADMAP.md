@@ -55,7 +55,7 @@ Ordenado por impacto/esfuerzo. **El #1 es la recomendación actual.**
 | ~~5~~ | ~~**Pool de procesos `devin acp`**~~ (H) ✅ | Implementado — ver sección Completados | Medio: performance, sin cambio semántico |
 | ~~6~~ | ~~**Automatizar `validate:pr`**~~ (I) ✅ | Implementado vía auto-descubrimiento local — ver sección Completados | Medio: conveniencia |
 | ~~7~~ | ~~**Cola de jobs (`jobs/` + worker)**~~ (J) ✅ | Implementado austero — ver sección Completados y decisión cerrada abajo | Medio |
-| **8** | **Retry de `enablePages` ante 500** (D residual) | `finalize` ya cae a `getPages` tras fallo (409/500 tratados como OK) — falta solo reintentar el POST ante 500 transitorio | Bajo: pulido chico |
+| ~~8~~ | ~~**Retry de `enablePages` ante 500**~~ (D residual) ✅ | Implementado — `enablePagesWithRetry` reintenta 5xx antes de caer al GET | Bajo |
 | **9** | **Reporte de run** (L) | `runs/<runId>/` guarda JSON-RPC crudo; un resumen por run (pasos, reintentos, duración por sesión) ayuda a iterar prompts y detectar patrones de fallo | Bajo-medio |
 | **10** | **Convención `.env` en api-skeleton** (K) | Una app `custom` que necesite API keys no tiene convención (dotenv + `.env.example` en el template) | Bajo |
 | **11** | **orders con delivery real** (E) | Costo de envío por zona/mapa, persistir pedido en Sheets, panel admin | Fuera del scope "apps básicas" por ahora |
@@ -63,7 +63,7 @@ Ordenado por impacto/esfuerzo. **El #1 es la recomendación actual.**
 ### Completados
 
 - ~~A~~ **Tests del orquestador** ✅ — `tests/` con 52 tests (validator+verticales, `ghAuthArgs`/sanitize, commit idempotente, `parseReviewResult`, serialización ACP con stub `devin`, semáforo, install lazy, `copyApiSkeleton`, slug, shell, `extractVerdictComment`, resume), ~5s sin Devin ni red.
-- ~~D~~ **Robustez de Pages** ✅ parcial — fallback `getPages` ya implementado; el retry del 500 quedó como ítem #8.
+- ~~D~~ **Robustez de Pages** ✅ completa — `enablePagesWithRetry` (finalizer.js): reintenta el POST ante 500/502/503 (3 retries, 4s), 409 cae directo al `getPages` de confirmación sin reintentar.
 - ~~F~~ **`--resume <dir>`** ✅ — `npm start -- --resume <dir|slug>`: `resolveResumeDir` (ruta o slug), preflight reanuda sin re-copiar, planner normaliza pasos no-done → `pending` y retoma en el primero (todo done → `finalVerify`), restaura scope/appType/idea del plan (`idea` persistido en plan.json). Validado E2E: resume a mitad de plan → done. Un Ctrl+C/timeout ya no pierde el run.
 - ~~G~~ **CI `npm test` en PRs** ✅ — `.github/workflows/test.yml` (ubuntu, Node 22, `npm ci` + `npm test`) en `pull_request` y push a `main`.
 - ~~C~~ **Vertical `blog`** ✅ — `src/verticals/blog/`: posts/categories/tags(N:M)/comments moderados, overlay api/ verificado en vivo, `inferAppType` con keywords, 3 scopes. También: log de `duración total` al final del pipeline + `elapsedMs` en status.json.
