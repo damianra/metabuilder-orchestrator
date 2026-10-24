@@ -16,7 +16,10 @@ seed + endpoints extra de la idea).
 
 Asincronía aplicada: probes de preflight en paralelo, `npm install`
 lazy en background (`tools/install.js`, awaitan builder/verifier/
-finalVerify), pre-warm de Playwright chromium en background.
+finalVerify), pre-warm de Playwright chromium en background, y
+**semáforo global de sesiones Devin** (`tools/devin-lock.js` +
+`MAX_CONCURRENT_DEVIN_SESSIONS=1`): varios `npm start` concurrentes
+se serializan solos — nunca más de una sesión `devin acp` a la vez.
 
 ## Candidatos lógicos (prioridad sugerida)
 
@@ -75,5 +78,8 @@ Devin que el límite configurado.
 
 ## Decisión pendiente
 
-- ¿Worker con cola (`jobs.json`) o mantener invocación directa + semáforo?
-- ¿`MAX_CONCURRENT_DEVIN_SESSIONS=1` fijo o configurable?
+- ~~Semáforo de sesiones Devin~~ → implementado (`tools/devin-lock.js`,
+  slots mkdir-atómicos + pid file, `MAX_CONCURRENT_DEVIN_SESSIONS=1`
+  configurable). Falta solo si se quiere la cola formal de jobs.
+- ¿Worker con cola (`jobs.json`) o mantener invocación directa (ya
+  serializada por el semáforo)?
