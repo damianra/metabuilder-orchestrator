@@ -41,6 +41,12 @@ const tsFromRunId = (runId) => {
   return m ? Date.parse(`${m[1]}T${m[2]}:${m[3]}:${m[4]}.${m[5]}Z`) : null;
 };
 
+// elapsedMs existe en runs nuevos; en viejos se deriva del timestamp
+// del runId → status.ts (fin del run).
+const elapsedFor = (status, runId) =>
+  status?.elapsedMs ??
+  (status?.ts && tsFromRunId(runId) ? Date.parse(status.ts) - tsFromRunId(runId) : null);
+
 export function listRuns(runsDir = config.runsDir) {
   if (!existsSync(runsDir)) return [];
   return readdirSync(runsDir)
@@ -92,11 +98,7 @@ export function buildReport({ runId, runDir, projectDir }) {
   const lines = [`# Reporte de run — ${slugFromRunId(runId)}`, ''];
   lines.push(`- **runId**: \`${runId}\``);
   if (status) {
-    // elapsedMs existe en runs nuevos; en viejos se deriva del
-    // timestamp del runId → status.ts (fin del run).
-    const elapsed =
-      status.elapsedMs ??
-      (status.ts && tsFromRunId(runId) ? Date.parse(status.ts) - tsFromRunId(runId) : null);
+    const elapsed = elapsedFor(status, runId);
     lines.push(
       `- **status**: ${status.status}` +
         (elapsed != null ? ` · **duración total**: ${fmtMs(elapsed)}` : '') +
@@ -145,7 +147,10 @@ const main = async () => {
     for (const r of runs.slice(0, 15)) {
       const slug = slugFromRunId(r);
       const status = readJson(join(config.generatedAppsDir, slug, 'status.json'));
-      const info = status ? `${status.status} · ${fmtMs(status.elapsedMs ?? 0)}` : 'sin status.json';
+      const elapsed = elapsedFor(status, r);
+      const info = status
+        ? `${status.status}${elapsed != null ? ` · ${fmtMs(elapsed)}` : ''}`
+        : 'sin status.json';
       console.log(`  ${r}   ${slug} — ${info}`);
     }
     return;
