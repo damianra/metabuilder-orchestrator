@@ -15,6 +15,11 @@ npm start -- --idea "..." --scope fullstack|frontend|backend \
 
 # Reanudar un run interrumpido desde su plan.json (ruta o slug):
 npm start -- --resume generated-apps/<slug> [--github] [--no-push] [-y]
+
+# Cola batch: encolar ideas y procesarlas en serie
+npm run queue -- add --idea "..." [-y]   # encola (args = los de npm start)
+npm run queue -- list|clear              # estado / limpieza
+npm run worker                           # procesa jobs/ en orden
 ```
 
 Verificación rápida de tools sin tocar el grafo:

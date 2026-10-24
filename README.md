@@ -55,6 +55,20 @@ npm start -- --idea "Pizzería con pedidos a domicilio" -y
 npm start
 ```
 
+## Cola de generaciones (batch)
+
+Para encolar varias ideas y procesarlas desatendido, una por vez:
+
+```bash
+npm run queue -- add --idea "Blog de recetas" --app-type blog -y
+npm run queue -- add --idea "Landing veterinaria" --app-type landing --scope frontend -y
+npm run queue -- list        # estado de cada job (pending/running/done/failed)
+npm run worker               # procesa la cola en orden, logs en vivo
+npm run queue -- clear       # borra jobs terminados
+```
+
+Cada job es un archivo en `jobs/` (gitignored); el worker spawnea `node src/index.js` por job — equivale a correr `npm start` a mano, en serie. Un job `failed` se retoma con `--resume generated-apps/<slug>`. El semáforo de sesiones Devin sigue siendo la red de seguridad para runs sueltos.
+
 ## Flags
 
 | Flag | Qué hace |

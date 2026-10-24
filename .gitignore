@@ -10,6 +10,9 @@ generated-apps/
 # Logs de corridas y exports de sesiones Devin
 runs/
 
+# Cola de generaciones (estado de runtime)
+jobs/
+
 # Artefactos de apps generadas
 *.sqlite
 *.sqlite-journal
