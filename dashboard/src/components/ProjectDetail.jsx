@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Container, ExternalLink, FileText, FlaskConical, Play, Square } from 'lucide-react';
+import { ArrowLeft, Container, ExternalLink, FileText, FlaskConical, LoaderCircle, Play, Square } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import { api } from '../api.js';
 import { timeAgo } from '../util.js';
@@ -10,7 +10,9 @@ const btn =
 export default function ProjectDetail({ slug, onChanged }) {
   const [project, setProject] = useState(null);
   const [error, setError] = useState(null);
-  const [busy, setBusy] = useState(false);
+  // qué acción está en vuelo ('resume'|'dockerize'|...) — el spinner va
+  // en el botón correspondiente; el resto queda deshabilitado igual.
+  const [busy, setBusy] = useState(null);
   const [withGithub, setWithGithub] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showLog, setShowLog] = useState(false);
@@ -65,7 +67,7 @@ export default function ProjectDetail({ slug, onChanged }) {
   }, [showContainerLog, slug]);
 
   const act = async (body, okMsg) => {
-    setBusy(true);
+    setBusy(body.action);
     setNotice(null);
     try {
       const res = await api.action(slug, body);
@@ -75,7 +77,7 @@ export default function ProjectDetail({ slug, onChanged }) {
     } catch (err) {
       setNotice(`error: ${err.message}`);
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
 
@@ -102,6 +104,8 @@ export default function ProjectDetail({ slug, onChanged }) {
   // imagen <slug>:local — la fuente es `image inspect` (server), no
   // docker-build.json: cubre builds por podman o hechas a mano por CLI.
   const imageReady = runtime?.image === true;
+  const building = build?.status === 'running';
+  const spin = <LoaderCircle size={15} className="animate-spin" />;
   const hasTestScript = (project.scripts ?? []).some((s) => s.name === 'test');
   const hasE2eScript = (project.scripts ?? []).some((s) => s.name === 'test:e2e');
   // done = pipeline terminado; no-plan = sin plan.json (resume imposible).
@@ -137,7 +141,7 @@ export default function ProjectDetail({ slug, onChanged }) {
             title={canResume ? 'Retoma el pipeline desde plan.json' : 'El proyecto ya terminó (o no tiene plan.json)'}
             onClick={() => act({ action: 'resume', github: withGithub }, () => 'resume encolado')}
           >
-            <Play size={15} /> Resume
+            {busy === 'resume' ? spin : <Play size={15} />} Resume
           </button>
           <label className="flex items-center gap-1.5 text-xs text-slate-600">
             <input
@@ -150,14 +154,18 @@ export default function ProjectDetail({ slug, onChanged }) {
           </label>
           <button
             className={btn}
-            disabled={busy}
+            disabled={busy || building}
+            title={building ? 'Build en curso — mirá docker-build.log' : 'Escribe Dockerfile y buildea la imagen'}
             onClick={() =>
               act({ action: 'dockerize' }, (r) =>
-                r.build.status === 'skipped' ? `Dockerfile ${r.variant} escrito — sin daemon docker` : `build ${r.build.tag} iniciado`,
+                r.build.status === 'skipped'
+                  ? `Dockerfile ${r.variant} escrito — ${r.build.reason ?? 'sin engine'}`
+                  : `build ${r.build.tag} iniciado`,
               )
             }
           >
-            <Container size={15} /> Dockerize
+            {busy === 'dockerize' || building ? spin : <Container size={15} />}
+            {building ? 'Buildeando…' : 'Dockerize'}
           </button>
           <button
             className={btn}
@@ -171,7 +179,8 @@ export default function ProjectDetail({ slug, onChanged }) {
             }
             onClick={() => act({ action: 'test', e2e: withE2e }, () => 'test run iniciado')}
           >
-            <FlaskConical size={15} /> Ejecutar tests
+            {busy === 'test' || testRunning ? spin : <FlaskConical size={15} />}
+            {testRunning ? 'Corriendo tests…' : 'Ejecutar tests'}
           </button>
           <label className="flex items-center gap-1.5 text-xs text-slate-600">
             <input
@@ -191,16 +200,17 @@ export default function ProjectDetail({ slug, onChanged }) {
         </div>
         {notice && <p className="mt-2 text-sm text-slate-600">{notice}</p>}
         {build && (
-          <p className="mt-2 text-xs text-slate-500">
-            último docker build: <b>{build.status}</b>
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+            {building && spin} último docker build: <b>{build.status}</b>
             {build.tag ? ` (${build.tag})` : ''}
             {build.exitCode !== undefined ? ` exit ${build.exitCode}` : ''}
             {build.reason ? ` — ${build.reason}` : ''}
           </p>
         )}
         {testRun && (
-          <p className="mt-2 text-xs text-slate-500">
-            último test run: <b>{testRun.stale ? `${testRun.status} (interrumpido)` : testRun.status}</b>
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+            {testRunning && spin} último test run:{' '}
+            <b>{testRun.stale ? `${testRun.status} (interrumpido)` : testRun.status}</b>
             {testRun.command ? ` (${testRun.command})` : ''}
             {testRun.exitCode !== undefined ? ` exit ${testRun.exitCode}` : ''}
           </p>
@@ -241,7 +251,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                 disabled={busy}
                 onClick={() => act({ action: 'stop-container' }, () => 'container detenido')}
               >
-                <Square size={15} /> Detener
+                {busy === 'stop-container' ? spin : <Square size={15} />} Detener
               </button>
             </div>
             {showContainerLog &&
@@ -282,7 +292,8 @@ export default function ProjectDetail({ slug, onChanged }) {
                 )
               }
             >
-              <Container size={15} /> Crear contenedor
+              {busy === 'run-container' ? spin : <Container size={15} />}
+              {busy === 'run-container' ? 'Creando…' : 'Crear contenedor'}
             </button>
             {!imageReady && <span className="text-xs text-slate-400">primero Dockerize</span>}
           </div>
