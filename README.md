@@ -69,6 +69,22 @@ npm run queue -- clear       # borra jobs terminados
 
 Cada job es un archivo en `jobs/` (gitignored); el worker spawnea `node src/index.js` por job — equivale a correr `npm start` a mano, en serie. Un job `failed` se retoma con `--resume generated-apps/<slug>`. El semáforo de sesiones Devin sigue siendo la red de seguridad para runs sueltos.
 
+## API del dashboard
+
+```bash
+npm run dashboard:api   # http://127.0.0.1:4100 (DASHBOARD_PORT / DASHBOARD_HOST)
+```
+
+API local que el dashboard (roadmap #5) consume — capa fina sobre `queue.js`, `plan.json`/`status.json` y los reportes:
+
+- `GET /api/projects` — resumen de cada app en `generated-apps/` (status, pasos done/total, scope, arch, `hasDockerfile`).
+- `GET /api/projects/:slug` — detalle: pasos del plan, reporte del último run, `repoUrl`, estado del último docker build.
+- `GET /api/jobs` — la cola tal cual la ve el worker.
+- `POST /api/runs` — encola una generación (`{idea, scope?, appType?, name?, arch?, phone?, github?, ghpages?, verifyDocker?}` — valida enums/slug y encola con `--yes`).
+- `POST /api/projects/:slug/actions` — `{action: "resume"|"dockerize"|"open-repo"}`: resume encola `--resume <slug> -y`; dockerize re-escribe el `Dockerfile` y corre `docker build` async si hay daemon (estado en `docker-build.json`, log en `docker-build.log`; sin daemon → `skipped`); open-repo devuelve la URL web del remote git.
+
+Los jobs encolados se procesan con `npm run worker` como siempre — la API solo encola, no ejecuta.
+
 ## Flags
 
 | Flag | Qué hace |
