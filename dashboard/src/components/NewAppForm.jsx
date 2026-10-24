@@ -83,6 +83,10 @@ export default function NewAppForm({ onEnqueued }) {
 
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div>
+          <label className={label} htmlFor="name">Nombre (slug)</label>
+          <input id="name" className={input} placeholder="auto" value={form.name} onChange={(e) => set('name', e.target.value)} />
+        </div>
+        <div>
           <label className={label} htmlFor="scope">Scope</label>
           <select id="scope" className={input} value={form.scope} onChange={(e) => set('scope', e.target.value)}>
             {(options?.scopes ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
@@ -135,16 +139,12 @@ export default function NewAppForm({ onEnqueued }) {
           </select>
         </div>
         <div>
-          <label className={label} htmlFor="name">Nombre (slug)</label>
-          <input id="name" className={input} placeholder="auto" value={form.name} onChange={(e) => set('name', e.target.value)} />
+          <label className={label} htmlFor="phone">WhatsApp</label>
+          <input id="phone" className={input} placeholder="54911…" value={form.phone} onChange={(e) => set('phone', e.target.value)} />
         </div>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div>
-          <label className={label} htmlFor="phone">WhatsApp</label>
-          <input id="phone" className={input} placeholder="54911…" value={form.phone} onChange={(e) => set('phone', e.target.value)} />
-        </div>
         <label className="flex items-end gap-2 pb-2 text-sm text-slate-700">
           <input type="checkbox" checked={form.github} onChange={(e) => set('github', e.target.checked)} />
           repo en GitHub
