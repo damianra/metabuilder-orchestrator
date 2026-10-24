@@ -4,6 +4,8 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildGraph } from './orchestrator/graph.js';
 import { getVertical, inferAppType, listVerticals } from './verticals/index.js';
+import { resolveResumeDir } from './tools/slug.js';
+import { config } from './config.js';
 import { setQuiet } from './agents/common.js';
 
 function parseArgs(argv) {
@@ -28,7 +30,8 @@ function parseArgs(argv) {
 function printPlan(plan) {
   console.log(`\n=== Plan: ${plan.projectName} (${plan.appType}, scope ${plan.scope}) ===`);
   for (const s of plan.steps) {
-    console.log(`  ${s.id}. [${s.type}] ${s.description.slice(0, 110)}${s.description.length > 110 ? '…' : ''}`);
+    const status = s.status && s.status !== 'pending' ? ` [${s.status}]` : '';
+    console.log(`  ${s.id}. [${s.type}]${status} ${s.description.slice(0, 110)}${s.description.length > 110 ? '…' : ''}`);
     console.log(`     verify: ${s.verify}`);
   }
 }
@@ -46,6 +49,20 @@ async function collectArgs(args) {
   const interactive = Boolean(process.stdin.isTTY);
   const asker = createAsker();
   try {
+    // --resume: idea/scope/appType/name/phone salen del plan.json —
+    // solo se preguntan las decisiones de deploy.
+    if (args.resume) {
+      if (!args.github && !args.noPush && interactive) {
+        const g = await asker.ask('¿Crear repo en GitHub? [s/N] ');
+        args.github = /^s/i.test(g);
+        if (!args.github) args.noPush = true;
+      }
+      if (args.github && !args.ghpages && interactive) {
+        const p = await asker.ask('¿Publicar en GitHub Pages? [s/N] ');
+        args.ghpages = /^s/i.test(p);
+      }
+      return args;
+    }
     if (!args.idea) {
       if (!interactive) {
         console.error('Falta --idea "<descripcion>"');
@@ -93,11 +110,25 @@ async function collectArgs(args) {
 
 const args = await collectArgs(parseArgs(process.argv.slice(2)));
 
-if (!args.idea) {
+// --resume <dir|slug>: reanuda un run desde su plan.json. Acepta una
+// ruta o el nombre dentro de generated-apps/. No requiere --idea.
+let resumeDir = '';
+if (args.resume) {
+  resumeDir = resolveResumeDir(args.resume, config.generatedAppsDir);
+  if (!resumeDir) {
+    console.error(
+      `--resume: no se encontró "${args.resume}" con plan.json ` +
+        `(probado como ruta y como slug en ${config.generatedAppsDir})`,
+    );
+    process.exit(2);
+  }
+}
+
+if (!args.idea && !resumeDir) {
   console.error('Falta --idea "<descripcion>"');
   process.exit(2);
 }
-if (!getVertical(args.appType) && args.appType !== 'custom') {
+if (!resumeDir && !getVertical(args.appType) && args.appType !== 'custom') {
   console.error(`--app-type desconocido "${args.appType}" (usá ${listVerticals().join('|')} o custom)`);
   process.exit(2);
 }
@@ -110,9 +141,10 @@ if (args.ghpages && !args.github) {
 const confirmPlan = Boolean(process.stdin.isTTY) && !args.yes;
 
 const initial = {
-  idea: args.idea,
-  scope: args.scope,
-  appType: args.appType,
+  idea: args.idea ?? '',
+  scope: args.scope ?? 'fullstack',
+  appType: args.appType ?? 'custom',
+  resumeDir,
   projectSlug: args.name ?? '',
   noPush: args.noPush,
   keepGoing: args.keepGoing,
@@ -191,8 +223,13 @@ const runConfig = { configurable: { thread_id: `run-${Date.now()}` } };
 
 if (!args.quiet) {
   const deploy = args.github ? (args.ghpages ? 'GitHub + Pages' : 'GitHub') : 'local';
-  console.log(`\n🚀 MetaBuilder — "${args.idea.slice(0, 90)}"`);
-  console.log(`   vertical=${args.appType} · scope=${args.scope} · deploy=${deploy}\n`);
+  if (resumeDir) {
+    console.log(`\n🚀 MetaBuilder — reanudando ${resumeDir}`);
+    console.log(`   deploy=${deploy}\n`);
+  } else {
+    console.log(`\n🚀 MetaBuilder — "${args.idea.slice(0, 90)}"`);
+    console.log(`   vertical=${args.appType} · scope=${args.scope} · deploy=${deploy}\n`);
+  }
 }
 
 // Streaming con updates: cada nodo reporta su historial apenas termina,

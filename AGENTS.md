@@ -12,6 +12,9 @@ npm install
 npm start -- --idea "..." --scope fullstack|frontend|backend \
             --app-type landing|orders|custom [--name slug] \
             [--github] [--no-push] [--keep-going] [-y|--yes]
+
+# Reanudar un run interrumpido desde su plan.json (ruta o slug):
+npm start -- --resume generated-apps/<slug> [--github] [--no-push] [-y]
 ```
 
 Verificación rápida de tools sin tocar el grafo:
@@ -171,6 +174,7 @@ Notas ACP:
   "projectName": "task-app",
   "scope": "fullstack|frontend|backend",
   "appType": "landing|orders|blog|custom",
+  "idea": "...",   // restaurada por --resume (planner la persiste al crear el plan)
   "validated": false,
   "steps": [
     { "id": 1, "description": "...", "type": "frontend|backend|test|e2e|infra",

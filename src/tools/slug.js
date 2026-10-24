@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 export function slugify(text) {
   return text
@@ -21,4 +21,17 @@ export function ensureProjectDir(baseDir, name) {
   const dir = join(baseDir, slug);
   mkdirSync(dir, { recursive: true });
   return { slug, dir };
+}
+
+/**
+ * Resuelve el argumento de --resume a un directorio de proyecto con
+ * plan.json: acepta una ruta (absoluta o relativa al cwd) o un slug
+ * dentro de generatedAppsDir. Devuelve null si no existe o no tiene
+ * plan.json.
+ */
+export function resolveResumeDir(arg, generatedAppsDir) {
+  for (const candidate of [resolve(arg), join(generatedAppsDir, arg)]) {
+    if (existsSync(join(candidate, 'plan.json'))) return candidate;
+  }
+  return null;
 }

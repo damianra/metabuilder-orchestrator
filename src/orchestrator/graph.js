@@ -31,7 +31,10 @@ function afterValidate(state) {
 }
 
 function afterConfirm(state) {
-  return state.status === 'failed' ? 'fail' : 'build';
+  if (state.status === 'failed') return 'fail';
+  // Resume con todos los pasos 'done' (o plan vacío) → directo a
+  // la verificación final, sin pasar por un paso inexistente.
+  return hasMoreSteps(state) ? 'build' : 'finalVerify';
 }
 
 function afterBuild(state) {

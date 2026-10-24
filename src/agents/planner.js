@@ -12,13 +12,39 @@ import { activity, log, loadPrompt, readPlan, runLogPath, writePlan } from './co
 export async function plannerNode(state) {
   const existing = readPlan(state.projectDir);
   if (existing?.steps?.length) {
-    existing.scope = state.scope;
-    existing.projectName = state.projectSlug;
+    // plan.json pre-existente ⇒ resume. Los pasos que no llegaron a
+    // 'done' vuelven a 'pending' (un paso 'building' murió a medio
+    // construir) y el índice retoma en el primero pendiente.
+    let resumeIndex = existing.steps.length;
+    for (let i = 0; i < existing.steps.length; i++) {
+      if (existing.steps[i].status !== 'done') {
+        existing.steps[i].status = 'pending';
+        if (resumeIndex === existing.steps.length) resumeIndex = i;
+      }
+    }
+    // Los datos del run original mandan sobre los defaults del CLI;
+    // --idea explícita tiene prioridad sobre la guardada en el plan.
+    existing.idea = state.idea || existing.idea || '';
+    existing.projectName = state.projectSlug || existing.projectName;
+    writePlan(state.projectDir, existing);
+    const done = existing.steps.filter((s) => s.status === 'done').length;
     return {
       plan: existing,
+      idea: existing.idea,
+      scope: existing.scope ?? state.scope,
       appType: existing.appType ?? state.appType,
+      currentStepIndex: resumeIndex,
+      stepRetries: 0,
+      verifying: 'step',
+      lastError: null,
       status: 'planned',
-      history: [log('planner', `plan.json existente reutilizado (${existing.steps.length} pasos)`)],
+      history: [
+        log(
+          'planner',
+          `plan.json reanudado: ${done}/${existing.steps.length} pasos done, ` +
+            `retomando ${resumeIndex < existing.steps.length ? `en paso ${existing.steps[resumeIndex].id}` : 'en verificación final'}`,
+        ),
+      ],
     };
   }
 
@@ -32,6 +58,7 @@ export async function plannerNode(state) {
     });
     plan.scope = state.scope;
     plan.projectName = state.projectSlug;
+    plan.idea = state.idea;
     writePlan(state.projectDir, plan);
     return {
       plan,
@@ -84,6 +111,7 @@ export async function plannerNode(state) {
   // El scope y el nombre los manda el usuario, no el planner.
   plan.scope = state.scope;
   plan.projectName = state.projectSlug;
+  plan.idea = state.idea;
   writePlan(state.projectDir, plan);
 
   return {

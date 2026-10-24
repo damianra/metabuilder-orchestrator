@@ -47,7 +47,7 @@ Ordenado por impacto/esfuerzo. **El #1 es la recomendación actual.**
 
 | # | Candidato | Descripción | Valor |
 | --- | --- | --- | --- |
-| **1** | **`--resume <dir>`** (F) | Hoy NO hay forma de reanudar un run: `MemorySaver` muere con el proceso y no hay flag de re-entrada. `plan.json` ya persiste status/attempts por paso — un `--resume` que lea el checkpoint, reconstruya el estado mínimo y re-ingrese al grafo en el paso pendiente | **Alto**: un Ctrl+C/timeout/crash hoy pierde el run completo y re-gasta todas las sesiones Devin |
+| ~~1~~ | ~~**`--resume <dir>`**~~ (F) ✅ | Implementado y validado E2E — ver sección Completados | Un Ctrl+C/timeout ya no pierde el run |
 | **2** | **CI: `npm test` en PRs** (G) | No existe `.github/workflows`. La suite corre en ~5s sin Devin ni red — compuerta determinística y gratis que complementa al sub-agente `validate:pr` (que cuesta sesiones) | **Alto y barato**: workflow de ~20 líneas |
 | **3** | **orders fullstack real** (B) | Parcialmente validado: `tienda-stock` corrió el camino api-skeleton E2E (custom). Falta correr el vertical `orders` fullstack propiamente (overlay schema/seed/routes + paso generativo-lite) | Completaría el segundo vertical en su forma real |
 | **4** | **Nuevo vertical** (C) | Carpeta `src/verticals/<nuevo>` (blog/portfolio/catálogo) con plan + secciones + checks e2e + overlay `api/` — es el que demuestra el patrón overlay: un blog es `schema.sql` grande + routes, mismo motor | Amplía el catálogo sin tocar el grafo |
@@ -61,8 +61,9 @@ Ordenado por impacto/esfuerzo. **El #1 es la recomendación actual.**
 
 ### Completados
 
-- ~~A~~ **Tests del orquestador** ✅ — `tests/` con 45 tests (validator+verticales, `ghAuthArgs`/sanitize, commit idempotente, `parseReviewResult`, serialización ACP con stub `devin`, semáforo, install lazy, `copyApiSkeleton`, slug, shell, `extractVerdictComment`), ~5s sin Devin ni red.
+- ~~A~~ **Tests del orquestador** ✅ — `tests/` con 52 tests (validator+verticales, `ghAuthArgs`/sanitize, commit idempotente, `parseReviewResult`, serialización ACP con stub `devin`, semáforo, install lazy, `copyApiSkeleton`, slug, shell, `extractVerdictComment`, resume), ~5s sin Devin ni red.
 - ~~D~~ **Robustez de Pages** ✅ parcial — fallback `getPages` ya implementado; el retry del 500 quedó como ítem #8.
+- ~~F~~ **`--resume <dir>`** ✅ — `npm start -- --resume <dir|slug>`: `resolveResumeDir` (ruta o slug), preflight reanuda sin re-copiar, planner normaliza pasos no-done → `pending` y retoma en el primero (todo done → `finalVerify`), restaura scope/appType/idea del plan (`idea` persistido en plan.json). Validado E2E: resume a mitad de plan → done. Un Ctrl+C/timeout ya no pierde el run.
 
 ## Ejecución asincrónica sin saturar (análisis)
 
