@@ -23,6 +23,21 @@ describe('copyApiSkeleton', () => {
     expect(readFileSync(join(dir, '.gitignore'), 'utf8')).toContain('*.sqlite');
   });
 
+  it('convención .env: .env.example se copia, .env va al gitignore, dotenv es dep', () => {
+    const dir = tmp();
+    copyApiSkeleton(dir);
+
+    expect(existsSync(join(dir, '.env.example'))).toBe(true);
+    const gi = readFileSync(join(dir, '.gitignore'), 'utf8');
+    expect(gi).toContain('.env');
+    expect(gi).not.toContain('.env.example');
+    const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+    expect(pkg.dependencies.dotenv).toBeTruthy();
+    expect(readFileSync(join(dir, 'server', 'index.js'), 'utf8')).toContain(
+      "import 'dotenv/config'",
+    );
+  });
+
   it('merge sobre app-skeleton: scripts existentes ganan, deps se suman', () => {
     const dir = tmp();
     writeFileSync(

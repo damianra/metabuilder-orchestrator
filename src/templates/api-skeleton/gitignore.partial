@@ -2,5 +2,6 @@
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+.env
 server/uploads/*
 !server/uploads/.gitkeep

@@ -90,6 +90,8 @@ cuando el scope tiene backend (standalone si scope=backend — el
 si fullstack — mergea deps/scripts). Si el vertical tiene
 `src/verticals/<v>/api/` (schema.sql, seed-data.js, routes/) se copia
 encima de `server/`. También aplica a `appType: 'custom'` con backend.
+Secretos: `.env` (gitignored) leído via `dotenv/config` en
+`server/index.js`; `.env.example` commiteado declara las variables.
 
 `npm install` corre **lazy en background** (`src/tools/install.js`:
 `startInstall`/`awaitInstall`/`isInstalling`, registry por projectDir) —
