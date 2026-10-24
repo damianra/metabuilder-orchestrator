@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Container, ExternalLink, FileText, Play } from 'lucide-react';
+import { ArrowLeft, Container, ExternalLink, FileText, FlaskConical, Play } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import { api } from '../api.js';
 import { timeAgo } from '../util.js';
@@ -15,6 +15,10 @@ export default function ProjectDetail({ slug, onChanged }) {
   const [showReport, setShowReport] = useState(false);
   const [showLog, setShowLog] = useState(false);
   const [logData, setLogData] = useState(null);
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [withE2e, setWithE2e] = useState(false);
+  const [showTestOut, setShowTestOut] = useState(false);
+  const [testOut, setTestOut] = useState(null);
   const [notice, setNotice] = useState(null);
 
   const load = () =>
@@ -36,6 +40,16 @@ export default function ProjectDetail({ slug, onChanged }) {
     const t = setInterval(loadLog, 4000);
     return () => clearInterval(t);
   }, [showLog, slug]);
+
+  // Output del test run: solo con el acordeón abierto — polling para
+  // seguir la corrida en vivo.
+  useEffect(() => {
+    if (!showTestOut) return;
+    const loadOut = () => api.projectTestLog(slug).then(setTestOut).catch(() => {});
+    loadOut();
+    const t = setInterval(loadOut, 4000);
+    return () => clearInterval(t);
+  }, [showTestOut, slug]);
 
   const act = async (body, okMsg) => {
     setBusy(true);
@@ -65,6 +79,11 @@ export default function ProjectDetail({ slug, onChanged }) {
   if (!project) return <p className="text-sm text-slate-500">cargando…</p>;
 
   const build = project.dockerBuild;
+  const testRun = project.testRun;
+  // 'running' + stale = proceso muerto (dashboard caído) → se puede relanzar.
+  const testRunning = testRun?.status === 'running' && !testRun.stale;
+  const hasTestScript = (project.scripts ?? []).some((s) => s.name === 'test');
+  const hasE2eScript = (project.scripts ?? []).some((s) => s.name === 'test:e2e');
   // done = pipeline terminado; no-plan = sin plan.json (resume imposible).
   const canResume = project.status !== 'done' && project.status !== 'no-plan';
 
@@ -81,7 +100,9 @@ export default function ProjectDetail({ slug, onChanged }) {
             <p className="mt-0.5 text-xs text-slate-500">
               {project.slug} · actualizado {timeAgo(project.updatedAt)}
             </p>
-            {project.idea && <p className="mt-2 max-w-2xl text-sm text-slate-600">{project.idea}</p>}
+            {project.idea && (
+              <p className="mt-2 max-w-2xl text-sm text-slate-600 line-clamp-2">{project.idea}</p>
+            )}
           </div>
           <StatusBadge status={project.status} />
         </div>
@@ -118,6 +139,30 @@ export default function ProjectDetail({ slug, onChanged }) {
           >
             <Container size={15} /> Dockerize
           </button>
+          <button
+            className={btn}
+            disabled={busy || !hasTestScript || testRunning}
+            title={
+              !hasTestScript
+                ? 'El proyecto no tiene script "test"'
+                : testRunning
+                  ? 'Ya hay un test run en curso'
+                  : 'Corre npm test sobre la app (en background)'
+            }
+            onClick={() => act({ action: 'test', e2e: withE2e }, () => 'test run iniciado')}
+          >
+            <FlaskConical size={15} /> Ejecutar tests
+          </button>
+          <label className="flex items-center gap-1.5 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              checked={withE2e}
+              disabled={!hasE2eScript}
+              title={hasE2eScript ? 'También corre npm run test:e2e' : 'El proyecto no tiene script "test:e2e"'}
+              onChange={(e) => setWithE2e(e.target.checked)}
+            />
+            + e2e
+          </label>
           {project.repoUrl && (
             <button className={btn} onClick={openRepo}>
               <ExternalLink size={15} /> Abrir repo
@@ -131,6 +176,13 @@ export default function ProjectDetail({ slug, onChanged }) {
             {build.tag ? ` (${build.tag})` : ''}
             {build.exitCode !== undefined ? ` exit ${build.exitCode}` : ''}
             {build.reason ? ` — ${build.reason}` : ''}
+          </p>
+        )}
+        {testRun && (
+          <p className="mt-2 text-xs text-slate-500">
+            último test run: <b>{testRun.stale ? `${testRun.status} (interrumpido)` : testRun.status}</b>
+            {testRun.command ? ` (${testRun.command})` : ''}
+            {testRun.exitCode !== undefined ? ` exit ${testRun.exitCode}` : ''}
           </p>
         )}
       </section>
@@ -161,32 +213,80 @@ export default function ProjectDetail({ slug, onChanged }) {
       </section>
 
       <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-800">Pasos del plan ({project.planSteps.length})</h3>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-xs text-slate-500">
-                <th className="pb-2 pr-3">#</th>
-                <th className="pb-2 pr-3">tipo</th>
-                <th className="pb-2 pr-3">status</th>
-                <th className="pb-2 pr-3">intentos</th>
-                <th className="pb-2">verify</th>
-              </tr>
-            </thead>
-            <tbody>
-              {project.planSteps.map((s) => (
-                <tr key={s.id} className="border-t border-slate-100">
-                  <td className="py-2 pr-3 text-slate-400">{s.id}</td>
-                  <td className="py-2 pr-3">{s.type}</td>
-                  <td className="py-2 pr-3"><StatusBadge status={s.status} /></td>
-                  <td className="py-2 pr-3 text-slate-600">{s.attempts ?? 0}</td>
-                  <td className="py-2 text-xs text-slate-500 font-mono">{s.verify}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <button
+          className="flex items-center gap-2 text-sm font-bold text-slate-800"
+          onClick={() => setShowPrompt((v) => !v)}
+        >
+          <FileText size={16} /> Prompt original {showPrompt ? '▾' : '▸'}
+        </button>
+        {showPrompt && (
+          <div className="mt-3 space-y-3">
+            <pre className="max-h-72 overflow-auto rounded-lg bg-slate-50 p-4 text-sm text-slate-700 whitespace-pre-wrap">
+              {project.idea ?? '—'}
+            </pre>
+            <div className="flex flex-wrap gap-2 text-xs">
+              {[
+                ['scope', project.scope],
+                ['vertical', project.appType],
+                ['arch', project.arch],
+                ['front', project.stacks?.frontend],
+                ['back', project.stacks?.backend],
+              ]
+                .filter(([, v]) => v)
+                .map(([k, v]) => (
+                  <span key={k} className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600 ring-1 ring-slate-200">
+                    {k}: {v}
+                  </span>
+                ))}
+            </div>
+          </div>
+        )}
       </section>
+
+      {(project.scripts ?? []).length > 0 && (
+        <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
+          <h3 className="text-sm font-bold text-slate-800">Comandos</h3>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <tbody>
+                {project.scripts.map((s) => (
+                  <tr key={s.name} className="border-t border-slate-100 first:border-t-0">
+                    <td className="py-2 pr-4 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">
+                      npm run {s.name}
+                    </td>
+                    <td className="py-2 text-xs text-slate-500 font-mono">{s.command}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {testRun && (
+        <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
+          <button
+            className="flex items-center gap-2 text-sm font-bold text-slate-800"
+            onClick={() => setShowTestOut((v) => !v)}
+          >
+            <FlaskConical size={16} /> Output de tests {showTestOut ? '▾' : '▸'}
+          </button>
+          {showTestOut &&
+            (testOut?.log ? (
+              <>
+                <p className="mt-2 text-xs text-slate-500">
+                  {testOut.testRun?.command}
+                  {testOut.log.truncated ? ' · (últimas líneas — output truncado)' : ''}
+                </p>
+                <pre className="mt-2 max-h-96 overflow-auto rounded-lg bg-slate-900 p-4 text-xs text-slate-100 whitespace-pre-wrap">
+                  {testOut.log.lines.join('\n')}
+                </pre>
+              </>
+            ) : (
+              <p className="mt-2 text-xs text-slate-500">sin output todavía — el run está arrancando</p>
+            ))}
+        </section>
+      )}
 
       {project.report && (
         <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">

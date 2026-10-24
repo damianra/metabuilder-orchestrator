@@ -57,8 +57,10 @@ export function startDockerBuild(dir, slug) {
   writeBuildState(dir, state);
   const log = createWriteStream(join(dir, 'docker-build.log'), { flags: 'a' });
   const child = spawn('docker', ['build', '-t', tag, '.'], { cwd: dir });
-  child.stdout.pipe(log);
-  child.stderr.pipe(log);
+  // end:false — si stdout cierra antes que stderr, el pipe default
+  // haría end() y un chunk tardío de stderr sería write-after-end.
+  child.stdout.pipe(log, { end: false });
+  child.stderr.pipe(log, { end: false });
   child.on('close', (exitCode) => {
     log.end();
     writeBuildState(dir, {
@@ -74,6 +76,72 @@ export function startDockerBuild(dir, slug) {
 async function dockerAvailable() {
   return (await run('docker info', { timeoutMs: 15_000 })).ok;
 }
+
+const testStatePath = (dir) => join(dir, 'test-run.json');
+const readTestState = (dir) => readJson(testStatePath(dir));
+const writeTestState = (dir, state) => writeJson(testStatePath(dir), state);
+
+// Test run async: mismo patrón que startDockerBuild — log crudo a
+// test-run.log, estado a test-run.json. `commands` es una lista de
+// argvs que corren en serie; falla el primero → status failed.
+export function startTestRun(dir, commands, label) {
+  // pid por comando: el guard de "running" lo usa para detectar runs
+  // stale (dashboard muerto a mitad) y no bloquear para siempre.
+  const state = { status: 'running', command: label, pid: null, startedAt: new Date().toISOString() };
+  writeTestState(dir, state);
+  const log = createWriteStream(join(dir, 'test-run.log'), { flags: 'a' });
+  log.write(`\n━━ test run · ${label} · ${state.startedAt}\n`);
+  let finished = false;
+  const finish = (status, exitCode) => {
+    if (finished) return; // 'error' + 'close' pueden disparar ambos (ENOENT)
+    finished = true;
+    // El estado final se escribe cuando el log ya flusheó — así quien
+    // lee status 'done'/'failed' tiene el output completo en disco.
+    log.end(() =>
+      writeTestState(dir, { ...state, status, exitCode, finishedAt: new Date().toISOString() }),
+    );
+  };
+  const runNext = (i) => {
+    if (i >= commands.length) return finish('done', 0);
+    const [cmd, ...args] = commands[i];
+    log.write(`\n$ ${[cmd, ...args].join(' ')}\n`);
+    const child = spawn(cmd, args, { cwd: dir });
+    state.pid = child.pid;
+    writeTestState(dir, state);
+    // end:false — el stream lo cierra finish() explícitamente; con el
+    // default, el primer stdout que termina haría end() y los writes
+    // siguientes (stderr o el próximo comando) serían write-after-end.
+    child.stdout.pipe(log, { end: false });
+    child.stderr.pipe(log, { end: false });
+    child.on('close', (exitCode) => {
+      if (exitCode === 0) runNext(i + 1);
+      else finish('failed', exitCode > 0 ? exitCode : 1);
+    });
+    child.on('error', () => finish('failed', 1));
+  };
+  runNext(0);
+  return state;
+}
+
+// ¿Sigue vivo el proceso del test run? Un 'running' con pid muerto es
+// stale (dashboard caído a mitad) → no bloquea el relanzamiento.
+const pidAlive = (pid) => {
+  if (!pid) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// testRun enriquecido: un 'running' con pid muerto se reporta con
+// stale:true para que la UI no bloquee el botón de relanzar.
+const readTestRun = (dir) => {
+  const s = readTestState(dir);
+  if (s?.status === 'running' && !pidAlive(s.pid)) return { ...s, stale: true };
+  return s;
+};
 
 function projectSummary(dir, slug) {
   const plan = readJson(join(dir, 'plan.json'));
@@ -114,6 +182,7 @@ export function createDashboardApp({
   baseDir = config.rootDir,
   dockerProbe = dockerAvailable,
   startBuild = startDockerBuild,
+  startTest = startTestRun,
 } = {}) {
   const app = express();
   app.use(express.json({ limit: '64kb' }));
@@ -235,6 +304,15 @@ export function createDashboardApp({
     res.json({ jobId: job.id, jobStatus: job.status, log });
   });
 
+  // Log del último "Ejecutar tests" sobre la app (test-run.log).
+  app.get('/api/projects/:slug/test-log', (req, res) => {
+    const slug = validSlug(req, res);
+    if (!slug) return;
+    const dir = appDir(slug);
+    const log = tailFile(join(dir, 'test-run.log'), { lines: Number(req.query.tail) || 200 });
+    res.json({ testRun: readTestRun(dir), log });
+  });
+
   app.get('/api/projects/:slug', async (req, res) => {
     const slug = validSlug(req, res);
     if (!slug) return;
@@ -243,14 +321,18 @@ export function createDashboardApp({
     const summary = projectSummary(dir, slug);
     const runId = resolveRunId(slug, runsDir);
     const remote = (await run('git remote get-url origin', { cwd: dir, timeoutMs: 5000 })).stdout.trim();
+    const pkg = readJson(join(dir, 'package.json'));
     res.json({
       ...summary,
       idea: plan?.idea ?? null,
       planSteps: plan?.steps ?? [],
       validated: plan?.validated ?? false,
+      stacks: plan?.stacks ?? null,
+      scripts: Object.entries(pkg?.scripts ?? {}).map(([name, command]) => ({ name, command })),
       repoUrl: toWebUrl(remote || null),
       report: runId ? buildReport({ runId, runDir: join(runsDir, runId), projectDir: dir }) : null,
       dockerBuild: readBuildState(dir),
+      testRun: readTestRun(dir),
     });
   });
 
@@ -324,6 +406,26 @@ export function createDashboardApp({
       return res.status(202).json({ variant, build: startBuild(dir, slug) });
     }
 
+    if (action === 'test') {
+      // Corre los scripts de test de la app (npm test [+ test:e2e]) en
+      // background — el resultado queda en test-run.json/test-run.log.
+      const scripts = readJson(join(dir, 'package.json'))?.scripts ?? {};
+      if (!scripts.test) {
+        return res.status(400).json({ error: 'el proyecto no tiene script "test"' });
+      }
+      if (req.body.e2e && !scripts['test:e2e']) {
+        return res.status(400).json({ error: 'el proyecto no tiene script "test:e2e"' });
+      }
+      const current = readTestState(dir);
+      if (current?.status === 'running' && pidAlive(current.pid)) {
+        return res.status(409).json({ error: 'ya hay un test run en curso' });
+      }
+      const commands = [['npm', 'test']];
+      if (req.body.e2e) commands.push(['npm', 'run', 'test:e2e']);
+      const label = req.body.e2e ? 'npm test + npm run test:e2e' : 'npm test';
+      return res.status(202).json({ testRun: startTest(dir, commands, label) });
+    }
+
     if (action === 'open-repo') {
       const remote = (await run('git remote get-url origin', { cwd: dir, timeoutMs: 5000 })).stdout.trim();
       const url = toWebUrl(remote || null);
@@ -331,7 +433,7 @@ export function createDashboardApp({
       return res.json({ url });
     }
 
-    res.status(400).json({ error: 'action debe ser resume|dockerize|open-repo' });
+    res.status(400).json({ error: 'action debe ser resume|dockerize|test|open-repo' });
   });
 
   return app;

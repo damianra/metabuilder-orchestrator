@@ -6,3 +6,5 @@ build
 *.sqlite-journal
 test-results
 playwright-report
+docker-build.*
+test-run.*

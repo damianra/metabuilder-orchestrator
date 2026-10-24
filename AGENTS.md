@@ -163,7 +163,10 @@ fina sobre la infra existente:
 - `GET /api/projects` — resumen por app en `generated-apps/` (plan.json +
   status.json → status, pasos done/total, arch, hasDockerfile).
 - `GET /api/projects/:slug` — detalle: pasos, reporte del último run
-  (buildReport en vivo), repoUrl (ssh→https), docker-build.json.
+  (buildReport en vivo), repoUrl (ssh→https), docker-build.json,
+  plan.stacks, `scripts` del package.json de la app y test-run.json.
+- `GET /api/projects/:slug/test-log` — tail del `test-run.log` de la
+  app + el estado del último test run (mismo formato que el log de job).
 - `GET /api/jobs` — `{ jobs, worker }`: cada job enriquecido con
   `projectSlug` (derivado de `--name`/`--resume`/slug de la idea) y
   `progress` (node/step/totalSteps del `status.json` de la app);
@@ -181,7 +184,12 @@ fina sobre la infra existente:
   `--resume <slug> --yes`), `dockerize` (re-escribe Dockerfile según
   filesystem + `docker build` async si hay daemon → estado en
   docker-build.json, log en docker-build.log; sin daemon → skipped),
-  `open-repo` (devuelve la URL https del remote para que la UI la abra).
+  `test` (corre `npm test` [+ `npm run test:e2e` si `e2e:true`] async →
+  test-run.json/test-run.log en la app; 400 si faltan los scripts, 409
+  si hay un run en curso **con pid vivo** — un `running` con pid muerto
+  es stale (dashboard caído a mitad) y no bloquea el relanzamiento),
+  `open-repo` (devuelve la URL https del
+  remote para que la UI la abra).
 - `GET /api/options` — scopes/verticales/archs/stacks leídos de los
   registries; la UI alimenta sus pickers de acá (nada hardcodeado).
 
