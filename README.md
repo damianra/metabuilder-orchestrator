@@ -12,7 +12,7 @@ preflight → planner → validate ─┬─→ confirm → builder → verify �
 
 | Nodo | Qué hace |
 | --- | --- |
-| `preflight` | Chequea binarios + auth Devin (ACP) en paralelo, crea `generated-apps/<slug>/`, copia `AGENTS.md` y los **skeletons**: `app-skeleton` (Vite+React+Tailwind+Vitest+Playwright) si el vertical tiene frontend, `api-skeleton` (Express 5 + SQLite + uploads + auto-mount de routes) si el scope tiene backend, más el **overlay** del vertical (`schema.sql`/`seed-data.js`/`routes/`). `npm install` y el pre-warm de Playwright corren en background. |
+| `preflight` | Chequea binarios + auth Devin (ACP) en paralelo, crea `generated-apps/<slug>/`, copia `AGENTS.md` y los **skeletons**: `app-skeleton` (Vite+React+Tailwind+Vitest+Playwright) o `app-skeleton-next` (Next.js+React+Tailwind, según `--stack-frontend`) si el vertical tiene frontend, `api-skeleton` (Express 5 + SQLite + uploads + auto-mount de routes) si el scope tiene backend, más el **overlay** del vertical (`schema.sql`/`seed-data.js`/`routes/`). `npm install` y el pre-warm de Playwright corren en background. |
 | `planner` | Genera `plan.json`. Si `appType` es un **vertical conocido** (`landing`, `orders`, `blog`) usa un template determinístico (**sin llamar a Devin**); si es `custom`, una sesión Devin ACP lo escribe. Si ya existe `plan.json`, lo reutiliza (resume). |
 | `validate` | Validación 100% local del plan (schema, tipos de paso, `verify` ejecutable, requisitos por scope). |
 | `confirm` | `interrupt()` de LangGraph: muestra el plan y espera `[S/n]` — solo en TTY y sin `--yes`. |
@@ -97,7 +97,7 @@ La UI (mismo stack que las apps generadas) sirve para lanzar generaciones y supe
 Endpoints de la API:
 
 - `GET /api/projects` · `GET /api/projects/:slug` · `GET /api/jobs` · `GET /api/options` · `GET /api/health`
-- `POST /api/runs` — `{idea, scope?, appType?, name?, arch?, phone?, github?, ghpages?, verifyDocker?}` (valida enums/slug, encola con `--yes`)
+- `POST /api/runs` — `{idea, scope?, appType?, name?, arch?, stackFrontend?, stackBackend?, phone?, github?, ghpages?, verifyDocker?}` (valida enums/slug, encola con `--yes`)
 - `POST /api/projects/:slug/actions` — `{action: "resume"|"dockerize"|"open-repo"}`
 
 La API solo encola, no ejecuta — el worker procesa los jobs como siempre.
@@ -111,10 +111,12 @@ La API solo encola, no ejecuta — el worker procesa los jobs como siempre.
 | `--app-type` | `landing` \| `orders` \| `blog` \| `custom`. `landing`/`orders`/`blog` usan plan template (instantáneo); `custom` usa planner LLM. Default: inferido. |
 | `--name <slug>` | Nombre del proyecto/dir/repo. Default: slug de la idea (con sufijo si existe). |
 | `--arch <id>` | Patrón de arquitectura de los pasos backend: `flat` (default — toda la lógica en `server/routes/`), `mvc` (models + controllers), `layers` (controllers → services → repositories), `feature` (`server/modules/<entidad>/`). Solo aplica si el scope tiene backend; se declara en cada paso backend del plan y persiste en `plan.arch` (resume lo restaura). |
+| `--stack-frontend <id>` | Stack de UI: `vite-react` (default — Vite + React + Tailwind, build → `dist/`) o `nextjs` (Next.js 15 + React 19 + Tailwind, `output: 'export'` → `out/`). Persiste en `plan.stacks` (resume lo restaura). |
+| `--stack-backend <id>` | Stack de API: `express-sqlite` (único disponible). Idem `plan.stacks`. |
 | `--resume <dir\|slug>` | **Reanuda un run** desde su `plan.json` (ruta o nombre en `generated-apps/`). No requiere `--idea` ni `--scope`/`--app-type` (los restaura del plan). Los pasos `done` se saltan, los que no terminaron vuelven a `pending` y el pipeline retoma en el primero pendiente — si están todos hechos, salta a `finalVerify` + QA + finalize. Los flags de deploy (`--github`/`--ghpages`/`--no-push`) aplican igual. |
 | `-y` / `--yes` | No pedir confirmación del plan ni preguntas interactivas. |
 | `--github` | Tras aprobación del QA: crea el repo en GitHub (REST, `GITHUB_TOKEN`) y pushea `main`. **No** publica Pages por sí solo. |
-| `--ghpages` | Publica `dist/` en rama `gh-pages` y activa GitHub Pages (`https://<user>.github.io/<repo>/`). **Requiere `--github`**; solo aplica a scopes con frontend (`frontend`/`fullstack`). |
+| `--ghpages` | Publica el build del frontend (`dist/` Vite / `out/` Next) en rama `gh-pages` y activa GitHub Pages (`https://<user>.github.io/<repo>/`). **Requiere `--github`**; solo aplica a scopes con frontend (`frontend`/`fullstack`). Con `nextjs` el build se repite con `PAGES_BASE=/<repo>` para el basePath correcto. |
 | `--phone <num>` | WhatsApp del negocio en formato internacional sin `+` (ej. `5491155500000`). Se inyecta en los verticales: landing → botón flotante con mini-form → `wa.me`; orders → checkout del carrito con items+total → `wa.me`. Vacío → placeholder `5491100000000`; si en la app queda vacío, el botón no se renderiza. |
 | `--no-push` | Solo commit local, nada remoto. |
 | `--keep-going` | Continuar al siguiente paso aunque uno agote reintentos (en vez de `fail`). |
@@ -154,10 +156,10 @@ cp .env.example .env
 - `src/tools/` — `devin.js` (cliente ACP), `shell.js` (execa), `slug.js`, `github.js` (REST: repos, Pages, PRs), `install.js` (npm install lazy en background).
 - `src/prompts/` — builder/fixer/planner/plan-repair/reviewer/pr-validator.md.
 - `src/validate-pr.js` — sub-agente Devin que valida PRs del orquestador en un worktree aislado y comenta el veredicto (el `GITHUB_TOKEN` nunca llega al agente). `npm run validate:pr -- <N>` valida uno; sin args valida todos los abiertos pendientes (detecta por el head SHA embebido en el veredicto — un push nuevo lo marca pendiente otra vez); `--watch [min]` hace polling continuo.
-- `src/stacks/` — registry declarativo de stacks (`vite-react`, `express-sqlite`): skeleton, comandos de verify, requisitos de `validatePlan` y bullets que los prompts inyectan (`{{stackRules}}`) — una sola fuente para validator y planner.
+- `src/stacks/` — registry declarativo de stacks (`vite-react`, `nextjs`, `express-sqlite`): skeleton, `buildDir`, comandos de verify, requisitos de `validatePlan` y bullets que los prompts inyectan (`{{stackRules}}`) — una sola fuente para validator y planner. `--stack-frontend`/`--stack-backend` seleccionan; `plan.stacks` persiste para resume.
 - `src/arch/` — registry de patrones de arquitectura de backend (`flat`, `mvc`, `layers`, `feature`): `--arch <id>` selecciona; `applyArch` inyecta el patrón en los pasos backend, `plan.arch` persiste para resume, el AGENTS.md de la app generada recibe las reglas del patrón.
 - `src/verticals/` — paquetes por tipo de app (`landing`, `orders`, `blog`): `buildPlan()` determinístico; `orders` y `blog` traen overlay `api/` (schema + seed + routes) para el api-skeleton.
-- `src/templates/` — `AGENTS.md` (reglas UI + guía de diseño copiadas a cada app), `README.md`, `app-skeleton/` (frontend), `api-skeleton/` (backend Express+SQLite+uploads), `docker/` (Dockerfile por variante + `.dockerignore` + `nginx.conf` para frontend-only).
+- `src/templates/` — `AGENTS.md` (reglas UI + guía de diseño copiadas a cada app), `README.md`, `app-skeleton/` (frontend Vite), `app-skeleton-next/` (frontend Next.js export estático), `api-skeleton/` (backend Express+SQLite+uploads), `docker/` (Dockerfile por variante + `.dockerignore` + `nginx.conf` para frontend-only).
 - `src/verticals/<v>/api/` — overlay de backend por vertical (schema.sql + seed-data.js + routes/) que se copia sobre `server/`.
 - `generated-apps/` — apps generadas (**gitignored**, cada una con su repo git).
 - `runs/` — logs JSON-RPC de cada sesión Devin (**gitignored**). `npm run report -- <runId|slug>` los resume en markdown (pasos, intentos, duración por sesión, totales) y lo guarda en `runs/<runId>/report.md`; sin args lista los runs recientes.

@@ -7,6 +7,8 @@ const EMPTY = {
   scope: 'fullstack',
   appType: '',
   arch: 'flat',
+  stackFrontend: 'vite-react',
+  stackBackend: 'express-sqlite',
   name: '',
   phone: '',
   github: false,
@@ -28,6 +30,7 @@ export default function NewAppForm({ onEnqueued }) {
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const hasBackend = form.scope !== 'frontend';
+  const hasFrontend = form.scope !== 'backend';
   const canSubmit = form.idea.trim().length > 0 && !busy;
 
   const submit = async (e) => {
@@ -39,6 +42,8 @@ export default function NewAppForm({ onEnqueued }) {
       const body = { idea: form.idea.trim(), scope: form.scope };
       if (form.appType) body.appType = form.appType;
       if (hasBackend && form.arch) body.arch = form.arch;
+      if (hasFrontend && form.stackFrontend) body.stackFrontend = form.stackFrontend;
+      if (hasBackend && form.stackBackend) body.stackBackend = form.stackBackend;
       if (form.name.trim()) body.name = form.name.trim();
       if (form.phone.trim()) body.phone = form.phone.trim();
       if (form.github) body.github = true;
@@ -100,6 +105,33 @@ export default function NewAppForm({ onEnqueued }) {
             onChange={(e) => set('arch', e.target.value)}
           >
             {(options?.archs ?? []).map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={label} htmlFor="stackFrontend">Stack front</label>
+          <select
+            id="stackFrontend"
+            className={input}
+            value={form.stackFrontend}
+            disabled={!hasFrontend}
+            onChange={(e) => set('stackFrontend', e.target.value)}
+          >
+            {(options?.stacks?.frontend ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div>
+          <label className={label} htmlFor="stackBackend">Stack back</label>
+          <select
+            id="stackBackend"
+            className={input}
+            value={form.stackBackend}
+            disabled={!hasBackend}
+            onChange={(e) => set('stackBackend', e.target.value)}
+          >
+            {(options?.stacks?.backend ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>

@@ -1,7 +1,8 @@
 import viteReact from './vite-react.js';
 import expressSqlite from './express-sqlite.js';
+import nextjs from './nextjs.js';
 
-const STACKS = new Map([viteReact, expressSqlite].map((s) => [s.id, s]));
+const STACKS = new Map([viteReact, expressSqlite, nextjs].map((s) => [s.id, s]));
 
 export function getStack(id) {
   return STACKS.get(id) ?? null;
@@ -27,6 +28,32 @@ export function resolveStacks(scope, overrides = {}) {
     frontend: scope === 'backend' ? null : pick(overrides.frontend ?? 'vite-react'),
     backend: scope === 'frontend' ? null : pick(overrides.backend ?? 'express-sqlite'),
   };
+}
+
+// Fallback total si un override es inválido (ej. plan.json con typo
+// en stacks) — un nodo no debe crashear por eso: cae a los defaults.
+export function resolveStacksSafe(scope, overrides = {}) {
+  try {
+    return resolveStacks(scope, overrides);
+  } catch {
+    return resolveStacks(scope);
+  }
+}
+
+// Overrides a aplicar desde el estado del grafo: los stacks persistidos
+// en plan.json mandan (resume); si no, los flags/state del run.
+export const stackOverrides = (state) =>
+  state.plan?.stacks ?? {
+    frontend: state.stackFrontend || undefined,
+    backend: state.stackBackend || undefined,
+  };
+
+export const stacksFor = (state) => resolveStacksSafe(state.scope, stackOverrides(state));
+
+// Ids resueltos como objeto persistible en plan.stacks.
+export function stackIds(scope, overrides = {}) {
+  const s = resolveStacksSafe(scope, overrides);
+  return { frontend: s.frontend?.id ?? null, backend: s.backend?.id ?? null };
 }
 
 const active = (stacks) => [stacks.frontend, stacks.backend].filter(Boolean);
@@ -67,8 +94,8 @@ export function finalCheckCommands(stacks) {
  * y plan-repair — misma fuente que validatePlan, así el prompt nunca
  * diverge del validador.
  */
-export function stackRuleBullets(scope) {
-  const stacks = resolveStacks(scope);
+export function stackRuleBullets(scope, overrides = {}) {
+  const stacks = resolveStacks(scope, overrides);
   const parts = [
     stacks.frontend && `${stacks.frontend.label} (frontend)`,
     stacks.backend && `${stacks.backend.label} (backend)`,
@@ -79,7 +106,7 @@ export function stackRuleBullets(scope) {
   if (!stacks.backend)
     lines.push('- **scope `frontend`**: NO incluir pasos backend (nada de express/sqlite).');
   if (!stacks.frontend)
-    lines.push('- **scope `backend`**: NO incluir pasos frontend (nada de vite/tailwind/playwright).');
+    lines.push('- **scope `backend`**: NO incluir pasos frontend (nada de framework UI/tailwind/playwright).');
   for (const r of planRequirements(stacks)) {
     if (r.prompt) lines.push(`- ${r.prompt}`);
   }

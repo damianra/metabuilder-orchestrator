@@ -1,4 +1,4 @@
-import { planRequirements, resolveStacks } from '../stacks/index.js';
+import { planRequirements, resolveStacks, stacksFor } from '../stacks/index.js';
 import { log, writePlan } from './common.js';
 
 const STEP_TYPES = new Set(['frontend', 'backend', 'test', 'e2e', 'infra']);
@@ -70,7 +70,9 @@ export function validatePlan(plan, scope, { stacks, arch } = {}) {
 }
 
 export async function validatorNode(state) {
-  const errors = validatePlan(state.plan, state.scope);
+  // stacksFor: plan.stacks (persistido por planner/resume) > flags del
+  // run > defaults — un plan generado con Next se valida contra Next.
+  const errors = validatePlan(state.plan, state.scope, { stacks: stacksFor(state) });
 
   if (errors.length === 0) {
     const plan = structuredClone(state.plan);

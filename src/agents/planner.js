@@ -1,6 +1,6 @@
 import { config } from '../config.js';
 import { applyArch, archRuleBullet, resolveArch, resolveArchSafe } from '../arch/index.js';
-import { stackRuleBullets } from '../stacks/index.js';
+import { resolveStacks, stackIds, stackRuleBullets } from '../stacks/index.js';
 import { runDevinPrompt } from '../tools/devin.js';
 import { getVertical } from '../verticals/index.js';
 import { activity, log, loadPrompt, readPlan, runLogPath, writePlan } from './common.js';
@@ -32,6 +32,14 @@ export async function plannerNode(state) {
     // aplica si el plan no declara una (planes pre-arch → se parchean).
     const arch = resolveArchSafe(existing.arch, state.arch);
     applyArch(existing, arch);
+    // Stacks: idem — plan.stacks manda; planes pre-stacks reciben los
+    // del run actual (flags o defaults), sobre el scope del plan.
+    if (!existing.stacks) {
+      existing.stacks = stackIds(existing.scope ?? state.scope, {
+        frontend: state.stackFrontend ?? undefined,
+        backend: state.stackBackend ?? undefined,
+      });
+    }
     writePlan(state.projectDir, existing);
     const done = existing.steps.filter((s) => s.status === 'done').length;
     return {
@@ -56,16 +64,23 @@ export async function plannerNode(state) {
   }
 
   const vertical = getVertical(state.appType);
+  const stackOv = {
+    frontend: state.stackFrontend ?? undefined,
+    backend: state.stackBackend ?? undefined,
+  };
+  const stacks = resolveStacks(state.scope, stackOv);
   if (vertical) {
     const plan = vertical.buildPlan({
       projectName: state.projectSlug,
       idea: state.idea,
       scope: state.scope,
       phone: state.whatsappPhone,
+      stacks,
     });
     plan.scope = state.scope;
     plan.projectName = state.projectSlug;
     plan.idea = state.idea;
+    plan.stacks = { frontend: stacks.frontend?.id ?? null, backend: stacks.backend?.id ?? null };
     applyArch(plan, resolveArch(state.arch));
     writePlan(state.projectDir, plan);
     return {
@@ -84,7 +99,7 @@ export async function plannerNode(state) {
     idea: state.idea,
     scope: state.scope,
     slug: state.projectSlug,
-    stackRules: stackRuleBullets(state.scope),
+    stackRules: stackRuleBullets(state.scope, stackOv),
     archRules: archRuleBullet(arch),
   });
 
@@ -123,6 +138,7 @@ export async function plannerNode(state) {
   plan.scope = state.scope;
   plan.projectName = state.projectSlug;
   plan.idea = state.idea;
+  plan.stacks = { frontend: stacks.frontend?.id ?? null, backend: stacks.backend?.id ?? null };
   applyArch(plan, arch);
   writePlan(state.projectDir, plan);
 
@@ -143,7 +159,10 @@ export async function repairPlanNode(state) {
     errors,
     scope: state.scope,
     slug: state.projectSlug,
-    stackRules: stackRuleBullets(state.scope),
+    stackRules: stackRuleBullets(state.scope, {
+      frontend: state.plan?.stacks?.frontend ?? state.stackFrontend ?? undefined,
+      backend: state.plan?.stacks?.backend ?? state.stackBackend ?? undefined,
+    }),
   });
 
   const res = await runDevinPrompt({
@@ -160,9 +179,12 @@ export async function repairPlanNode(state) {
     /* queda null */
   }
 
-  // Devin reescribió plan.json — si perdió `arch` o las menciones en
-  // los pasos backend, se re-aplica el patrón del run.
-  if (plan) applyArch(plan, resolveArch(state.arch));
+  // Devin reescribió plan.json — si perdió `arch`/`stacks` o las
+  // menciones en los pasos backend, se re-aplica lo del run.
+  if (plan) {
+    applyArch(plan, resolveArch(state.arch));
+    plan.stacks ??= state.plan?.stacks;
+  }
 
   return {
     plan: plan ?? state.plan,

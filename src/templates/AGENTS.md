@@ -2,7 +2,7 @@
 
 Este proyecto fue generado por MetaBuilder. Stack esperado:
 
-- **Frontend**: React + Vite + Tailwind CSS (si aplica)
+- **Frontend**: {{frontendStack}} (si aplica)
 - **Backend**: Node.js + Express (si aplica)
 - **Base de datos**: SQLite (archivo local, sin servidores externos) (si aplica)
 - **Testing**: Vitest (unit/integración), Playwright + Chromium (E2E, si hay frontend)
@@ -48,7 +48,7 @@ Patrón estándar cuando la app pide contacto/pedidos por WhatsApp:
 ## Notas para el agente que escribe código
 
 - Mantener los pasos atómicos y autocontenidos: cada tarea debe dejar el proyecto en un estado compilable.
-- No commitear `node_modules/`, `.env`, `*.sqlite`, `server/uploads/*`, `dist/` ni `build/`.
+- No commitear `node_modules/`, `.env`, `*.sqlite`, `server/uploads/*`, `dist/`, `out/` ni `build/`.
 - Al escribir tests E2E con Playwright, cubrir explícitamente las reglas de UI de arriba.
 - **Backend (api-skeleton)**: cada `server/routes/<name>.js` que exporte un `Router` default se monta solo en `/api/<name>` — no tocar `server/app.js` ni `server/db.js`. Schema en `server/schema.sql` (idempotente), seed en `server/seed-data.js` (se inserta si la tabla está vacía).
 - **Imágenes**: `POST /api/uploads` con campo `file` (image/*, máx 5MB) → `{ url: "/uploads/<file>" }`. Guardar ese path en la entidad (ej. `cover_image`); el frontend lo consume tal cual (el proxy de Vite redirige `/uploads` al puerto 4000).

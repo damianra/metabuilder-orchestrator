@@ -11,9 +11,10 @@ const whatsappSpec = (phone) => ` Integración WhatsApp por wa.me link: un botó
 
 /**
  * Landing informativa de una página (frontend-only).
- * El skeleton Vite+React+Tailwind ya está copiado por preflight.
+ * El skeleton del stack frontend ya está copiado por preflight.
  */
-export function buildPlan({ projectName, idea, phone }) {
+export function buildPlan({ projectName, idea, phone, stacks }) {
+  const skel = stacks?.frontend?.skeletonDesc ?? 'Vite + React + Tailwind + Vitest + Playwright';
   return {
     projectName,
     scope: 'frontend',
@@ -23,7 +24,7 @@ export function buildPlan({ projectName, idea, phone }) {
       step(
         1,
         'infra',
-        'El proyecto ya contiene el skeleton base (Vite + React + Tailwind + Vitest + Playwright) instalado por el orquestador. Verificar que `npm run build` compila. NO reestructurar el proyecto ni tocar la config base; si falta node_modules ejecutar `npm install` primero.',
+        `El proyecto ya contiene el skeleton base (${skel}) instalado por el orquestador. Verificar que \`npm run build\` compila. NO reestructurar el proyecto ni tocar la config base; si falta node_modules ejecutar \`npm install\` primero.`,
         'npm run build',
       ),
       step(
@@ -40,13 +41,13 @@ export function buildPlan({ projectName, idea, phone }) {
       step(
         3,
         'test',
-        'Escribir tests con Vitest + Testing Library (jsdom ya configurado en vite.config.js) en src/__tests__/: las secciones principales renderizan, la lista del menú muestra fallback cuando los datos están vacíos, el botón de enviar del formulario está deshabilitado por defecto y se habilita solo con campos válidos.',
+        'Escribir tests con Vitest + Testing Library (jsdom ya configurado) en src/__tests__/: las secciones principales renderizan, la lista del menú muestra fallback cuando los datos están vacíos, el botón de enviar del formulario está deshabilitado por defecto y se habilita solo con campos válidos.',
         'npx vitest run',
       ),
       step(
         4,
         'e2e',
-        'Escribir specs Playwright en e2e/ (chromium; playwright.config.js ya tiene webServer sobre vite dev): la página carga sin errores de consola, hero/menú/contacto son visibles, el botón de enviar está deshabilitado hasta que el formulario tiene datos válidos, el botón flotante de WhatsApp despliega el mini-formulario y su envío genera un link wa.me con el número configurado, y no existe ningún <a> con href vacío ni icono sin destino. Instalar el browser con `npx playwright install chromium` si hace falta.',
+        'Escribir specs Playwright en e2e/ (chromium; playwright.config.js ya tiene webServer sobre el dev server): la página carga sin errores de consola, hero/menú/contacto son visibles, el botón de enviar está deshabilitado hasta que el formulario tiene datos válidos, el botón flotante de WhatsApp despliega el mini-formulario y su envío genera un link wa.me con el número configurado, y no existe ningún <a> con href vacío ni icono sin destino. Instalar el browser con `npx playwright install chromium` si hace falta.',
         'npm run test:e2e',
       ),
     ],

@@ -45,6 +45,10 @@ export const OrchestratorState = Annotation.Root({
   whatsappPhone: Annotation({ reducer: replace, default: () => '' }),
   // --verify-docker: en finalVerify corre `docker build` si hay daemon
   verifyDocker: Annotation({ reducer: replace, default: () => false }),
+  // --stack-frontend/--stack-backend: overrides del registry de stacks
+  // (src/stacks/). plan.stacks los persiste y manda en resume.
+  stackFrontend: Annotation({ reducer: replace, default: () => null }),
+  stackBackend: Annotation({ reducer: replace, default: () => null }),
 
   status: Annotation({ reducer: replace, default: () => 'pending' }),
   history: Annotation({ reducer: append, default: () => [] }),

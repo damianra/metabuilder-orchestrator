@@ -51,3 +51,44 @@ describe('writeDockerFiles', () => {
     }
   });
 });
+
+describe('outDir (vite dist vs next out)', () => {
+  it('outDir=out: Dockerfile fullstack copia out/ en vez de dist/', () => {
+    const variant = writeDockerFiles(tmp(), { frontend: true, backend: true, outDir: 'out' });
+    expect(variant).toBe('fullstack');
+    const df = readFileSync(join(dir, 'Dockerfile'), 'utf8');
+    expect(df).toContain('COPY --from=build /app/out ./out');
+    expect(df).not.toContain('./dist');
+  });
+
+  it('frontend-only con outDir=out también usa out/', () => {
+    writeDockerFiles(tmp(), { frontend: true, backend: false, outDir: 'out' });
+    const df = readFileSync(join(dir, 'Dockerfile'), 'utf8');
+    expect(df).toContain('/app/out');
+  });
+});
+
+describe('detectFrontend/detectOutDir/detectStackId', () => {
+  it('detecta vite por vite.config.js y next por next.config.*', async () => {
+    const { writeFileSync } = await import('node:fs');
+    const { detectFrontend, detectOutDir, detectStackId } = await import('../src/tools/docker.js');
+    const d1 = tmp();
+    writeFileSync(join(d1, 'vite.config.js'), 'export default {}');
+    expect(detectFrontend(d1)).toBe(true);
+    expect(detectOutDir(d1)).toBe('dist');
+    expect(detectStackId(d1)).toBe('vite-react');
+
+    const d2 = mkdtempSync(join(tmpdir(), 'mb-docker-next-'));
+    dir = d2;
+    writeFileSync(join(d2, 'next.config.mjs'), 'export default {}');
+    expect(detectFrontend(d2)).toBe(true);
+    expect(detectOutDir(d2)).toBe('out');
+    expect(detectStackId(d2)).toBe('nextjs');
+
+    const d3 = mkdtempSync(join(tmpdir(), 'mb-docker-none-'));
+    dir = d3;
+    expect(detectFrontend(d3)).toBe(false);
+    expect(detectOutDir(d3)).toBeNull();
+    expect(detectStackId(d3)).toBeNull();
+  });
+});

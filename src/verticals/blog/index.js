@@ -7,12 +7,13 @@ const step = (id, type, description, verify) => ({
   attempts: 0,
 });
 
-const infraFrontend = step(
-  1,
-  'infra',
-  'El proyecto ya contiene el skeleton base (Vite + React + Tailwind + Vitest + Playwright) instalado por el orquestador. Verificar que `npm run build` compila; si falta node_modules ejecutar `npm install` primero. NO reestructurar la config base.',
-  'npm run build',
-);
+const infraFrontend = (skel) =>
+  step(
+    1,
+    'infra',
+    `El proyecto ya contiene el skeleton base (${skel}) instalado por el orquestador. Verificar que \`npm run build\` compila; si falta node_modules ejecutar \`npm install\` primero. NO reestructurar la config base.`,
+    'npm run build',
+  );
 
 const e2eBlog = (n) =>
   step(
@@ -61,7 +62,8 @@ function frontendStep(n, { withApi, idea }) {
  * Blog con posts, categorías, tags y comentarios moderados.
  * scope: 'fullstack' | 'frontend' (mock) | 'backend' (solo API).
  */
-export function buildPlan({ projectName, idea, scope = 'fullstack' }) {
+export function buildPlan({ projectName, idea, scope = 'fullstack', stacks }) {
+  const skel = stacks?.frontend?.skeletonDesc ?? 'Vite + React + Tailwind + Vitest + Playwright';
   const steps = [];
 
   if (scope === 'backend') {
@@ -76,14 +78,14 @@ export function buildPlan({ projectName, idea, scope = 'fullstack' }) {
     );
   } else if (scope === 'frontend') {
     steps.push(
-      infraFrontend,
+      infraFrontend(skel),
       frontendStep(2, { withApi: false, idea }),
       vitestStep(3),
       e2eBlog(4),
     );
   } else {
     steps.push(
-      infraFrontend,
+      infraFrontend(skel),
       backendStep(2, idea),
       frontendStep(3, { withApi: true, idea }),
       vitestStep(4, ' Incluir tests de la API Express (endpoints de posts y comments).'),

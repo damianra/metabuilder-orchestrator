@@ -5,9 +5,9 @@ import { run } from '../tools/shell.js';
 import { checkDevinAuth } from '../tools/devin.js';
 import { startInstall } from '../tools/install.js';
 import { ensureProjectDir } from '../tools/slug.js';
-import { writeDockerFiles } from '../tools/docker.js';
+import { writeDockerFiles, detectFrontend, detectStackId, detectOutDir } from '../tools/docker.js';
 import { resolveArch, resolveArchSafe } from '../arch/index.js';
-import { resolveStacks } from '../stacks/index.js';
+import { resolveStacks, resolveStacksSafe } from '../stacks/index.js';
 import { getVertical } from '../verticals/index.js';
 import { activity, log, readPlan } from './common.js';
 
@@ -58,12 +58,14 @@ function prewarmPlaywright(dir) {
 }
 
 /**
- * AGENTS.md de la app generada: template base + sección de
- * arquitectura backend (src/arch/) cuando el scope tiene backend.
+ * AGENTS.md de la app generada: template base (con {{frontendStack}}
+ * = agentsStack del stack activo) + sección de arquitectura backend
+ * (src/arch/) cuando el scope tiene backend.
  * Es lo que el builder/fixer/reviewer leen como contrato del código.
  */
-function writeAgentsMd(dir, { withBackend, arch }) {
-  const base = readFileSync(join(config.templatesDir, 'AGENTS.md'), 'utf8');
+function writeAgentsMd(dir, { withBackend, arch, frontendStack }) {
+  const base = readFileSync(join(config.templatesDir, 'AGENTS.md'), 'utf8')
+    .replaceAll('{{frontendStack}}', frontendStack?.agentsStack ?? 'React + Vite + Tailwind CSS');
   const rules = withBackend ? `\n## Arquitectura backend\n\n${arch.agentsRules}\n` : '';
   writeFileSync(join(dir, 'AGENTS.md'), base + rules);
 }
@@ -103,23 +105,34 @@ export async function preflightNode(state) {
     const runDir = join(config.runsDir, runId);
     mkdirSync(join(runDir, 'prompts'), { recursive: true });
 
-    // El arch real vive en plan.json (state.arch es solo el flag,
-    // default flat — planner lo restaura recién después de este nodo).
-    let planArch;
+    // El arch/stacks reales viven en plan.json (state.arch/state.stack*
+    // son solo los flags — planner los restaura recién después).
+    let planArch, planStacks;
     try {
-      planArch = readPlan(dir)?.arch;
+      const saved = readPlan(dir);
+      planArch = saved?.arch;
+      planStacks = saved?.stacks;
     } catch {
-      /* plan.json ilegible: cae al flag */
+      /* plan.json ilegible: cae a los flags */
     }
+    const resumeStacks = resolveStacksSafe(state.scope, {
+      frontend:
+        planStacks?.frontend ??
+        state.stackFrontend ??
+        detectStackId(dir) ?? undefined,
+      backend: planStacks?.backend ?? state.stackBackend ?? undefined,
+    });
     writeAgentsMd(dir, {
       withBackend: existsSync(join(dir, 'server')),
       arch: resolveArchSafe(planArch, state.arch),
+      frontendStack: resumeStacks.frontend,
     });
     // Dockerfile determinístico según lo que ya tiene el dir
     // (apps pre-docker lo reciben al resumir).
     const dockerVariant = writeDockerFiles(dir, {
-      frontend: existsSync(join(dir, 'vite.config.js')),
+      frontend: detectFrontend(dir),
       backend: existsSync(join(dir, 'server')),
+      outDir: detectOutDir(dir),
     });
     history.push(log('preflight', `Dockerfile escrito (${dockerVariant})`));
     if (existsSync(join(dir, 'package.json'))) {
@@ -143,10 +156,19 @@ export async function preflightNode(state) {
   const runDir = join(config.runsDir, runId);
   mkdirSync(join(runDir, 'prompts'), { recursive: true });
 
-  writeAgentsMd(dir, { withBackend: state.scope !== 'frontend', arch });
+  const stacks = resolveStacks(state.scope, {
+    frontend: state.stackFrontend ?? undefined,
+    backend: state.stackBackend ?? undefined,
+  });
+  writeAgentsMd(dir, {
+    withBackend: state.scope !== 'frontend',
+    arch,
+    frontendStack: stacks.frontend,
+  });
   const dockerVariant = writeDockerFiles(dir, {
     frontend: state.scope !== 'backend',
     backend: state.scope !== 'frontend',
+    outDir: stacks.frontend?.buildDir ?? 'dist',
   });
   history.push(log('preflight', `Dockerfile escrito (${dockerVariant})`));
 
@@ -155,7 +177,6 @@ export async function preflightNode(state) {
   // el overlay del vertical aporta schema/seed/routes si existe.
   // (scaffold determinístico: el agente no gasta tiempo ni tokens en init).
   const vertical = getVertical(state.appType);
-  const stacks = resolveStacks(state.scope);
   const withFrontend = state.scope !== 'backend';
   const withBackend = state.scope !== 'frontend';
   const fresh = !existsSync(join(dir, 'package.json'));
@@ -183,8 +204,8 @@ export async function preflightNode(state) {
       }
     }
 
-    // Personalizar placeholders del skeleton
-    for (const f of ['package.json', 'index.html', 'src/App.jsx']) {
+    // Personalizar placeholders del skeleton (los de Next: app/).
+    for (const f of ['package.json', 'index.html', 'src/App.jsx', 'src/app/page.jsx', 'src/app/layout.jsx']) {
       const p = join(dir, f);
       if (existsSync(p)) {
         writeFileSync(p, readFileSync(p, 'utf8').replaceAll('__APP_NAME__', slug));
