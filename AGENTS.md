@@ -124,6 +124,19 @@ si fullstack — mergea deps/scripts). Si el vertical tiene
 encima de `server/`. También aplica a `appType: 'custom'` con backend.
 Secretos: `.env` (gitignored) leído via `dotenv/config` en
 `server/index.js`; `.env.example` commiteado declara las variables.
+`app.js` además sirve `<proyecto>/dist/` estático + SPA fallback GET
+cuando `dist/index.html` existe (deploy single-server y Docker).
+
+## Dockerfile por app
+
+Preflight escribe `Dockerfile` + `.dockerignore` en cada app generada
+(`src/tools/docker.js` + templates en `src/templates/docker/`):
+variante `backend` (node slim, solo `server/`), `fullstack` (build
+Vite → `dist/` servido por el mismo Express), `frontend` (build Vite →
+nginx:alpine + `nginx.conf` con SPA fallback). En `--resume` la
+variante se detecta por el filesystem (`vite.config.js`/`server/`).
+`--verify-docker` corre `docker build` en `finalVerify` solo si hay
+daemon (ausente → omite sin fallar).
 
 `npm install` corre **lazy en background** (`src/tools/install.js`:
 `startInstall`/`awaitInstall`/`isInstalling`, registry por projectDir) —

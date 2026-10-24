@@ -10,13 +10,14 @@ import { config } from './config.js';
 import { setQuiet } from './agents/common.js';
 
 function parseArgs(argv) {
-  const args = { noPush: false, keepGoing: false, yes: false, github: false, ghpages: false, quiet: false, verbose: false };
+  const args = { noPush: false, keepGoing: false, yes: false, github: false, ghpages: false, quiet: false, verbose: false, verifyDocker: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--no-push') args.noPush = true;
     else if (a === '--keep-going') args.keepGoing = true;
     else if (a === '--github') args.github = true;
     else if (a === '--ghpages') args.ghpages = true;
+    else if (a === '--verify-docker') args.verifyDocker = true;
     else if (a === '--quiet') args.quiet = true;
     else if (a === '--verbose') args.verbose = true;
     else if (a === '--yes' || a === '-y') args.yes = true;
@@ -163,6 +164,7 @@ const initial = {
   deployGithub: args.github,
   deployPages: args.ghpages,
   whatsappPhone: args.phone ?? '',
+  verifyDocker: Boolean(args.verifyDocker),
 };
 
 // Etiqueta legible por nodo (rol del agente que está corriendo).

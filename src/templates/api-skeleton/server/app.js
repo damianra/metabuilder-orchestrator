@@ -1,5 +1,5 @@
 import express from 'express';
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,7 +28,23 @@ export async function createApp() {
     app.use(`/api/${name}`, router);
   }
 
+  // Frontend build estático (fullstack): dist/ en la raíz del proyecto.
+  const distDir = join(here, '..', 'dist');
+  const indexHtml = join(distDir, 'index.html');
+  if (existsSync(indexHtml)) {
+    app.use(express.static(distDir));
+  }
+
   app.use('/api', (req, res) => res.status(404).json({ error: 'not found' }));
+
+  // SPA fallback: GETs que no son /api ni archivos estáticos → index.html.
+  if (existsSync(indexHtml)) {
+    app.use((req, res, next) => {
+      if (req.method !== 'GET') return next();
+      res.sendFile(indexHtml);
+    });
+  }
+
   // eslint-disable-next-line no-unused-vars -- Express reconoce el error handler por aridad
   app.use((err, req, res, next) => {
     console.error(err);
