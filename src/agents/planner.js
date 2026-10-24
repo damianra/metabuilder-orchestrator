@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { stackRuleBullets } from '../stacks/index.js';
 import { runDevinPrompt } from '../tools/devin.js';
 import { getVertical } from '../verticals/index.js';
 import { activity, log, loadPrompt, readPlan, runLogPath, writePlan } from './common.js';
@@ -75,6 +76,7 @@ export async function plannerNode(state) {
     idea: state.idea,
     scope: state.scope,
     slug: state.projectSlug,
+    stackRules: stackRuleBullets(state.scope),
   });
 
   const res = await runDevinPrompt({
@@ -131,6 +133,7 @@ export async function repairPlanNode(state) {
     errors,
     scope: state.scope,
     slug: state.projectSlug,
+    stackRules: stackRuleBullets(state.scope),
   });
 
   const res = await runDevinPrompt({

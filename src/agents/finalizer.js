@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
 import { awaitInstall, isInstalling } from '../tools/install.js';
+import { finalCheckCommands, resolveStacks } from '../stacks/index.js';
 import { getGitHubUser, createRepo, enablePages, getPages } from '../tools/github.js';
 import { activity, log, loadTemplate } from './common.js';
 
@@ -58,10 +59,7 @@ export async function finalVerifyNode(state) {
     };
   }
 
-  const hasFrontend = state.scope !== 'backend';
-  const cmds = hasFrontend
-    ? ['npm run build', 'npx vitest run', 'npm run test:e2e']
-    : ['npx vitest run'];
+  const cmds = finalCheckCommands(resolveStacks(state.scope));
 
   for (const cmd of cmds) {
     const res = await run(cmd, { cwd: state.projectDir, timeoutMs: config.verifyTimeoutMs });
@@ -94,24 +92,20 @@ export async function finalVerifyNode(state) {
  * refleje el scope final, sin depender del agente.
  */
 function writeReadme(state) {
-  const hasFrontend = state.scope !== 'backend';
-  const hasBackend = state.scope !== 'frontend';
+  const { frontend, backend } = resolveStacks(state.scope);
 
   const stack = [
-    hasFrontend && '- React + Vite + Tailwind CSS (frontend)',
-    hasBackend && '- Node.js + Express + SQLite (backend)',
-    '- Vitest (tests) + Playwright + Chromium (E2E)',
+    frontend?.readme.stack,
+    backend?.readme.stack,
+    `- Vitest (tests)${frontend?.readme.e2eSuffix ?? ''}`,
   ].filter(Boolean).join('\n');
 
-  const devCommands = [
-    hasFrontend && 'npm run dev        # frontend en http://localhost:5173',
-    hasBackend && 'npm run api        # API Express en http://localhost:4000',
-  ].filter(Boolean).join('\n');
+  const devCommands = [frontend?.readme.dev, backend?.readme.dev].filter(Boolean).join('\n');
 
   const testCommands = [
     'npm test           # suite Vitest',
-    hasFrontend && 'npm run test:e2e   # E2E Playwright (Chromium)',
-  ].filter(Boolean).join('\n');
+    ...(frontend?.readme.tests ?? []),
+  ].join('\n');
 
   const md = loadTemplate('README.md', {
     name: state.projectSlug,

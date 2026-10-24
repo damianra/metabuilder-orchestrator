@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { finalCheckCommands, resolveStacks } from '../stacks/index.js';
 import { runDevinPrompt } from '../tools/devin.js';
 import { activity, log, loadPrompt, runLogPath, writePlan } from './common.js';
 
@@ -26,7 +27,9 @@ export async function fixerNode(state) {
     description: isFinal
       ? 'Verificación final del proyecto completo (build + tests).'
       : (step?.description ?? ''),
-    verify: isFinal ? 'npm run build && npx vitest run (+ npm run test:e2e si existe)' : (step?.verify ?? ''),
+    verify: isFinal
+      ? finalCheckCommands(resolveStacks(state.scope)).join(' && ')
+      : (step?.verify ?? ''),
     error: (state.lastOutput || state.lastError || 'sin salida').slice(-3500),
   });
 

@@ -1,3 +1,4 @@
+import { planRequirements, resolveStacks } from '../stacks/index.js';
 import { log, writePlan } from './common.js';
 
 const STEP_TYPES = new Set(['frontend', 'backend', 'test', 'e2e', 'infra']);
@@ -11,8 +12,10 @@ const mentions = (step, ...words) => {
 
 /**
  * Validación 100% local del plan.json — no consume Devin.
+ * Las reglas de stack (keywords de init/e2e/test/UI) vienen del
+ * registry en src/stacks/ — `stacks` inyectable para tests.
  */
-export function validatePlan(plan, scope) {
+export function validatePlan(plan, scope, stacks = resolveStacks(scope)) {
   const errors = [];
 
   if (!plan || typeof plan !== 'object') return ['plan.json ausente o inválido'];
@@ -39,23 +42,17 @@ export function validatePlan(plan, scope) {
   if (!hasBackend(scope) && steps.some((s) => s.type === 'backend'))
     errors.push('scope frontend no debe incluir pasos backend');
 
-  // Requisitos por scope
-  if (hasFrontend(scope)) {
-    if (!steps.some((s) => mentions(s, 'vite')))
-      errors.push('falta paso de init Vite+React+Tailwind');
-    if (!steps.some((s) => s.type === 'e2e' && mentions(s, 'playwright')))
-      errors.push('falta paso e2e con Playwright');
-    if (steps.some((s) => s.type === 'frontend' && !mentions(s, 'ui')))
-      errors.push('los pasos frontend deben mencionar las reglas de UI');
+  // Requisitos declarativos de los stacks activos (src/stacks/).
+  for (const req of planRequirements(stacks)) {
+    if (req.check === 'some') {
+      const ok = steps.some(
+        (s) => (req.type === null || s.type === req.type) && mentions(s, ...req.keywords),
+      );
+      if (!ok) errors.push(req.error);
+    } else if (steps.some((s) => s.type === req.type && !mentions(s, ...req.keywords))) {
+      errors.push(req.error);
+    }
   }
-  if (hasBackend(scope)) {
-    if (!steps.some((s) => mentions(s, 'express')))
-      errors.push('falta paso de Express');
-    if (!steps.some((s) => mentions(s, 'sqlite')))
-      errors.push('falta paso de SQLite');
-  }
-  if (!steps.some((s) => s.type === 'test' && mentions(s, 'vitest')))
-    errors.push('falta paso test con Vitest');
 
   return errors;
 }

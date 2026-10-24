@@ -71,6 +71,20 @@ playwright, vitest, express, sqlite, "reglas de UI").
   comments (POST → `pending`, GET solo aprobados). Mismo paso backend
   generativo-lite.
 
+## Registry de stacks
+
+`src/stacks/` declara cada stack como datos (un archivo por stack +
+`index.js` con el registro): `id`, `kind` (frontend|backend), `label`,
+`skeletonDir`, `verify` (comandos de finalVerify), `requirements`
+(reglas declarativas de validatePlan con `error` + `prompt`
+equivalente) y fragmentos `readme`. `resolveStacks(scope, overrides)`
+devuelve `{ frontend, backend }`; `planRequirements` los mergea
+deduplicando; `finalCheckCommands` arma la batería de verify;
+`stackRuleBullets(scope)` genera las reglas que los prompts
+`planner.md`/`plan-repair.md` inyectan via `{{stackRules}}` — el
+prompt nunca diverge del validador porque leen la misma fuente.
+Agregar un stack = nuevo archivo + entrada en el `Map` de `index.js`.
+
 ## Skeleton de app
 
 `src/templates/app-skeleton/` es un proyecto Vite+React+Tailwind+Vitest+
