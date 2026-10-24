@@ -135,6 +135,14 @@ const pidAlive = (pid) => {
   }
 };
 
+// testRun enriquecido: un 'running' con pid muerto se reporta con
+// stale:true para que la UI no bloquee el botón de relanzar.
+const readTestRun = (dir) => {
+  const s = readTestState(dir);
+  if (s?.status === 'running' && !pidAlive(s.pid)) return { ...s, stale: true };
+  return s;
+};
+
 function projectSummary(dir, slug) {
   const plan = readJson(join(dir, 'plan.json'));
   const status = readJson(join(dir, 'status.json'));
@@ -302,7 +310,7 @@ export function createDashboardApp({
     if (!slug) return;
     const dir = appDir(slug);
     const log = tailFile(join(dir, 'test-run.log'), { lines: Number(req.query.tail) || 200 });
-    res.json({ testRun: readTestState(dir), log });
+    res.json({ testRun: readTestRun(dir), log });
   });
 
   app.get('/api/projects/:slug', async (req, res) => {
@@ -324,7 +332,7 @@ export function createDashboardApp({
       repoUrl: toWebUrl(remote || null),
       report: runId ? buildReport({ runId, runDir: join(runsDir, runId), projectDir: dir }) : null,
       dockerBuild: readBuildState(dir),
-      testRun: readTestState(dir),
+      testRun: readTestRun(dir),
     });
   });
 

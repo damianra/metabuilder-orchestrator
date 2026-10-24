@@ -80,7 +80,8 @@ export default function ProjectDetail({ slug, onChanged }) {
 
   const build = project.dockerBuild;
   const testRun = project.testRun;
-  const testRunning = testRun?.status === 'running';
+  // 'running' + stale = proceso muerto (dashboard caído) → se puede relanzar.
+  const testRunning = testRun?.status === 'running' && !testRun.stale;
   const hasTestScript = (project.scripts ?? []).some((s) => s.name === 'test');
   const hasE2eScript = (project.scripts ?? []).some((s) => s.name === 'test:e2e');
   // done = pipeline terminado; no-plan = sin plan.json (resume imposible).
@@ -179,7 +180,7 @@ export default function ProjectDetail({ slug, onChanged }) {
         )}
         {testRun && (
           <p className="mt-2 text-xs text-slate-500">
-            último test run: <b>{testRun.status}</b>
+            último test run: <b>{testRun.stale ? `${testRun.status} (interrumpido)` : testRun.status}</b>
             {testRun.command ? ` (${testRun.command})` : ''}
             {testRun.exitCode !== undefined ? ` exit ${testRun.exitCode}` : ''}
           </p>

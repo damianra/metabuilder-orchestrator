@@ -321,7 +321,9 @@ describe('detalle enriquecido + acción test', () => {
     expect((await post('/api/projects/app-uno/actions', { action: 'test', e2e: true })).status).toBe(400);
 
     // 'running' con pid muerto/ausente = stale (dashboard caído) → no bloquea
+    // y el detalle lo reporta con stale:true para que la UI lo sepa.
     writeJson(join(dir, 'test-run.json'), { status: 'running', pid: 999999 });
+    expect((await api('/api/projects/app-uno')).body.testRun.stale).toBe(true);
     expect((await post('/api/projects/app-uno/actions', { action: 'test' })).status).toBe(202);
     expect(startTestCalls).toHaveLength(1);
 
