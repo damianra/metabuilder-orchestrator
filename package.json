@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node src/index.js",
     "build:app": "node src/index.js",
+    "test": "vitest run",
     "validate:pr": "node src/validate-pr.js"
   },
   "repository": {
@@ -30,5 +31,8 @@
     "@langchain/langgraph": "^1.5.2",
     "dotenv": "^18.0.9",
     "execa": "^10.2.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
   }
 }

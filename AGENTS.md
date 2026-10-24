@@ -17,6 +17,7 @@ npm start -- --idea "..." --scope fullstack|frontend|backend \
 Verificación rápida de tools sin tocar el grafo:
 
 ```bash
+npm test   # suite Vitest del orquestador (tests/)
 node -e "import('./src/tools/devin.js').then(m=>m.checkDevinAuth().then(console.log))"
 node -e "import('./src/tools/shell.js').then(m=>m.run('echo ok',{cwd:'/tmp'}).then(console.log))"
 ```
