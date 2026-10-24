@@ -54,7 +54,7 @@ Ordenado por impacto/esfuerzo. **El #1 es la recomendación actual.**
 | ~~4~~ | ~~**Nuevo vertical**~~ (C) ✅ | Implementado **`blog`**: posts/categories/tags(N:M)/comments moderados — overlay `api/` con routes posts (`?page&limit&q&category&tag` + `/:slug`), categories, tags, comments (POST → pending). 3 scopes validados, inferAppType con keywords blog/artículo/noticias/posts, overlay verificado en vivo | Catálogo ampliado sin tocar el grafo |
 | ~~5~~ | ~~**Pool de procesos `devin acp`**~~ (H) ✅ | Implementado — ver sección Completados | Medio: performance, sin cambio semántico |
 | ~~6~~ | ~~**Automatizar `validate:pr`**~~ (I) ✅ | Implementado vía auto-descubrimiento local — ver sección Completados | Medio: conveniencia |
-| **7** | **Cola de jobs (`jobs.json` + worker)** (J) | Sigue siendo la decisión pendiente original — formalizar serialización de runs (ver sección abajo) | Medio — **requiere decisión previa** |
+| ~~7~~ | ~~**Cola de jobs (`jobs/` + worker)**~~ (J) ✅ | Implementado austero — ver sección Completados y decisión cerrada abajo | Medio |
 | **8** | **Retry de `enablePages` ante 500** (D residual) | `finalize` ya cae a `getPages` tras fallo (409/500 tratados como OK) — falta solo reintentar el POST ante 500 transitorio | Bajo: pulido chico |
 | **9** | **Reporte de run** (L) | `runs/<runId>/` guarda JSON-RPC crudo; un resumen por run (pasos, reintentos, duración por sesión) ayuda a iterar prompts y detectar patrones de fallo | Bajo-medio |
 | **10** | **Convención `.env` en api-skeleton** (K) | Una app `custom` que necesite API keys no tiene convención (dotenv + `.env.example` en el template) | Bajo |
@@ -68,6 +68,7 @@ Ordenado por impacto/esfuerzo. **El #1 es la recomendación actual.**
 - ~~G~~ **CI `npm test` en PRs** ✅ — `.github/workflows/test.yml` (ubuntu, Node 22, `npm ci` + `npm test`) en `pull_request` y push a `main`.
 - ~~C~~ **Vertical `blog`** ✅ — `src/verticals/blog/`: posts/categories/tags(N:M)/comments moderados, overlay api/ verificado en vivo, `inferAppType` con keywords, 3 scopes. También: log de `duración total` al final del pipeline + `elapsedMs` en status.json.
 - ~~I~~ **Automatizar `validate:pr`** ✅ — auto-descubrimiento local: `npm run validate:pr` sin args lista PRs abiertos y valida los pendientes (`listOpenPRs` + `getPRComments`); el veredicto embebe `<!-- validate-pr head:<sha7> -->` así un push nuevo marca el PR pendiente otra vez; `--watch [min]` = polling continuo. GitHub Action descartado (el binario `devin` no es instalable en runners y meter `windsurf_api_key` en secrets de CI es exposición innecesaria); hook post-push no existe en git.
+- ~~J~~ **Cola de jobs** ✅ — `src/queue.js` + `npm run queue`/`npm run worker`: un archivo por job en `jobs/` (cero locking — add y worker nunca escriben el mismo archivo), ids por create-exclusivo, spawn `node src/index.js` por job con stdio heredado, escritura atómica tmp+rename, jobs `running` al arrancar → `failed` + nota `--resume`.
 - ~~H~~ **Pool de procesos `devin acp`** ✅ — `warmClient` en `tools/devin.js` mantiene un proceso tibio a nivel módulo: initialize+authenticate una sola vez por run, `session/new` por paso (aislamiento intacto), `setLog` rota el run log. Proceso muerto → descarte y respawn automático; hook `exit` mata al hijo con el CLI. `reused` expuesto en el resultado + `acpPoolStats()` para tests.
 
 ## Ejecución asincrónica sin saturar (análisis)
@@ -81,7 +82,7 @@ Restricciones físicas:
 Lo que ya tenemos:
 
 - Dentro de un run, las sesiones son **estrictamente secuenciales** (el grafo es un pipeline): nunca hay 2 clientes Devin por run.
-- `plan.json` persiste status/attempts por paso (datos para reanudar), pero **la reanudación no está cableada**: el checkpointer es `MemorySaver` (muere con el proceso) y no hay flag de re-entrada → candidato F.
+- `plan.json` persiste status/attempts por paso y `--resume <dir>` ya reanuda (ver Completados).
 
 ### Posibilidades
 
@@ -126,5 +127,9 @@ Devin que el límite configurado.
   (~1.5 min/run) no justifica la complejidad. Throughput se gana con
   `MAX_CONCURRENT_DEVIN_SESSIONS>1` entre runs (dirs distintos, cero
   colisión).
-- ¿Worker con cola (`jobs.json`) o mantener invocación directa (ya
-  serializada por el semáforo)? — única decisión abierta.
+- ~~Worker con cola (`jobs.json`) o mantener invocación directa~~ →
+  **decidido** (2026-10-24): cola austera implementada (`src/queue.js` —
+  un archivo por job en `jobs/`, `npm run queue` + `npm run worker`).
+  La invocación directa sigue siendo válida; la cola es opt-in para
+  batch desatendido. Sin daemon ni locking: el worker es el único que
+  muta estados de jobs en vuelo.
