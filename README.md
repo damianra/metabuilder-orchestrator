@@ -92,7 +92,7 @@ cp .env.example .env
 
 ## Requisitos
 
-- Node.js >= 20, npm, git.
+- Node.js >= 22, npm, git.
 - **Devin CLI** autenticado vía cuenta Windsurf: `~/.local/share/devin/credentials.toml` con `windsurf_api_key` (lo escribe Devin Desktop). El orquestador usa `devin acp` (mismo canal que Devin Desktop) — **`devin -p`/`auth status` reportan "Not logged in" con estas credenciales y NO son la vía**.
 - Playwright Chromium: se instala una vez en `~/.cache/ms-playwright` (compartido entre apps).
 
@@ -110,7 +110,7 @@ cp .env.example .env
 - `generated-apps/` — apps generadas (**gitignored**, cada una con su repo git).
 - `runs/` — logs JSON-RPC de cada sesión Devin (**gitignored**).
 - `tests/` — suite Vitest del orquestador (`npm test`): validator+verticales, slug, shell, install lazy, semáforo Devin, copyApiSkeleton, ghAuthArgs/sanitize/commit idempotente, parseo del reviewer, serialización ACP (stub `devin` en `tests/fixtures/`), resume. Corre en CI (`.github/workflows/test.yml`) en cada PR y push a main.
-- `.github/workflows/test.yml` — CI: `npm test` en PRs y main (Node 20, sin Devin ni secrets).
+- `.github/workflows/test.yml` — CI: `npm test` en PRs y main (Node 22, sin Devin ni secrets).
 - `ROADMAP.md` — candidatos y próximos pasos (api-skeleton, tests del orquestador, ejecución asincrónica).
 
 ## Qué contiene cada app generada
