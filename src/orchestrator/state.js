@@ -11,6 +11,8 @@ export const OrchestratorState = Annotation.Root({
   idea: Annotation({ reducer: replace, default: () => '' }),
   scope: Annotation({ reducer: replace, default: () => 'fullstack' }),
   appType: Annotation({ reducer: replace, default: () => 'custom' }),
+  // Patrón de arquitectura de backend (src/arch/) — aplica a los pasos backend
+  arch: Annotation({ reducer: replace, default: () => 'flat' }),
 
   // Proyecto generado
   projectSlug: Annotation({ reducer: replace, default: () => '' }),

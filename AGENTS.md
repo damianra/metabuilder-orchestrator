@@ -11,6 +11,7 @@ básicas (landings, pedidos, blogs) delegando la escritura de código a
 npm install
 npm start -- --idea "..." --scope fullstack|frontend|backend \
             --app-type landing|orders|blog|custom [--name slug] \
+            [--arch flat|mvc|layers|feature] \
             [--github] [--no-push] [--keep-going] [-y|--yes]
 
 # Reanudar un run interrumpido desde su plan.json (ruta o slug):
@@ -70,6 +71,23 @@ playwright, vitest, express, sqlite, "reglas de UI").
   posts (`?page&limit&q&category&tag` + `/:slug`), categories, tags y
   comments (POST → `pending`, GET solo aprobados). Mismo paso backend
   generativo-lite.
+
+## Patrones de arquitectura de backend
+
+`src/arch/` declara cada patrón como datos (`flat`, `mvc`, `layers`,
+`feature` + `index.js` con `resolveArch`/`applyArch`/`archRuleBullet`).
+Flag `--arch <id>` (o pregunta interactiva cuando el scope tiene
+backend); `state.arch` → `plan.arch` persiste (resume lo restaura).
+`applyArch(plan, arch)` garantiza que cada paso `backend` declare su
+patrón: respeta descripciones que ya dicen "arquitectura &lt;id&gt;" y
+appenda el bloque canónico a las que no — funciona igual para planes
+de verticales y planes escritos por Devin (custom). El validator exige
+la mención cuando `plan.arch` está declarado. Invariante:
+`server/routes/<name>.js` siempre existe como punto de montaje — lo
+que cambia es cuánta lógica vive ahí (flat = todo; mvc/layers/feature
+= routes finos que delegan a controllers/models/services/modules).
+Preflight appenda `agentsRules` del patrón al AGENTS.md de la app
+generada — es el contrato que builder/fixer/reviewer leen.
 
 ## Registry de stacks
 

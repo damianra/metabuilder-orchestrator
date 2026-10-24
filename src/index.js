@@ -3,6 +3,7 @@ import { createInterface } from 'node:readline/promises';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildGraph } from './orchestrator/graph.js';
+import { listArchs } from './arch/index.js';
 import { getVertical, inferAppType, listVerticals } from './verticals/index.js';
 import { resolveResumeDir } from './tools/slug.js';
 import { config } from './config.js';
@@ -28,7 +29,8 @@ function parseArgs(argv) {
 }
 
 function printPlan(plan) {
-  console.log(`\n=== Plan: ${plan.projectName} (${plan.appType}, scope ${plan.scope}) ===`);
+  const arch = plan.arch ? `, arch ${plan.arch}` : '';
+  console.log(`\n=== Plan: ${plan.projectName} (${plan.appType}, scope ${plan.scope}${arch}) ===`);
   for (const s of plan.steps) {
     const status = s.status && s.status !== 'pending' ? ` [${s.status}]` : '';
     console.log(`  ${s.id}. [${s.type}]${status} ${s.description.slice(0, 110)}${s.description.length > 110 ? '…' : ''}`);
@@ -87,6 +89,10 @@ async function collectArgs(args) {
         args.appType = t || inferred;
       }
     }
+    if (!args.arch && args.scope !== 'frontend' && interactive) {
+      const a = await asker.ask(`Arquitectura backend [${listArchs().join('/')}] (flat): `);
+      args.arch = listArchs().includes(a) ? a : 'flat';
+    }
     if (!args.name && interactive) {
       args.name = await asker.ask('Nombre del proyecto (slug, vacío = derivar de la idea): ');
     }
@@ -132,6 +138,10 @@ if (!resumeDir && !getVertical(args.appType) && args.appType !== 'custom') {
   console.error(`--app-type desconocido "${args.appType}" (usá ${listVerticals().join('|')} o custom)`);
   process.exit(2);
 }
+if (args.arch && !listArchs().includes(args.arch)) {
+  console.error(`--arch desconocida "${args.arch}" (usá ${listArchs().join('|')})`);
+  process.exit(2);
+}
 if (args.ghpages && !args.github) {
   console.error('--ghpages requiere --github (crea el repo antes de publicar Pages)');
   process.exit(2);
@@ -144,6 +154,7 @@ const initial = {
   idea: args.idea ?? '',
   scope: args.scope ?? 'fullstack',
   appType: args.appType ?? 'custom',
+  arch: args.arch ?? 'flat',
   resumeDir,
   projectSlug: args.name ?? '',
   noPush: args.noPush,

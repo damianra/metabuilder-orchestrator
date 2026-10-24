@@ -122,7 +122,7 @@ describe('validatePlan vía registry', () => {
         ],
       },
     };
-    const errs = validatePlan(fullPlan(OK_STEPS), 'backend', custom);
+    const errs = validatePlan(fullPlan(OK_STEPS), 'backend', { stacks: custom });
     // El stack custom aporta su propia regla (además del error de
     // scope por los pasos frontend/e2e del plan de prueba).
     expect(errs).toContain('falta paso de Fastify');

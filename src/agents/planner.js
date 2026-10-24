@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { applyArch, archRuleBullet, resolveArch, resolveArchSafe } from '../arch/index.js';
 import { stackRuleBullets } from '../stacks/index.js';
 import { runDevinPrompt } from '../tools/devin.js';
 import { getVertical } from '../verticals/index.js';
@@ -27,6 +28,10 @@ export async function plannerNode(state) {
     // --idea explícita tiene prioridad sobre la guardada en el plan.
     existing.idea = state.idea || existing.idea || '';
     existing.projectName = state.projectSlug || existing.projectName;
+    // Arquitectura: la del plan guardado manda; --arch explícita solo
+    // aplica si el plan no declara una (planes pre-arch → se parchean).
+    const arch = resolveArchSafe(existing.arch, state.arch);
+    applyArch(existing, arch);
     writePlan(state.projectDir, existing);
     const done = existing.steps.filter((s) => s.status === 'done').length;
     return {
@@ -38,6 +43,7 @@ export async function plannerNode(state) {
       stepRetries: 0,
       verifying: 'step',
       lastError: null,
+      arch: arch.id,
       status: 'planned',
       history: [
         log(
@@ -60,6 +66,7 @@ export async function plannerNode(state) {
     plan.scope = state.scope;
     plan.projectName = state.projectSlug;
     plan.idea = state.idea;
+    applyArch(plan, resolveArch(state.arch));
     writePlan(state.projectDir, plan);
     return {
       plan,
@@ -72,11 +79,13 @@ export async function plannerNode(state) {
   }
 
   // ---- appType custom → planner LLM ----
+  const arch = resolveArch(state.arch);
   const prompt = loadPrompt('planner', {
     idea: state.idea,
     scope: state.scope,
     slug: state.projectSlug,
     stackRules: stackRuleBullets(state.scope),
+    archRules: archRuleBullet(arch),
   });
 
   const res = await runDevinPrompt({
@@ -114,6 +123,7 @@ export async function plannerNode(state) {
   plan.scope = state.scope;
   plan.projectName = state.projectSlug;
   plan.idea = state.idea;
+  applyArch(plan, arch);
   writePlan(state.projectDir, plan);
 
   return {
@@ -149,6 +159,10 @@ export async function repairPlanNode(state) {
   } catch {
     /* queda null */
   }
+
+  // Devin reescribió plan.json — si perdió `arch` o las menciones en
+  // los pasos backend, se re-aplica el patrón del run.
+  if (plan) applyArch(plan, resolveArch(state.arch));
 
   return {
     plan: plan ?? state.plan,

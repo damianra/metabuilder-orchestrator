@@ -13,9 +13,14 @@ const mentions = (step, ...words) => {
 /**
  * Validación 100% local del plan.json — no consume Devin.
  * Las reglas de stack (keywords de init/e2e/test/UI) vienen del
- * registry en src/stacks/ — `stacks` inyectable para tests.
+ * registry en src/stacks/. `options` inyectable para tests:
+ * `stacks` (definiciones) y `arch` (id de patrón — si no se pasa,
+ * se toma de plan.arch; si el plan tampoco lo declara, el check
+ * de arquitectura se salta: plan viejo pre-feature).
  */
-export function validatePlan(plan, scope, stacks = resolveStacks(scope)) {
+export function validatePlan(plan, scope, { stacks, arch } = {}) {
+  stacks ??= resolveStacks(scope);
+  const archId = arch ?? plan?.arch ?? null;
   const errors = [];
 
   if (!plan || typeof plan !== 'object') return ['plan.json ausente o inválido'];
@@ -52,6 +57,13 @@ export function validatePlan(plan, scope, stacks = resolveStacks(scope)) {
     } else if (steps.some((s) => s.type === req.type && !mentions(s, ...req.keywords))) {
       errors.push(req.error);
     }
+  }
+
+  // Patrón de arquitectura: si el plan lo declara, cada paso backend
+  // debe mencionarlo (planner lo inyecta via applyArch; el check cubre
+  // planes escritos a mano o por Devin con arch declarado).
+  if (archId && steps.some((s) => s.type === 'backend' && !mentions(s, 'arquitectura', archId))) {
+    errors.push(`los pasos backend deben declarar la arquitectura "${archId}"`);
   }
 
   return errors;
