@@ -24,6 +24,16 @@ preflight → planner → validate ─┬─→ confirm → builder → verify �
 | `finalize` | Genera `README.md` (descripción + cómo levantarlo + crédito a MetaBuilder), `git init/commit`, y push según modo. |
 | `repairPlan` / `fail` | Reparación del plan (máx `MAX_PLAN_RETRIES`=2, solo errores de contenido) / terminación en `failed`. |
 
+## Feedback en vivo y `status.json`
+
+Durante el run el CLI reporta progreso en tiempo real (streaming `streamMode: 'updates'`): una línea por nodo en stdout (`🛠 dev [paso 2/5] …`) y la actividad de herramientas del agente en stderr (`▸ edit: src/App.jsx`, deduplicada y throttled). Además, cada update escribe `status.json` dentro del proyecto:
+
+```json
+{ "node": "build", "status": "running", "step": 2, "totalSteps": 5, "lastError": null, "ts": "…" }
+```
+
+Pensado para workers/CI que necesiten el estado del pipeline sin parsear la terminal. `--quiet` silencia el reporte por nodo y la actividad, pero `status.json` y el resultado/historial final se emiten igual.
+
 ## Contexto inicial: qué necesita el orquestador
 
 La entrada mínima es **la idea** — una descripción en texto libre de la app a crear. Con eso:
@@ -59,6 +69,8 @@ npm start
 | `--phone <num>` | WhatsApp del negocio en formato internacional sin `+` (ej. `5491155500000`). Se inyecta en los verticales: landing → botón flotante con mini-form → `wa.me`; orders → checkout del carrito con items+total → `wa.me`. Vacío → placeholder `5491100000000`; si en la app queda vacío, el botón no se renderiza. |
 | `--no-push` | Solo commit local, nada remoto. |
 | `--keep-going` | Continuar al siguiente paso aunque uno agote reintentos (en vez de `fail`). |
+| `--quiet` | Sin reporte por nodo ni actividad de tools (solo resultado/historial final). `status.json` se escribe igual. |
+| `--verbose` | Mensajes de los nodos sin truncar (default: 220 chars por línea). |
 
 ## Configuración (`.env`)
 
@@ -84,19 +96,21 @@ cp .env.example .env
 
 ## Estructura
 
-- `src/index.js` — CLI (flags + modo interactivo + loop de confirmación).
+- `src/index.js` — CLI (flags + modo interactivo + loop de confirmación + feedback en vivo / `status.json`).
 - `src/orchestrator/` — `state.js` (canales) + `graph.js` (routing + checkpointer).
 - `src/agents/` — nodos: preflight, planner, validator, confirm, builder, verifier, fixer, reviewer, finalizer.
-- `src/tools/` — `devin.js` (cliente ACP), `shell.js` (execa), `slug.js`, `github.js` (REST).
+- `src/tools/` — `devin.js` (cliente ACP), `shell.js` (execa), `slug.js`, `github.js` (REST: repos, Pages, PRs).
 - `src/prompts/` — builder/fixer/planner/plan-repair/reviewer.md.
 - `src/verticals/` — paquetes por tipo de app (`landing`, `orders`): `buildPlan()` determinístico.
 - `src/templates/` — `AGENTS.md` (reglas UI + guía de diseño copiadas a cada app), `README.md`, `app-skeleton/`.
 - `generated-apps/` — apps generadas (**gitignored**, cada una con su repo git).
 - `runs/` — logs JSON-RPC de cada sesión Devin (**gitignored**).
+- `ROADMAP.md` — candidatos y próximos pasos (api-skeleton, tests del orquestador, ejecución asincrónica).
 
 ## Qué contiene cada app generada
 
 - `plan.json` — checkpoint con status/attempts por paso.
+- `status.json` — último estado reportado del pipeline (nodo, step/totalSteps, lastError).
 - `AGENTS.md` — reglas de UI + guía de diseño.
 - `README.md` — descripción, cómo levantarlo, crédito a MetaBuilder.
 - Repo git propio con commit inicial (remoto con `--github`, Pages además con `--ghpages`).
