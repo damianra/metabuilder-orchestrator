@@ -1,4 +1,4 @@
-import { ListOrdered, TriangleAlert } from 'lucide-react';
+import { ListOrdered, LoaderCircle, TriangleAlert } from 'lucide-react';
 import { jobSummary } from '../util.js';
 
 const chip = (status) =>
@@ -50,7 +50,10 @@ export default function QueuePanel({ jobs, worker }) {
             </span>
             <span className="truncate text-slate-600">
               #{j.id} {jobSummary(j.args)}
-              <span className="text-slate-400">{progress(j)}</span>
+              <span className="inline-flex items-center gap-1 text-slate-400">
+                {j.status === 'running' && <LoaderCircle size={13} className="animate-spin" />}
+                {progress(j)}
+              </span>
             </span>
           </li>
         ))}
