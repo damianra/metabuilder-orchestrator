@@ -53,6 +53,8 @@ export default function ProjectDetail({ slug, onChanged }) {
   if (!project) return <p className="text-sm text-slate-500">cargando…</p>;
 
   const build = project.dockerBuild;
+  // done = pipeline terminado; no-plan = sin plan.json (resume imposible).
+  const canResume = project.status !== 'done' && project.status !== 'no-plan';
 
   return (
     <div className="space-y-4">
@@ -76,11 +78,21 @@ export default function ProjectDetail({ slug, onChanged }) {
         )}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button className={btn} disabled={busy} onClick={() => act({ action: 'resume', github: withGithub }, () => 'resume encolado')}>
+          <button
+            className={btn}
+            disabled={busy || !canResume}
+            title={canResume ? 'Retoma el pipeline desde plan.json' : 'El proyecto ya terminó (o no tiene plan.json)'}
+            onClick={() => act({ action: 'resume', github: withGithub }, () => 'resume encolado')}
+          >
             <Play size={15} /> Resume
           </button>
           <label className="flex items-center gap-1.5 text-xs text-slate-600">
-            <input type="checkbox" checked={withGithub} onChange={(e) => setWithGithub(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={withGithub}
+              disabled={!canResume}
+              onChange={(e) => setWithGithub(e.target.checked)}
+            />
             con GitHub
           </label>
           <button
