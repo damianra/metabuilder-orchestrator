@@ -1,9 +1,20 @@
 # MetaBuilder — candidatos y próximos pasos
 
-Estado: T1–T7 + `api-skeleton` + semáforo Devin completados. Pipeline
-end-to-end validado dos veces: `casa-comidas` (orders frontend → repo +
+Estado: T1–T7 + `api-skeleton` + semáforo Devin + suite de tests +
+validador de PRs por sub-agente completados. Pipeline end-to-end
+validado dos veces: `casa-comidas` (orders frontend → repo +
 GitHub Pages live) y `tienda-stock` (custom fullstack con concurrencia
 de stock).
+
+## Validación de PRs del orquestador
+
+`npm run validate:pr -- <N>` (`src/validate-pr.js`): crea un worktree
+temporal del head del PR, corre una sesión Devin
+(`prompts/pr-validator.md`) que revisa el diff + ejecuta la validación
+funcional (`npm test`, `node --check`, smokes dirigidos) y comenta el
+veredicto `✅ APROBADO PARA MERGE | ⚠️ REQUIERE REVISIÓN` en el PR.
+El `GITHUB_TOKEN` solo lo usa el script para la API — nunca llega al
+agente. Validado en vivo sobre PR #8 y PR #9 (dogfooding).
 
 ## Validaciones E2E realizadas
 
