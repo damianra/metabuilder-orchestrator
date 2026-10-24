@@ -41,5 +41,11 @@ export const createPullRequest = (token, owner, repo, { head, base = 'main', tit
 export const getPR = (token, owner, repo, prNumber) =>
   api(token, 'GET', `/repos/${owner}/${repo}/pulls/${prNumber}`);
 
+export const listOpenPRs = (token, owner, repo) =>
+  api(token, 'GET', `/repos/${owner}/${repo}/pulls?state=open&per_page=100`);
+
+export const getPRComments = (token, owner, repo, prNumber) =>
+  api(token, 'GET', `/repos/${owner}/${repo}/issues/${prNumber}/comments?per_page=100`);
+
 export const commentOnPR = (token, owner, repo, prNumber, body) =>
   api(token, 'POST', `/repos/${owner}/${repo}/issues/${prNumber}/comments`, { body });
