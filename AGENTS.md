@@ -200,7 +200,10 @@ Aplica a cualquier agente/persona que modifique el orquestador.
 3. **Push de la rama** → crear PR a `main` vía REST (no hay `gh` CLI):
    `createPullRequest(token, 'damianra', 'metabuilder-orchestrator',
    { head, title, body })` de `src/tools/github.js` con `GITHUB_TOKEN`.
-4. **Validación funcional antes de merge — la hace un sub-agente**:
+4. **CI corre `npm test` en cada PR** (`.github/workflows/test.yml`,
+   Node 22, sin secrets) — compuerta determinística automática.
+
+5. **Validación funcional antes de merge — la hace un sub-agente**:
    `npm run validate:pr -- <N>` crea un worktree temporal del head,
    corre una sesión Devin (`prompts/pr-validator.md`) que revisa el
    diff + ejecuta la validación (`npm test`, `node --check`, smokes
@@ -214,7 +217,7 @@ sub-agente `review` + `finalVerify` antes del push.
 
 ## Convenciones
 
-- ESM (`"type": "module"`), Node >= 20, imports con extensión `.js`.
+- ESM (`"type": "module"`), Node >= 22, imports con extensión `.js`.
 - `execa` siempre con `reject: false` en tools — los nodos deciden.
 - Reintentos: paso ≤ `MAX_STEP_RETRIES` (3), plan ≤ `MAX_PLAN_RETRIES` (2).
 - Nunca commitear `generated-apps/`, `runs/`, `.env`, `*.sqlite`.

@@ -48,7 +48,7 @@ Ordenado por impacto/esfuerzo. **El #1 es la recomendación actual.**
 | # | Candidato | Descripción | Valor |
 | --- | --- | --- | --- |
 | ~~1~~ | ~~**`--resume <dir>`**~~ (F) ✅ | Implementado y validado E2E — ver sección Completados | Un Ctrl+C/timeout ya no pierde el run |
-| **2** | **CI: `npm test` en PRs** (G) | No existe `.github/workflows`. La suite corre en ~5s sin Devin ni red — compuerta determinística y gratis que complementa al sub-agente `validate:pr` (que cuesta sesiones) | **Alto y barato**: workflow de ~20 líneas |
+| ~~2~~ | ~~**CI: `npm test` en PRs**~~ (G) ✅ | Implementado: `.github/workflows/test.yml` corre la suite (52 tests, ~5s) en cada PR y push a main — compuerta determinística gratis que complementa al sub-agente `validate:pr` | Hecho |
 | **3** | **orders fullstack real** (B) | Parcialmente validado: `tienda-stock` corrió el camino api-skeleton E2E (custom). Falta correr el vertical `orders` fullstack propiamente (overlay schema/seed/routes + paso generativo-lite) | Completaría el segundo vertical en su forma real |
 | **4** | **Nuevo vertical** (C) | Carpeta `src/verticals/<nuevo>` (blog/portfolio/catálogo) con plan + secciones + checks e2e + overlay `api/` — es el que demuestra el patrón overlay: un blog es `schema.sql` grande + routes, mismo motor | Amplía el catálogo sin tocar el grafo |
 | **5** | **Pool de procesos `devin acp`** (H) | Cada paso paga initialize + authenticate + session/new + set_config (overhead por paso). Mantener el proceso ACP vivo entre pasos del mismo run — `session/new` por paso sigue aislando el contexto — recorta ese costo | Medio: performance, sin cambio semántico |
@@ -64,6 +64,7 @@ Ordenado por impacto/esfuerzo. **El #1 es la recomendación actual.**
 - ~~A~~ **Tests del orquestador** ✅ — `tests/` con 52 tests (validator+verticales, `ghAuthArgs`/sanitize, commit idempotente, `parseReviewResult`, serialización ACP con stub `devin`, semáforo, install lazy, `copyApiSkeleton`, slug, shell, `extractVerdictComment`, resume), ~5s sin Devin ni red.
 - ~~D~~ **Robustez de Pages** ✅ parcial — fallback `getPages` ya implementado; el retry del 500 quedó como ítem #8.
 - ~~F~~ **`--resume <dir>`** ✅ — `npm start -- --resume <dir|slug>`: `resolveResumeDir` (ruta o slug), preflight reanuda sin re-copiar, planner normaliza pasos no-done → `pending` y retoma en el primero (todo done → `finalVerify`), restaura scope/appType/idea del plan (`idea` persistido en plan.json). Validado E2E: resume a mitad de plan → done. Un Ctrl+C/timeout ya no pierde el run.
+- ~~G~~ **CI `npm test` en PRs** ✅ — `.github/workflows/test.yml` (ubuntu, Node 22, `npm ci` + `npm test`) en `pull_request` y push a `main`.
 
 ## Ejecución asincrónica sin saturar (análisis)
 
