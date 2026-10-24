@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDashboardApp } from '../src/dashboard/server.js';
 
-let base, appsDir, runsDir, server, url;
+let base, appsDir, runsDir, server, url, startTestCalls;
 
 const writeJson = (p, data) => writeFileSync(p, JSON.stringify(data));
 
@@ -38,6 +38,7 @@ const post = (path, body) =>
 
 beforeEach(async () => {
   base = mkdtempSync(join(tmpdir(), 'mb-dash-'));
+  startTestCalls = [];
   appsDir = join(base, 'generated-apps');
   runsDir = join(base, 'runs');
   mkdirSync(appsDir, { recursive: true });
@@ -47,6 +48,10 @@ beforeEach(async () => {
     baseDir: base,
     dockerProbe: async () => false,
     startBuild: () => ({ status: 'running', tag: 'fake:local' }),
+    startTest: (dir, commands, label) => {
+      startTestCalls.push({ dir, commands, label });
+      return { status: 'running', command: label, startedAt: '2026-01-01T00:00:00Z' };
+    },
   });
   await new Promise((resolveListen) => {
     server = app.listen(0, '127.0.0.1', resolveListen);
@@ -267,5 +272,113 @@ describe('logs del run', () => {
     const { body } = await api('/api/projects/sin-job/log');
     expect(body.jobId).toBeNull();
     expect(body.log).toBeNull();
+  });
+});
+
+describe('detalle enriquecido + acción test', () => {
+  const seedPkg = (slug, scripts = { test: 'vitest run', 'test:e2e': 'playwright test' }) => {
+    const dir = seedApp(slug);
+    writeJson(join(dir, 'package.json'), { name: slug, scripts });
+    return dir;
+  };
+
+  it('GET /:slug expone scripts del package.json, stacks y testRun', async () => {
+    seedPkg('app-uno');
+    const { status, body } = await api('/api/projects/app-uno');
+    expect(status).toBe(200);
+    expect(body.scripts).toContainEqual({ name: 'test', command: 'vitest run' });
+    expect(body.testRun).toBeNull();
+    // app sin package.json → scripts vacío
+    seedApp('app-sin-pkg');
+    const sin = await api('/api/projects/app-sin-pkg');
+    expect(sin.body.scripts).toEqual([]);
+  });
+
+  it('action test → 202 + corre npm test via startTest', async () => {
+    seedPkg('app-uno');
+    const { status, body } = await post('/api/projects/app-uno/actions', { action: 'test' });
+    expect(status).toBe(202);
+    expect(body.testRun.status).toBe('running');
+    expect(startTestCalls).toHaveLength(1);
+    expect(startTestCalls[0].commands).toEqual([['npm', 'test']]);
+  });
+
+  it('action test con e2e encadena npm run test:e2e', async () => {
+    seedPkg('app-uno');
+    const { status } = await post('/api/projects/app-uno/actions', { action: 'test', e2e: true });
+    expect(status).toBe(202);
+    expect(startTestCalls[0].commands).toEqual([
+      ['npm', 'test'],
+      ['npm', 'run', 'test:e2e'],
+    ]);
+  });
+
+  it('400 sin script test / sin test:e2e pedido / 409 si ya corre', async () => {
+    seedApp('app-sin-pkg');
+    expect((await post('/api/projects/app-sin-pkg/actions', { action: 'test' })).status).toBe(400);
+
+    const dir = seedPkg('app-uno', { test: 'vitest run' }); // sin test:e2e
+    expect((await post('/api/projects/app-uno/actions', { action: 'test', e2e: true })).status).toBe(400);
+
+    writeJson(join(dir, 'test-run.json'), { status: 'running' });
+    const busy = await post('/api/projects/app-uno/actions', { action: 'test' });
+    expect(busy.status).toBe(409);
+  });
+
+  it('GET /:slug/test-log devuelve el tail del output + el estado del run', async () => {
+    const dir = seedPkg('app-uno');
+    writeFileSync(join(dir, 'test-run.log'), Array.from({ length: 50 }, (_, i) => `out-${i}`).join('\n'));
+    writeJson(join(dir, 'test-run.json'), { status: 'done', exitCode: 0 });
+    const { status, body } = await api('/api/projects/app-uno/test-log?tail=5');
+    expect(status).toBe(200);
+    expect(body.testRun.status).toBe('done');
+    expect(body.log.lines).toEqual(['out-45', 'out-46', 'out-47', 'out-48', 'out-49']);
+    expect(body.log.truncated).toBe(true);
+  });
+
+  it('startTestRun real: corre comandos en serie, escribe estado y log', async () => {
+    const { startTestRun } = await import('../src/dashboard/server.js');
+    const dir = seedApp('app-real');
+    startTestRun(
+      dir,
+      [
+        [process.execPath, '-e', 'console.log("MARK-UNO")'],
+        [process.execPath, '-e', 'console.log("MARK-DOS")'],
+      ],
+      'fake tests',
+    );
+    const deadline = Date.now() + 5000;
+    let state;
+    do {
+      await new Promise((r) => setTimeout(r, 50));
+      state = JSON.parse(readFileSync(join(dir, 'test-run.json'), 'utf8'));
+    } while (state.status === 'running' && Date.now() < deadline);
+    expect(state.status).toBe('done');
+    expect(state.exitCode).toBe(0);
+    const log = readFileSync(join(dir, 'test-run.log'), 'utf8');
+    expect(log).toContain('MARK-UNO');
+    expect(log).toContain('MARK-DOS');
+  });
+
+  it('startTestRun: comando que falla → status failed y corta la serie', async () => {
+    const { startTestRun } = await import('../src/dashboard/server.js');
+    const dir = seedApp('app-fail');
+    startTestRun(
+      dir,
+      [
+        [process.execPath, '-e', 'process.exit(3)'],
+        [process.execPath, '-e', 'console.log("NUNCA")'],
+      ],
+      'fake tests',
+    );
+    const deadline = Date.now() + 5000;
+    let state;
+    do {
+      await new Promise((r) => setTimeout(r, 50));
+      state = JSON.parse(readFileSync(join(dir, 'test-run.json'), 'utf8'));
+    } while (state.status === 'running' && Date.now() < deadline);
+    expect(state.status).toBe('failed');
+    expect(state.exitCode).toBe(3);
+    expect(readFileSync(join(dir, 'test-run.log'), 'utf8')).not.toContain('NUNCA');
   });
 });
