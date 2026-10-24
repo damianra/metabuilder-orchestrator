@@ -33,6 +33,14 @@ describe('cola de jobs', () => {
     expect(jobs[1].args).toEqual(['--idea', 'dos']);
   });
 
+  it('addJob salta ids ya ocupados (EEXIST) — nunca pisa un job ajeno', () => {
+    putJob({ id: 1, args: ['--idea', 'ocupado'], status: 'pending' });
+    const job = addJob(['--idea', 'nuevo'], dir);
+    expect(job.id).toBe(2);
+    // El job pre-existente quedó intacto.
+    expect(readJobs(dir).find((j) => j.id === 1).args).toEqual(['--idea', 'ocupado']);
+  });
+
   it('runJob marca done con exitCode 0', async () => {
     const job = addJob(['--idea', 'x'], dir);
     expect(await runJob(job, { baseDir: dir, cmd })).toBe(true);

@@ -16,9 +16,8 @@
 
 import {
   existsSync,
+  linkSync,
   mkdirSync,
-  openSync,
-  closeSync,
   readdirSync,
   readFileSync,
   renameSync,
@@ -57,8 +56,11 @@ export function readJobs(baseDir = config.rootDir) {
     .sort((a, b) => a.id - b.id);
 }
 
-// 'wx' = crear exclusivo: si dos `add` concurrentes eligen el mismo id,
-// el segundo reintenta con el siguiente — nunca pisa un job ajeno.
+// Hard link como create-exclusivo atómico: linkSync falla EEXIST si el
+// destino ya existe — sin la ventana que tendría wx sobre un archivo
+// temporal (que al renombrarse libera el nombre temporal y permite que
+// otro add pise el destino). Solo se reintenta en EEXIST; otros errores
+// (ENOSPC, EACCES) propagan — un loop ciego sería infinito.
 export function addJob(args, baseDir = config.rootDir) {
   mkdirSync(jobsDir(baseDir), { recursive: true });
   let id = readJobs(baseDir).reduce((m, j) => Math.max(m, j.id), 0) + 1;
@@ -69,13 +71,15 @@ export function addJob(args, baseDir = config.rootDir) {
     createdAt: new Date().toISOString(),
   };
   for (;;) {
+    const tmp = `${jobPath(id, baseDir)}.tmp-${process.pid}`;
     try {
-      const fd = openSync(`${jobPath(id, baseDir)}.new`, 'wx');
-      closeSync(fd);
-      writeFileSync(`${jobPath(id, baseDir)}.new`, JSON.stringify({ ...job, id }, null, 2) + '\n');
-      renameSync(`${jobPath(id, baseDir)}.new`, jobPath(id, baseDir));
+      writeFileSync(tmp, JSON.stringify({ ...job, id }, null, 2) + '\n');
+      linkSync(tmp, jobPath(id, baseDir));
+      rmSync(tmp);
       return { ...job, id };
-    } catch {
+    } catch (err) {
+      rmSync(tmp, { force: true });
+      if (err.code !== 'EEXIST') throw err;
       id++;
     }
   }
@@ -87,7 +91,8 @@ export async function runJob(
   job,
   { baseDir = config.rootDir, cmd = [process.execPath, join(config.rootDir, 'src/index.js')] } = {},
 ) {
-  writeJob({ ...job, status: 'running', startedAt: new Date().toISOString() }, baseDir);
+  const startedAt = new Date().toISOString();
+  writeJob({ ...job, status: 'running', startedAt }, baseDir);
 
   const exitCode = await new Promise((resolveCode) => {
     const child = spawn(cmd[0], [...cmd.slice(1), ...job.args], {
@@ -101,7 +106,13 @@ export async function runJob(
 
   const done = exitCode === 0;
   writeJob(
-    { ...job, status: done ? 'done' : 'failed', finishedAt: new Date().toISOString(), exitCode },
+    {
+      ...job,
+      status: done ? 'done' : 'failed',
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      exitCode,
+    },
     baseDir,
   );
   return done;
