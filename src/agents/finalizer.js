@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
 import { awaitInstall, isInstalling } from '../tools/install.js';
-import { finalCheckCommands, resolveStacks } from '../stacks/index.js';
+import { finalCheckCommands, stacksFor } from '../stacks/index.js';
 import { getGitHubUser, createRepo, enablePages, getPages } from '../tools/github.js';
 import { activity, log, loadTemplate } from './common.js';
 
@@ -59,7 +59,7 @@ export async function finalVerifyNode(state) {
     };
   }
 
-  const cmds = finalCheckCommands(resolveStacks(state.scope));
+  const cmds = finalCheckCommands(stacksFor(state));
 
   for (const cmd of cmds) {
     const res = await run(cmd, { cwd: state.projectDir, timeoutMs: config.verifyTimeoutMs });
@@ -119,7 +119,7 @@ export async function finalVerifyNode(state) {
  * refleje el scope final, sin depender del agente.
  */
 function writeReadme(state) {
-  const { frontend, backend } = resolveStacks(state.scope);
+  const { frontend, backend } = stacksFor(state);
 
   const stack = [
     frontend?.readme.stack,
@@ -261,18 +261,35 @@ export async function finalizerNode(state) {
 
   // --- GitHub Pages (solo con --github + --ghpages + token + frontend) ---
   const hasFrontend = state.scope !== 'backend';
-  const distDir = join(dir, 'dist');
+  const frontendStack = stacksFor(state).frontend;
+  // buildDir del stack: 'dist' (Vite) / 'out' (Next export).
+  const outDir = join(dir, frontendStack?.buildDir ?? 'dist');
   if (
     state.deployGithub &&
     state.deployPages &&
     config.githubToken &&
     hasFrontend &&
-    existsSync(distDir)
+    existsSync(outDir)
   ) {
-    const pages = await deployPages(git, distDir, remoteUrl, owner, repoName);
+    // Stacks con pagesBaseEnv (Next): el basePath se hornea en el
+    // build → re-build con PAGES_BASE=/<repo> antes de publicar.
+    if (frontendStack?.pagesBaseEnv) {
+      const rebuild = await run(
+        `${frontendStack.pagesBaseEnv}=/${repoName} npm run build`,
+        { cwd: dir, timeoutMs: config.verifyTimeoutMs },
+      );
+      if (!rebuild.ok) {
+        history.push(
+          log('finalize', `rebuild con ${frontendStack.pagesBaseEnv} falló — Pages omitido`),
+        );
+        return { status: 'done', history };
+      }
+      history.push(log('finalize', `rebuild con ${frontendStack.pagesBaseEnv}=/${repoName} OK`));
+    }
+    const pages = await deployPages(git, outDir, remoteUrl, owner, repoName);
     history.push(...pages);
   } else if (state.deployPages && hasFrontend) {
-    history.push(log('finalize', 'sin dist/ o sin --github+token — Pages omitido'));
+    history.push(log('finalize', `sin ${frontendStack?.buildDir ?? 'dist'}/ o sin --github+token — Pages omitido`));
   }
 
   return { status: 'done', history };

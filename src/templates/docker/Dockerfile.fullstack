@@ -1,5 +1,5 @@
-# Fullstack: build de Vite → dist/ servido por el mismo Express que la API
-# (api-skeleton sirve ../dist cuando existe). Un solo contenedor.
+# Fullstack: build del frontend → @OUT_DIR@/ servido por el mismo Express
+# que la API (api-skeleton sirve dist/ u out/ cuando existe). Un solo contenedor.
 FROM node:22 AS deps
 WORKDIR /app
 COPY package*.json ./
@@ -19,7 +19,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=proddeps /app/node_modules ./node_modules
 COPY package*.json ./
-COPY --from=build /app/dist ./dist
+COPY --from=build /app/@OUT_DIR@ ./@OUT_DIR@
 COPY server ./server
 
 EXPOSE 4000

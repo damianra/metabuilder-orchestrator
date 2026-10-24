@@ -9,6 +9,9 @@ export default {
   kind: 'frontend',
   label: 'Vite + React + Tailwind',
   skeletonDir: 'app-skeleton',
+  skeletonDesc: 'Vite + React + Tailwind + Vitest + Playwright',
+  agentsStack: 'React + Vite + Tailwind CSS',
+  buildDir: 'dist',
 
   // Comandos de finalVerify (también los verify canónicos de los pasos).
   verify: {

@@ -17,10 +17,10 @@ import { config } from '../config.js';
 import { run } from '../tools/shell.js';
 import { addJob, readJobs } from '../queue.js';
 import { buildReport, resolveRunId } from '../report.js';
-import { writeDockerFiles } from '../tools/docker.js';
+import { writeDockerFiles, detectFrontend, detectOutDir } from '../tools/docker.js';
 import { listArchs } from '../arch/index.js';
 import { getVertical, listVerticals } from '../verticals/index.js';
-import { listStacks } from '../stacks/index.js';
+import { getStack, listStacks } from '../stacks/index.js';
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,60}$/;
 const SCOPES = ['frontend', 'backend', 'fullstack'];
@@ -97,8 +97,9 @@ function projectSummary(dir, slug) {
 }
 
 const detectVariant = (dir) => ({
-  frontend: existsSync(join(dir, 'vite.config.js')),
+  frontend: detectFrontend(dir),
   backend: existsSync(join(dir, 'server')),
+  outDir: detectOutDir(dir),
 });
 
 /**
@@ -190,12 +191,20 @@ export function createDashboardApp({
     if (b.arch && !listArchs().includes(b.arch)) {
       return res.status(400).json({ error: `arch inválido (${listArchs().join('|')})` });
     }
+    if (b.stackFrontend && getStack(b.stackFrontend)?.kind !== 'frontend') {
+      return res.status(400).json({ error: `stackFrontend inválido (${listStacks('frontend').map((s) => s.id).join('|')})` });
+    }
+    if (b.stackBackend && getStack(b.stackBackend)?.kind !== 'backend') {
+      return res.status(400).json({ error: `stackBackend inválido (${listStacks('backend').map((s) => s.id).join('|')})` });
+    }
 
     const args = ['--idea', b.idea.trim(), '--yes'];
     if (b.scope) args.push('--scope', b.scope);
     if (b.appType) args.push('--app-type', b.appType);
     if (b.name) args.push('--name', b.name);
     if (b.arch) args.push('--arch', b.arch);
+    if (b.stackFrontend) args.push('--stack-frontend', b.stackFrontend);
+    if (b.stackBackend) args.push('--stack-backend', b.stackBackend);
     if (b.phone) args.push('--phone', String(b.phone));
     if (b.github) args.push('--github');
     if (b.ghpages) args.push('--ghpages');

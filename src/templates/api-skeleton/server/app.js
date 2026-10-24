@@ -28,17 +28,18 @@ export async function createApp() {
     app.use(`/api/${name}`, router);
   }
 
-  // Frontend build estático (fullstack): dist/ en la raíz del proyecto.
-  const distDir = join(here, '..', 'dist');
-  const indexHtml = join(distDir, 'index.html');
-  if (existsSync(indexHtml)) {
-    app.use(express.static(distDir));
+  // Frontend build estático (fullstack): dist/ (Vite) u out/ (Next
+  // export) en la raíz del proyecto — el primero que exista.
+  const staticDir = ['dist', 'out'].map((d) => join(here, '..', d)).find((d) => existsSync(join(d, 'index.html')));
+  if (staticDir) {
+    app.use(express.static(staticDir));
   }
+  const indexHtml = staticDir ? join(staticDir, 'index.html') : null;
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'not found' }));
 
   // SPA fallback: GETs que no son /api ni archivos estáticos → index.html.
-  if (existsSync(indexHtml)) {
+  if (indexHtml) {
     app.use((req, res, next) => {
       if (req.method !== 'GET') return next();
       res.sendFile(indexHtml);

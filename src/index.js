@@ -4,6 +4,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildGraph } from './orchestrator/graph.js';
 import { listArchs } from './arch/index.js';
+import { getStack, listStacks } from './stacks/index.js';
 import { getVertical, inferAppType, listVerticals } from './verticals/index.js';
 import { resolveResumeDir } from './tools/slug.js';
 import { config } from './config.js';
@@ -96,6 +97,11 @@ async function collectArgs(args) {
       const a = await asker.ask(`Arquitectura backend [${listArchs().join('/')}] (flat): `);
       args.arch = listArchs().includes(a) ? a : 'flat';
     }
+    if (!args.stackFrontend && args.scope !== 'backend' && interactive) {
+      const ids = listStacks('frontend').map((s) => s.id);
+      const s = await asker.ask(`Stack frontend [${ids.join('/')}] (${ids[0]}): `);
+      args.stackFrontend = ids.includes(s) ? s : ids[0];
+    }
     if (!args.name && interactive) {
       args.name = await asker.ask('Nombre del proyecto (slug, vacío = derivar de la idea): ');
     }
@@ -145,6 +151,18 @@ if (args.arch && !listArchs().includes(args.arch)) {
   console.error(`--arch desconocida "${args.arch}" (usá ${listArchs().join('|')})`);
   process.exit(2);
 }
+for (const [flag, kind] of [
+  ['--stack-frontend', 'frontend'],
+  ['--stack-backend', 'backend'],
+]) {
+  const key = flag.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+  if (args[key] && getStack(args[key])?.kind !== kind) {
+    console.error(
+      `${flag} desconocido "${args[key]}" (usá ${listStacks(kind).map((s) => s.id).join('|')})`,
+    );
+    process.exit(2);
+  }
+}
 if (args.ghpages && !args.github) {
   console.error('--ghpages requiere --github (crea el repo antes de publicar Pages)');
   process.exit(2);
@@ -167,6 +185,8 @@ const initial = {
   deployPages: args.ghpages,
   whatsappPhone: args.phone ?? '',
   verifyDocker: Boolean(args.verifyDocker),
+  stackFrontend: args.stackFrontend ?? null,
+  stackBackend: args.stackBackend ?? null,
 };
 
 // Etiqueta legible por nodo (rol del agente que está corriendo).

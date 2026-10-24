@@ -12,6 +12,8 @@ npm install
 npm start -- --idea "..." --scope fullstack|frontend|backend \
             --app-type landing|orders|blog|custom [--name slug] \
             [--arch flat|mvc|layers|feature] \
+            [--stack-frontend vite-react|nextjs] \
+            [--stack-backend express-sqlite] \
             [--github] [--no-push] [--keep-going] [-y|--yes]
 
 # Reanudar un run interrumpido desde su plan.json (ruta o slug):
@@ -98,15 +100,25 @@ generada — es el contrato que builder/fixer/reviewer leen.
 
 `src/stacks/` declara cada stack como datos (un archivo por stack +
 `index.js` con el registro): `id`, `kind` (frontend|backend), `label`,
-`skeletonDir`, `verify` (comandos de finalVerify), `requirements`
-(reglas declarativas de validatePlan con `error` + `prompt`
-equivalente) y fragmentos `readme`. `resolveStacks(scope, overrides)`
-devuelve `{ frontend, backend }`; `planRequirements` los mergea
-deduplicando; `finalCheckCommands` arma la batería de verify;
+`skeletonDir`, `buildDir` (dir de salida del build: `dist`/`out`),
+`skeletonDesc`/`agentsStack` (texto para planes y AGENTS.md de la app),
+`pagesBaseEnv` (env var para re-build con basePath en Pages; solo
+stacks que lo necesitan), `verify` (comandos de finalVerify),
+`requirements` (reglas declarativas de validatePlan con `error` +
+`prompt` equivalente) y fragmentos `readme`. `resolveStacks(scope,
+overrides)` devuelve `{ frontend, backend }`; `planRequirements` los
+mergea deduplicando; `finalCheckCommands` arma la batería de verify;
 `stackRuleBullets(scope)` genera las reglas que los prompts
 `planner.md`/`plan-repair.md` inyectan via `{{stackRules}}` — el
 prompt nunca diverge del validador porque leen la misma fuente.
 Agregar un stack = nuevo archivo + entrada en el `Map` de `index.js`.
+
+**Selección**: flags `--stack-frontend <id>` / `--stack-backend <id>`
+(o pregunta interactiva) → `state.stackFrontend/stackBackend` →
+`plan.stacks` (persistido por planner; resume lo restaura igual que
+`plan.arch`). `stacksFor(state)` resuelve el stack efectivo en cada
+nodo: plan.stacks > flags > defaults. Frontends: `vite-react`
+(default), `nextjs`. Backend: `express-sqlite`.
 
 ## Skeleton de app
 
@@ -117,6 +129,13 @@ El builder nunca hace scaffolding desde cero.
 Nota: `vite.config.js` excluye `e2e/**` de Vitest — sin eso Vitest intenta
 correr los specs de Playwright y falla. Además proxea `/api` y `/uploads`
 a :4000 (config muerta si el scope no tiene backend).
+
+`src/templates/app-skeleton-next/` es la variante Next.js 15 + React 19
+(App Router, `output: 'export'` → `out/`): mismo contrato de scripts
+(`build`/`test`/`test:e2e`), `vitest.config.mjs` excluye `e2e/**`, y el
+proxy de dev a :4000 vive en los `rewrites` de `next.config.mjs` (solo
+`NODE_ENV=development` — el export no los soporta). `basePath:
+process.env.PAGES_BASE` permite el re-build para GitHub Pages.
 
 `src/templates/api-skeleton/` es el equivalente de backend: Express 5 +
 better-sqlite3 + multer, auto-mount de `server/routes/<name>.js` en
@@ -129,8 +148,9 @@ si fullstack — mergea deps/scripts). Si el vertical tiene
 encima de `server/`. También aplica a `appType: 'custom'` con backend.
 Secretos: `.env` (gitignored) leído via `dotenv/config` en
 `server/index.js`; `.env.example` commiteado declara las variables.
-`app.js` además sirve `<proyecto>/dist/` estático + SPA fallback GET
-cuando `dist/index.html` existe (deploy single-server y Docker).
+`app.js` además sirve `<proyecto>/dist/` u `<proyecto>/out/` estático +
+SPA fallback GET cuando `index.html` existe en alguno (deploy
+single-server y Docker).
 
 ## API del dashboard (`src/dashboard/server.js`)
 
@@ -166,9 +186,11 @@ no conoce paths del FS ni los registries directamente.
 Preflight escribe `Dockerfile` + `.dockerignore` en cada app generada
 (`src/tools/docker.js` + templates en `src/templates/docker/`):
 variante `backend` (node slim, solo `server/`), `fullstack` (build
-Vite → `dist/` servido por el mismo Express), `frontend` (build Vite →
-nginx:alpine + `nginx.conf` con SPA fallback). En `--resume` la
-variante se detecta por el filesystem (`vite.config.js`/`server/`).
+del frontend → `dist|`out/` servido por el mismo Express), `frontend`
+(build → nginx:alpine + `nginx.conf` con SPA fallback). El dir de
+salida viene de `stack.buildDir` (placeholder `@OUT_DIR@` en los
+templates). En `--resume` la variante y el outDir se detectan por el
+filesystem (`vite.config.js`/`next.config.*`/`server/`).
 `--verify-docker` corre `docker build` en `finalVerify` solo si hay
 daemon (ausente → omite sin fallar).
 
@@ -274,6 +296,8 @@ Notas ACP:
   "scope": "fullstack|frontend|backend",
   "appType": "landing|orders|blog|custom",
   "idea": "...",   // restaurada por --resume (planner la persiste al crear el plan)
+  "arch": "flat",  // patrón backend (--arch); resume lo restaura
+  "stacks": { "frontend": "vite-react", "backend": "express-sqlite" }, // idem
   "validated": false,
   "steps": [
     { "id": 1, "description": "...", "type": "frontend|backend|test|e2e|infra",
@@ -332,9 +356,11 @@ sub-agente `review` + `finalVerify` antes del push.
 
 ## Stack apps generadas
 
-React+Vite+Tailwind / Express / SQLite / Vitest / Playwright (e2e solo si
-hay frontend). Ver `src/templates/AGENTS.md` para las 5 reglas de UI que el
-código generado debe cumplir y que Playwright verifica.
+Frontend: React+Vite+Tailwind (`vite-react`, default) o Next.js+React+
+Tailwind (`nextjs`, static export). Backend: Express/SQLite. Testing:
+Vitest / Playwright (e2e solo si hay frontend). Ver
+`src/templates/AGENTS.md` para las 5 reglas de UI que el código
+generado debe cumplir y que Playwright verifica.
 
 ## Finalización (finalizer.js)
 
@@ -349,9 +375,11 @@ solo vitest). Falla → loop `fix` (finalRetries) → `fail`.
 4. `--github` + `GITHUB_TOKEN` (PAT scope `repo` en .env) →
    `POST /user/repos` crea el repo, push con `http.extraHeader`
    (el token NO queda en el remote ni en logs — `sanitize()`),
-   `dist/` → rama `gh-pages` (repo git propio dentro de dist/) +
-   `POST /repos/{o}/{r}/pages` → `https://<user>.github.io/<repo>/`.
-   Solo scopes con frontend; vite.config usa `base: './'` por eso.
+   `<buildDir>/` del stack → rama `gh-pages` (repo git propio dentro
+   del dir) + `POST /repos/{o}/{r}/pages` →
+   `https://<user>.github.io/<repo>/`. Solo scopes con frontend.
+   Vite usa `base: './'`; stacks con `pagesBaseEnv` (Next) se
+   re-buildean con `PAGES_BASE=/<repo>` antes de publicar.
 5. Sin URL ni --github → commit local + aviso.
 
 ## Troubleshooting conocido

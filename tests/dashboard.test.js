@@ -67,6 +67,7 @@ describe('GET /api/options', () => {
     expect(body.appTypes).toContain('custom');
     expect(body.archs).toContain('flat');
     expect(body.stacks.frontend).toContain('vite-react');
+    expect(body.stacks.frontend).toContain('nextjs');
     expect(body.stacks.backend).toContain('express-sqlite');
   });
 });
@@ -177,5 +178,26 @@ describe('POST /api/projects/:slug/actions', () => {
     seedApp('app-uno');
     expect((await post('/api/projects/app-uno/actions', { action: 'borrar' })).status).toBe(400);
     expect((await post('/api/projects/nope/actions', { action: 'resume' })).status).toBe(404);
+  });
+});
+
+describe('POST /api/runs — stacks', () => {
+  it('serializa --stack-frontend/--stack-backend en los args', async () => {
+    const { status, body } = await post('/api/runs', {
+      idea: 'blog con next',
+      stackFrontend: 'nextjs',
+      stackBackend: 'express-sqlite',
+    });
+    expect(status).toBe(201);
+    const args = body.job.args;
+    expect(args[args.indexOf('--stack-frontend') + 1]).toBe('nextjs');
+    expect(args[args.indexOf('--stack-backend') + 1]).toBe('express-sqlite');
+  });
+
+  it('rechaza ids inválidos o del kind equivocado', async () => {
+    expect((await post('/api/runs', { idea: 'x', stackFrontend: 'nope' })).status).toBe(400);
+    // express-sqlite es backend → inválido como stackFrontend
+    expect((await post('/api/runs', { idea: 'x', stackFrontend: 'express-sqlite' })).status).toBe(400);
+    expect((await post('/api/runs', { idea: 'x', stackBackend: 'nextjs' })).status).toBe(400);
   });
 });

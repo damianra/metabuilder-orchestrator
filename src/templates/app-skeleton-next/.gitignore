@@ -1,0 +1,10 @@
+node_modules
+.next
+out
+dist
+build
+.env
+*.sqlite
+*.sqlite-journal
+test-results
+playwright-report
