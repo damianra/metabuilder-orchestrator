@@ -57,7 +57,7 @@ Ordenado por impacto/esfuerzo. **El #1 es la recomendación actual.**
 | ~~7~~ | ~~**Cola de jobs (`jobs/` + worker)**~~ (J) ✅ | Implementado austero — ver sección Completados y decisión cerrada abajo | Medio |
 | ~~8~~ | ~~**Retry de `enablePages` ante 500**~~ (D residual) ✅ | Implementado — `enablePagesWithRetry` reintenta 5xx antes de caer al GET | Bajo |
 | ~~9~~ | ~~**Reporte de run**~~ (L) ✅ | Implementado — `npm run report` (`src/report.js`) | Bajo-medio |
-| **10** | **Convención `.env` en api-skeleton** (K) | Una app `custom` que necesite API keys no tiene convención (dotenv + `.env.example` en el template) | Bajo |
+| ~~10~~ | ~~**Convención `.env` en api-skeleton**~~ (K) ✅ | Implementado — dotenv + `.env.example` + regla en el AGENTS.md de apps | Bajo |
 | **11** | **orders con delivery real** (E) | Costo de envío por zona/mapa, persistir pedido en Sheets, panel admin | Fuera del scope "apps básicas" por ahora |
 
 ### Completados
@@ -69,6 +69,7 @@ Ordenado por impacto/esfuerzo. **El #1 es la recomendación actual.**
 - ~~C~~ **Vertical `blog`** ✅ — `src/verticals/blog/`: posts/categories/tags(N:M)/comments moderados, overlay api/ verificado en vivo, `inferAppType` con keywords, 3 scopes. También: log de `duración total` al final del pipeline + `elapsedMs` en status.json.
 - ~~I~~ **Automatizar `validate:pr`** ✅ — auto-descubrimiento local: `npm run validate:pr` sin args lista PRs abiertos y valida los pendientes (`listOpenPRs` + `getPRComments`); el veredicto embebe `<!-- validate-pr head:<sha7> -->` así un push nuevo marca el PR pendiente otra vez; `--watch [min]` = polling continuo. GitHub Action descartado (el binario `devin` no es instalable en runners y meter `windsurf_api_key` en secrets de CI es exposición innecesaria); hook post-push no existe en git.
 - ~~J~~ **Cola de jobs** ✅ — `src/queue.js` + `npm run queue`/`npm run worker`: un archivo por job en `jobs/` (cero locking — add y worker nunca escriben el mismo archivo), ids por create-exclusivo, spawn `node src/index.js` por job con stdio heredado, escritura atómica tmp+rename, jobs `running` al arrancar → `failed` + nota `--resume`.
+- ~~K~~ **Convención `.env` en api-skeleton** ✅ — `dotenv` dep + `import 'dotenv/config'` en `server/index.js`, `.env.example` commiteado (copiado por `copyApiSkeleton`), `.env` en `gitignore.partial`, regla en `src/templates/AGENTS.md` (secretos via `process.env`, declarados en `.env.example`). Verificado E2E: server levanta con `PORT` leído de `.env`.
 - ~~L~~ **Reporte de run** ✅ — `src/report.js` + `npm run report`: resume `runs/<id>/` en `report.md` — pasos con intentos, duración por sesión Devin (birthtime→mtime del log), prompts por sesión, totales (tiempo en Devin, intentos, fixes). Deriva duración de runs viejos sin `elapsedMs` desde el timestamp del runId.
 - ~~H~~ **Pool de procesos `devin acp`** ✅ — `warmClient` en `tools/devin.js` mantiene un proceso tibio a nivel módulo: initialize+authenticate una sola vez por run, `session/new` por paso (aislamiento intacto), `setLog` rota el run log. Proceso muerto → descarte y respawn automático; hook `exit` mata al hijo con el CLI. `reused` expuesto en el resultado + `acpPoolStats()` para tests.
 
