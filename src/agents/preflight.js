@@ -5,19 +5,21 @@ import { run } from '../tools/shell.js';
 import { checkDevinAuth } from '../tools/devin.js';
 import { startInstall } from '../tools/install.js';
 import { ensureProjectDir } from '../tools/slug.js';
+import { resolveStacks } from '../stacks/index.js';
 import { getVertical } from '../verticals/index.js';
 import { activity, log } from './common.js';
 
 const REQUIRED_BINS = ['devin', 'node', 'npm', 'git'];
 
 /**
- * Copia src/templates/api-skeleton/ sobre el proyecto:
+ * Copia src/templates/<skeletonDir>/ sobre el proyecto:
  * - package.partial.json → se mergea en package.json existente
  *   (fullstack) o se convierte en el package.json (backend puro).
  * - gitignore.partial → se appendea al .gitignore existente o lo crea.
+ * `skeletonDir` viene del stack backend activo (src/stacks/).
  */
-export function copyApiSkeleton(dir) {
-  const src = join(config.templatesDir, 'api-skeleton');
+export function copyApiSkeleton(dir, skeletonDir = 'api-skeleton') {
+  const src = join(config.templatesDir, skeletonDir);
   cpSync(src, dir, {
     recursive: true,
     filter: (s) => !['package.partial.json', 'gitignore.partial'].includes(basename(s)),
@@ -114,18 +116,19 @@ export async function preflightNode(state) {
     join(dir, 'AGENTS.md'),
   );
 
-  // Vertical conocido con frontend → copiar app-skeleton.
-  // Scope con backend → api-skeleton (Express + SQLite + uploads);
+  // Vertical conocido con frontend → copiar el skeleton del stack
+  // frontend activo. Scope con backend → skeleton del stack backend;
   // el overlay del vertical aporta schema/seed/routes si existe.
   // (scaffold determinístico: el agente no gasta tiempo ni tokens en init).
   const vertical = getVertical(state.appType);
+  const stacks = resolveStacks(state.scope);
   const withFrontend = state.scope !== 'backend';
   const withBackend = state.scope !== 'frontend';
   const fresh = !existsSync(join(dir, 'package.json'));
 
   if (fresh) {
     if (vertical && withFrontend) {
-      cpSync(join(config.templatesDir, 'app-skeleton'), dir, { recursive: true });
+      cpSync(join(config.templatesDir, stacks.frontend.skeletonDir), dir, { recursive: true });
       history.push(log('preflight', `skeleton frontend copiado (${vertical.name})`));
       activity('skeleton frontend copiado');
     }
@@ -136,8 +139,8 @@ export async function preflightNode(state) {
     const wantsApi =
       withBackend && (state.appType === 'custom' || (overlayDir && existsSync(overlayDir)));
     if (wantsApi) {
-      copyApiSkeleton(dir);
-      history.push(log('preflight', 'api-skeleton copiado (Express + SQLite + uploads)'));
+      copyApiSkeleton(dir, stacks.backend.skeletonDir);
+      history.push(log('preflight', `api-skeleton copiado (${stacks.backend.label})`));
       activity('api-skeleton copiado');
       if (overlayDir && existsSync(overlayDir)) {
         cpSync(overlayDir, join(dir, 'server'), { recursive: true });

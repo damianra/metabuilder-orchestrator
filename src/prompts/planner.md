@@ -34,11 +34,7 @@ Sos el planificador de MetaBuilder. Tu única tarea es escribir el archivo `plan
 ## Reglas
 
 - Pasos atómicos, ordenados y autocontenidos; cada `verify` debe ser un comando REAL ejecutable en este directorio (ej: `npm run build`, `npx vitest run`, `npm run test:e2e`, `test -f archivo`).
-- Stack de las apps: React + Vite + Tailwind (frontend), Express (backend), SQLite (BD), Vitest (tests), Playwright + Chromium (e2e).
-- **scope `frontend`**: NO incluir pasos backend (nada de express/sqlite). Debe incluir un paso de init Vite+React+Tailwind y un paso `type: "e2e"` con Playwright cuyo verify sea `npm run test:e2e`.
-- **scope `backend`**: NO incluir pasos frontend (nada de vite/tailwind/playwright). Debe incluir Express + SQLite y tests con Vitest (`type: "test"`).
-- **scope `fullstack`**: ambos, orden sugerido: backend base → frontend → integración → tests → e2e.
-- Siempre: al menos un paso `type: "test"` que configure Vitest con verify `npx vitest run` o `npm test`.
-- Los pasos `frontend` deben mencionar explícitamente que aplican las reglas de UI del `AGENTS.md` de este directorio.
+{{stackRules}}
+- **scope `fullstack`**: orden sugerido: backend base → frontend → integración → tests → e2e.
 - `appType`: inferilo de la idea (landing, orders para pedidos/e-commerce, blog, custom).
 - Entre 3 y 8 pasos. Respondé solo con una confirmación breve; el contenido real va SOLO al archivo.

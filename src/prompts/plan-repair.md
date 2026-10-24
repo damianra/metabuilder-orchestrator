@@ -21,4 +21,8 @@ El archivo `plan.json` de este directorio falló la validación del orquestador.
 }
 ```
 
-Recordatorio de reglas: pasos atómicos con `verify` ejecutable; scope frontend excluye backend y viceversa; frontend/fullstack requieren init Vite+Tailwind + paso `e2e` con Playwright (`npm run test:e2e`); backend/fullstack requieren Express+SQLite; siempre un paso `test` con Vitest. Escribí el `plan.json` corregido completo.
+Recordatorio de reglas: pasos atómicos con `verify` ejecutable. Reglas de stack vigentes:
+
+{{stackRules}}
+
+Escribí el `plan.json` corregido completo.
