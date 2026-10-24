@@ -40,7 +40,20 @@ La entrada mínima es **la idea** — una descripción en texto libre de la app 
 
 - `--app-type` decide el **vertical** (paquete de plan+secciones predefinidas). Si no se pasa, se **infiere de la idea** (`pedido/restaurante/comida/pizza…` → `orders`; resto con frontend → `landing`; backend puro → `custom` — que usa el planner LLM).
 - `--scope` decide qué construir: `fullstack` (front+back), `frontend`, `backend`.
+- `--stack-frontend`/`--stack-backend` deciden el **stack** (ver abajo); defaults si no se pasan.
 - `--name` fija el slug del directorio/repo; vacío → derivado de la idea.
+
+## Stacks disponibles
+
+Un **stack** es un paquete cerrado de tecnologías — se elige entero, no por piezas, y nunca se infiere del texto de la idea (solo flag/picker del dashboard/pregunta interactiva). El id agrupa todo lo necesario para que la app funcione: framework + build tool + testing.
+
+| Id | Kind | Incluye | Build → |
+| --- | --- | --- | --- |
+| `vite-react` (default) | frontend | Vite (build tool) + React (UI) + Tailwind + Vitest + Playwright | `dist/` |
+| `nextjs` | frontend | Next.js 15 (App Router, `output: 'export'`) + React 19 + Tailwind + Vitest + Playwright | `out/` |
+| `express-sqlite` (default) | backend | Express 5 + better-sqlite3 + multer | — |
+
+Los stacks están declarados como datos en `src/stacks/` — agregar uno nuevo (ej. Vue, Fastify) = nuevo archivo de definición + skeleton en `src/templates/`; aparece solo en el CLI y el dashboard.
 
 Ejemplos de contexto inicial:
 
