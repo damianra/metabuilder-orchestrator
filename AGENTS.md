@@ -130,6 +130,8 @@ Rechazar → `fail` sin ejecutar builds.
   de UI obligatorias — no confundir con este archivo (raíz), que documenta
   el orquestador.
 - `runs/<runId>/` guarda logs JSON-RPC de cada sesión ACP.
+  `npm run report -- <runId|slug>` los resume en `report.md` (pasos,
+  intentos, duración por sesión); sin args lista runs recientes.
 
 ## ⚠️ Integración con Devin CLI — crítico
 

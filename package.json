@@ -10,7 +10,8 @@
     "test": "vitest run",
     "validate:pr": "node src/validate-pr.js",
     "queue": "node src/queue.js",
-    "worker": "node src/queue.js run"
+    "worker": "node src/queue.js run",
+    "report": "node src/report.js"
   },
   "repository": {
     "type": "git",

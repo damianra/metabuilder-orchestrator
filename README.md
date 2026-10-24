@@ -123,7 +123,7 @@ cp .env.example .env
 - `src/templates/` — `AGENTS.md` (reglas UI + guía de diseño copiadas a cada app), `README.md`, `app-skeleton/` (frontend), `api-skeleton/` (backend Express+SQLite+uploads).
 - `src/verticals/<v>/api/` — overlay de backend por vertical (schema.sql + seed-data.js + routes/) que se copia sobre `server/`.
 - `generated-apps/` — apps generadas (**gitignored**, cada una con su repo git).
-- `runs/` — logs JSON-RPC de cada sesión Devin (**gitignored**).
+- `runs/` — logs JSON-RPC de cada sesión Devin (**gitignored**). `npm run report -- <runId|slug>` los resume en markdown (pasos, intentos, duración por sesión, totales) y lo guarda en `runs/<runId>/report.md`; sin args lista los runs recientes.
 - `tests/` — suite Vitest del orquestador (`npm test`): validator+verticales, slug, shell, install lazy, semáforo Devin, copyApiSkeleton, ghAuthArgs/sanitize/commit idempotente, parseo del reviewer, serialización ACP (stub `devin` en `tests/fixtures/`), resume. Corre en CI (`.github/workflows/test.yml`) en cada PR y push a main.
 - `.github/workflows/test.yml` — CI: `npm test` en PRs y main (Node 22, sin Devin ni secrets).
 - `ROADMAP.md` — candidatos y próximos pasos (api-skeleton, tests del orquestador, ejecución asincrónica).
