@@ -11,10 +11,10 @@ import { acquireDevinSlot } from './devin-lock.js';
  * `devin acp` (Agent Client Protocol, JSON-RPC delimitado por líneas
  * sobre stdio) — el mismo canal que usa Devin Desktop.
  *
- * Secuencia por llamada:
- *   initialize → authenticate (windsurf-api-key) → session/new
- *   → session/set_config_option (mode/model) → session/prompt
- *   → acumular session/update hasta que el prompt responde.
+ * Secuencia: initialize → authenticate (windsurf-api-key) una sola vez
+ * por proceso (pool, ver warmClient); luego por llamada: session/new →
+ * session/set_config_option (mode/model) → session/prompt → acumular
+ * session/update hasta que el prompt responde.
  */
 
 export function loadCredentials(credentialsPath = config.devinCredentialsPath) {
@@ -41,6 +41,7 @@ export class AcpClient {
   #pending = new Map();
   #nextId = 1;
   #log;
+  #alive = true;
   onUpdate;
 
   constructor(cwd, logPath) {
@@ -48,11 +49,36 @@ export class AcpClient {
       cwd,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
+    this.setLog(logPath);
+    this.#proc.stdout.on('data', (chunk) => this.#onData(chunk));
+    this.#proc.stderr.on('data', (chunk) => this.#writeLog(`[stderr] ${chunk}`));
+    // Si el proceso muere, las calls pendientes no pueden quedar
+    // colgadas — se rechazan y el pool descarta al cliente.
+    this.#proc.on('exit', () => {
+      this.#alive = false;
+      const pending = [...this.#pending.values()];
+      this.#pending.clear();
+      for (const settle of pending) {
+        settle({ error: { message: 'proceso devin acp terminó' } });
+      }
+    });
+  }
+
+  get isAlive() {
+    return this.#alive && this.#proc.exitCode === null && !this.#proc.killed;
+  }
+
+  get pid() {
+    return this.#proc.pid;
+  }
+
+  // Rota el archivo de log JSON-RPC sin reiniciar el proceso — el pool
+  // lo usa para que cada paso siga escribiendo a su propio run log.
+  setLog(logPath) {
+    this.#log?.end();
     this.#log = logPath ? createWriteStream(logPath, { flags: 'a' }) : null;
     // El stream puede fallar (ENOSPC, etc.) — el log nunca debe tumbar la sesión.
     this.#log?.on('error', () => {});
-    this.#proc.stdout.on('data', (chunk) => this.#onData(chunk));
-    this.#proc.stderr.on('data', (chunk) => this.#writeLog(`[stderr] ${chunk}`));
   }
 
   // El proceso puede seguir emitiendo stderr/stdout tras close() (end del
@@ -131,24 +157,99 @@ export class AcpClient {
     this.#proc.stdin.end();
     this.#log?.end();
   }
+
+  // close + kill: para descartar un cliente del pool.
+  dispose() {
+    this.close();
+    this.kill();
+  }
+
+  // Un cliente tibio en el pool no debe mantener vivo el event loop
+  // (scripts/tests colgarían al terminar). Se unref() al quedar idle y
+  // se ref() mientras corre un prompt.
+  ref() {
+    this.#proc.ref();
+    this.#proc.stdin.ref();
+    this.#proc.stdout.ref();
+    this.#proc.stderr.ref();
+  }
+
+  unref() {
+    this.#proc.unref();
+    this.#proc.stdin.unref();
+    this.#proc.stdout.unref();
+    this.#proc.stderr.unref();
+  }
+}
+
+// ---- Pool del proceso `devin acp` ----
+// Spawn + initialize + authenticate cuestan segundos por llamada y el
+// resultado es el mismo para todos los pasos de un run → se mantiene un
+// proceso tibio a nivel módulo y cada prompt abre una sesión ACP nueva
+// (session/new): el aislamiento entre pasos no cambia, lo que se ahorra
+// es el handshake. Si el proceso muere (crash, kill por timeout) se
+// descarta y el próximo prompt respawnea. El semáforo sigue por prompt
+// — limita sesiones activas, no procesos idle.
+const acpPool = { client: null };
+let exitHookInstalled = false;
+
+function dropPooledClient(client) {
+  if (acpPool.client === client) acpPool.client = null;
+  client.dispose();
+}
+
+export function acpPoolStats() {
+  return {
+    warm: Boolean(acpPool.client?.isAlive),
+    pid: acpPool.client?.isAlive ? acpPool.client.pid : null,
+  };
+}
+
+async function warmClient(cwd, logPath) {
+  if (acpPool.client?.isAlive) {
+    acpPool.client.setLog(logPath);
+    acpPool.client.ref();
+    return { client: acpPool.client, reused: true };
+  }
+  if (acpPool.client) dropPooledClient(acpPool.client);
+  const client = new AcpClient(cwd, logPath);
+  try {
+    // Sin fs/terminal capabilities: el agente usa sus tools nativos
+    // (local_exec/local_write/...) que corren server-side en `cwd`.
+    // Si las anunciamos, el agente delega cada fs op al cliente y se
+    // bloquearía esperando respuestas que nunca llegan.
+    await client.call('initialize', {
+      protocolVersion: 1,
+      clientCapabilities: {},
+      clientInfo: { name: 'metabuilder-orchestrator', version: '0.1.0' },
+    });
+    const { apiKey, apiServerUrl } = loadCredentials();
+    await client.call('authenticate', {
+      methodId: 'windsurf-api-key',
+      _meta: { api_key: apiKey, api_server_url: apiServerUrl },
+    });
+  } catch (err) {
+    client.dispose();
+    throw err;
+  }
+  acpPool.client = client;
+  if (!exitHookInstalled) {
+    exitHookInstalled = true;
+    // Sin esto un Ctrl+C/exit del CLI dejaría el `devin acp` huérfano.
+    process.on('exit', () => {
+      try {
+        acpPool.client?.kill();
+      } catch {
+        /* ya muerto */
+      }
+    });
+  }
+  client.ref();
+  return { client, reused: false };
 }
 
 async function startSession({ cwd, logPath, model, mode }) {
-  const client = new AcpClient(cwd, logPath);
-  // Sin fs/terminal capabilities: el agente usa sus tools nativos
-  // (local_exec/local_write/...) que corren server-side en `cwd`.
-  // Si las anunciamos, el agente delega cada fs op al cliente y se
-  // bloquearía esperando respuestas que nunca llegan.
-  await client.call('initialize', {
-    protocolVersion: 1,
-    clientCapabilities: {},
-    clientInfo: { name: 'metabuilder-orchestrator', version: '0.1.0' },
-  });
-  const { apiKey, apiServerUrl } = loadCredentials();
-  await client.call('authenticate', {
-    methodId: 'windsurf-api-key',
-    _meta: { api_key: apiKey, api_server_url: apiServerUrl },
-  });
+  const { client, reused } = await warmClient(cwd, logPath);
   const session = await client.call('session/new', { cwd, mcpServers: [] });
   await client.call('session/set_config_option', {
     sessionId: session.sessionId,
@@ -162,7 +263,7 @@ async function startSession({ cwd, logPath, model, mode }) {
       value: model,
     });
   }
-  return { client, sessionId: session.sessionId };
+  return { client, sessionId: session.sessionId, reused };
 }
 
 /**
@@ -191,6 +292,9 @@ export async function runDevinPrompt({
     const started = await startSession({ cwd, logPath, model, mode });
     client = started.client;
     const sessionId = started.sessionId;
+    if (started.reused) {
+      onActivity?.('proceso devin acp reutilizado (handshake omitido)');
+    }
 
     // Dedup + throttle de actividad: los tool_call pueden llegar en ráfagas.
     let lastActivity = '';
@@ -232,6 +336,7 @@ export async function runDevinPrompt({
       text: textParts.join(''),
       stopReason: result?.stopReason ?? 'end_turn',
       sessionId,
+      reused: started.reused,
     };
   } catch (err) {
     return {
@@ -242,7 +347,18 @@ export async function runDevinPrompt({
       error: String(err?.message ?? err),
     };
   } finally {
-    client?.close();
+    // El cliente NO se cierra: queda tibio en el pool para el próximo
+    // paso. Solo se descarta si el proceso murió (timeout→kill, crash).
+    if (client) {
+      client.onUpdate = null;
+      if (client.isAlive) client.unref();
+      else dropPooledClient(client);
+    } else if (acpPool.client?.isAlive) {
+      // startSession lanzó tras pool-ear el cliente (session/new o
+      // set_config falló): quedó ref()'d sin dueño — hay que
+      // descartarlo o retiene el event loop para siempre.
+      dropPooledClient(acpPool.client);
+    }
     releaseSlot();
   }
 }

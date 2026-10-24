@@ -166,8 +166,14 @@ Notas ACP:
   mantener ese patrón.
 - Pasos `type: 'infra'` con `package.json` ya presente NO llaman a Devin:
   el skeleton lo resolvió; `verify` valida igual.
-- Cada paso abre una sesión nueva (proceso `devin acp` propio). La memoria
-  entre pasos es el filesystem + `plan.json` + el AGENTS.md copiado.
+- Cada paso abre una sesión ACP nueva (`session/new`), pero el proceso
+  `devin acp` se **reusa entre pasos del mismo run**: pool a nivel módulo
+  en `tools/devin.js` (`warmClient`) — initialize+authenticate una sola
+  vez, `setLog` rota el run log por paso. Si el proceso muere (crash o
+  kill por timeout) se descarta y el próximo paso respawnea solo. La
+  memoria entre pasos es el filesystem + `plan.json` + el AGENTS.md
+  copiado. El semáforo sigue limitando sesiones activas, no procesos
+  idle — un proceso tibio sin sesión no bloquea a otros runs.
 - `devin auth status` y `devin models list` reportan "Not logged in" con
   credenciales Windsurf — es un chequeo de session_token, **no usar como
   probe**. El probe real es `checkDevinAuth()` (initialize+authenticate).
@@ -226,6 +232,10 @@ sub-agente `review` + `finalVerify` antes del push.
 - `execa` siempre con `reject: false` en tools — los nodos deciden.
 - Reintentos: paso ≤ `MAX_STEP_RETRIES` (3), plan ≤ `MAX_PLAN_RETRIES` (2).
 - Nunca commitear `generated-apps/`, `runs/`, `.env`, `*.sqlite`.
+- **Docs al día en el mismo PR**: todo cambio de comportamiento, flag,
+  comando, env var o instrucción nueva para el usuario/agente debe
+  actualizar `README.md`, este `AGENTS.md` y `ROADMAP.md` (si aplica).
+  Un PR de código sin sus docs está incompleto.
 
 ## Stack apps generadas
 
