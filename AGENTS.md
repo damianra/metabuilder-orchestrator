@@ -186,7 +186,9 @@ fina sobre la infra existente:
   docker-build.json, log en docker-build.log; sin daemon → skipped),
   `test` (corre `npm test` [+ `npm run test:e2e` si `e2e:true`] async →
   test-run.json/test-run.log en la app; 400 si faltan los scripts, 409
-  si ya hay un run en curso), `open-repo` (devuelve la URL https del
+  si hay un run en curso **con pid vivo** — un `running` con pid muerto
+  es stale (dashboard caído a mitad) y no bloquea el relanzamiento),
+  `open-repo` (devuelve la URL https del
   remote para que la UI la abra).
 - `GET /api/options` — scopes/verticales/archs/stacks leídos de los
   registries; la UI alimenta sus pickers de acá (nada hardcodeado).

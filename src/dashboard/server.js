@@ -85,11 +85,16 @@ const writeTestState = (dir, state) => writeJson(testStatePath(dir), state);
 // test-run.log, estado a test-run.json. `commands` es una lista de
 // argvs que corren en serie; falla el primero → status failed.
 export function startTestRun(dir, commands, label) {
-  const state = { status: 'running', command: label, startedAt: new Date().toISOString() };
+  // pid por comando: el guard de "running" lo usa para detectar runs
+  // stale (dashboard muerto a mitad) y no bloquear para siempre.
+  const state = { status: 'running', command: label, pid: null, startedAt: new Date().toISOString() };
   writeTestState(dir, state);
   const log = createWriteStream(join(dir, 'test-run.log'), { flags: 'a' });
   log.write(`\n━━ test run · ${label} · ${state.startedAt}\n`);
+  let finished = false;
   const finish = (status, exitCode) => {
+    if (finished) return; // 'error' + 'close' pueden disparar ambos (ENOENT)
+    finished = true;
     // El estado final se escribe cuando el log ya flusheó — así quien
     // lee status 'done'/'failed' tiene el output completo en disco.
     log.end(() =>
@@ -101,6 +106,8 @@ export function startTestRun(dir, commands, label) {
     const [cmd, ...args] = commands[i];
     log.write(`\n$ ${[cmd, ...args].join(' ')}\n`);
     const child = spawn(cmd, args, { cwd: dir });
+    state.pid = child.pid;
+    writeTestState(dir, state);
     // end:false — el stream lo cierra finish() explícitamente; con el
     // default, el primer stdout que termina haría end() y los writes
     // siguientes (stderr o el próximo comando) serían write-after-end.
@@ -108,13 +115,25 @@ export function startTestRun(dir, commands, label) {
     child.stderr.pipe(log, { end: false });
     child.on('close', (exitCode) => {
       if (exitCode === 0) runNext(i + 1);
-      else finish('failed', exitCode ?? 1);
+      else finish('failed', exitCode > 0 ? exitCode : 1);
     });
     child.on('error', () => finish('failed', 1));
   };
   runNext(0);
   return state;
 }
+
+// ¿Sigue vivo el proceso del test run? Un 'running' con pid muerto es
+// stale (dashboard caído a mitad) → no bloquea el relanzamiento.
+const pidAlive = (pid) => {
+  if (!pid) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 function projectSummary(dir, slug) {
   const plan = readJson(join(dir, 'plan.json'));
@@ -389,7 +408,8 @@ export function createDashboardApp({
       if (req.body.e2e && !scripts['test:e2e']) {
         return res.status(400).json({ error: 'el proyecto no tiene script "test:e2e"' });
       }
-      if (readTestState(dir)?.status === 'running') {
+      const current = readTestState(dir);
+      if (current?.status === 'running' && pidAlive(current.pid)) {
         return res.status(409).json({ error: 'ya hay un test run en curso' });
       }
       const commands = [['npm', 'test']];

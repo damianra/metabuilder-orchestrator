@@ -313,14 +313,20 @@ describe('detalle enriquecido + acción test', () => {
     ]);
   });
 
-  it('400 sin script test / sin test:e2e pedido / 409 si ya corre', async () => {
+  it('400 sin script test / sin test:e2e pedido / 409 solo si el run sigue vivo', async () => {
     seedApp('app-sin-pkg');
     expect((await post('/api/projects/app-sin-pkg/actions', { action: 'test' })).status).toBe(400);
 
     const dir = seedPkg('app-uno', { test: 'vitest run' }); // sin test:e2e
     expect((await post('/api/projects/app-uno/actions', { action: 'test', e2e: true })).status).toBe(400);
 
-    writeJson(join(dir, 'test-run.json'), { status: 'running' });
+    // 'running' con pid muerto/ausente = stale (dashboard caído) → no bloquea
+    writeJson(join(dir, 'test-run.json'), { status: 'running', pid: 999999 });
+    expect((await post('/api/projects/app-uno/actions', { action: 'test' })).status).toBe(202);
+    expect(startTestCalls).toHaveLength(1);
+
+    // 'running' con pid vivo (este mismo proceso) → 409
+    writeJson(join(dir, 'test-run.json'), { status: 'running', pid: process.pid });
     const busy = await post('/api/projects/app-uno/actions', { action: 'test' });
     expect(busy.status).toBe(409);
   });
