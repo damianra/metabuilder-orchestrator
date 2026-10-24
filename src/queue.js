@@ -118,6 +118,34 @@ export async function runJob(
   return done;
 }
 
+// Heartbeat del worker: jobs/.worker {pid, ts} — el dashboard lo lee
+// para mostrar "sin worker consumiendo" cuando hay jobs pendientes.
+const workerPath = (baseDir = config.rootDir) => join(jobsDir(baseDir), '.worker');
+
+export function writeHeartbeat(baseDir = config.rootDir) {
+  mkdirSync(jobsDir(baseDir), { recursive: true });
+  writeFileSync(workerPath(baseDir), JSON.stringify({ pid: process.pid, ts: Date.now() }) + '\n');
+}
+
+// alive = heartbeat fresco (<15s) Y proceso vivo (kill(pid,0) —
+// ESRCH muere, EPERM cuenta como vivo).
+export function readWorker(baseDir = config.rootDir) {
+  try {
+    const { pid, ts } = JSON.parse(readFileSync(workerPath(baseDir), 'utf8'));
+    let alive = Date.now() - ts <= 15_000;
+    if (alive) {
+      try {
+        process.kill(pid, 0);
+      } catch (e) {
+        alive = e.code === 'EPERM';
+      }
+    }
+    return { alive, pid, ts };
+  } catch {
+    return { alive: false, pid: null, ts: null };
+  }
+}
+
 // Procesa todos los jobs pendientes en orden de id. Devuelve cuántos
 // terminaron en done.
 export async function runQueue(opts = {}) {
@@ -137,6 +165,19 @@ export async function runQueue(opts = {}) {
     } else {
       console.error(`   ✗ job #${next.id} falló`);
     }
+  }
+}
+
+// Modo daemon: procesa la cola en loop con heartbeat — es el worker
+// que `npm run dashboard` levanta para que los jobs no queden
+// pending esperando un consumidor.
+export async function watchQueue({ intervalMs = 1500, baseDir = config.rootDir } = {}) {
+  writeHeartbeat(baseDir);
+  const hb = setInterval(() => writeHeartbeat(baseDir), 1000);
+  hb.unref?.();
+  for (;;) {
+    await runQueue({ baseDir });
+    await new Promise((r) => setTimeout(r, intervalMs));
   }
 }
 
@@ -176,8 +217,13 @@ const main = async () => {
       console.log(`\n✔ cola procesada — ${done} job(s) en done`);
       break;
     }
+    case 'watch': {
+      console.log('worker en watch — consumiendo la cola en loop (Ctrl+C para salir)');
+      await watchQueue();
+      break;
+    }
     default:
-      console.error('uso: npm run queue -- add|list|clear|run …   (run = npm run worker)');
+      console.error('uso: npm run queue -- add|list|clear|run|watch …   (run = npm run worker)');
       process.exit(1);
   }
 };

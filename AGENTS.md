@@ -22,7 +22,9 @@ npm start -- --resume generated-apps/<slug> [--github] [--no-push] [-y]
 # Cola batch: encolar ideas y procesarlas en serie
 npm run queue -- add --idea "..." [-y]   # encola (args = los de npm start)
 npm run queue -- list|clear              # estado / limpieza
-npm run worker                           # procesa jobs/ en orden
+npm run worker                           # procesa jobs/ en orden (una pasada)
+npm run queue -- watch                   # idem en loop + heartbeat jobs/.worker
+                                         # (es el modo que levanta npm run dashboard)
 
 # Dashboard (API + UI): API en :4100, UI Vite en :4173 con proxy /api
 npm run dashboard                        # levanta ambos (Ctrl+C mata ambos)
@@ -161,7 +163,10 @@ fina sobre la infra existente:
   status.json → status, pasos done/total, arch, hasDockerfile).
 - `GET /api/projects/:slug` — detalle: pasos, reporte del último run
   (buildReport en vivo), repoUrl (ssh→https), docker-build.json.
-- `GET /api/jobs` — cola (readJobs).
+- `GET /api/jobs` — `{ jobs, worker }`: cada job enriquecido con
+  `projectSlug` (derivado de `--name`/`--resume`/slug de la idea) y
+  `progress` (node/step/totalSteps del `status.json` de la app);
+  `worker` = liveness leído del heartbeat `jobs/.worker`.
 - `POST /api/runs` — encola una generación: whitelist de campos
   (idea/scope/appType/name/arch/phone + flags github/ghpages/
   verifyDocker) → args del CLI + `--yes` siempre (un job bajo el worker

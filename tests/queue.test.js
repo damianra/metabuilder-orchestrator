@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -79,5 +79,28 @@ describe('cola de jobs', () => {
     addJob(['--idea', 'bueno'], dir);
     expect(await runQueue({ baseDir: dir, cmd })).toBe(1);
     expect(readJobs(dir).map((j) => j.status)).toEqual(['failed', 'done']);
+  });
+});
+
+describe('heartbeat del worker', () => {
+  it('writeHeartbeat → readWorker vivo con pid propio', async () => {
+    const { writeHeartbeat, readWorker } = await import('../src/queue.js');
+    writeHeartbeat(dir);
+    const w = readWorker(dir);
+    expect(w.alive).toBe(true);
+    expect(w.pid).toBe(process.pid);
+  });
+
+  it('sin archivo o heartbeat viejo → alive false', async () => {
+    const { readWorker } = await import('../src/queue.js');
+    expect(readWorker(dir).alive).toBe(false);
+    // Stale: ts viejo con pid vivo → muerto igual.
+    const { writeHeartbeat } = await import('../src/queue.js');
+    writeHeartbeat(dir);
+    const p = join(dir, 'jobs', '.worker');
+    const hb = JSON.parse(readFileSync(p, 'utf8'));
+    hb.ts = Date.now() - 60_000;
+    writeFileSync(p, JSON.stringify(hb));
+    expect(readWorker(dir).alive).toBe(false);
   });
 });
