@@ -35,6 +35,7 @@ Sos el planificador de MetaBuilder. Tu única tarea es escribir el archivo `plan
 
 - Pasos atómicos, ordenados y autocontenidos; cada `verify` debe ser un comando REAL ejecutable en este directorio (ej: `npm run build`, `npx vitest run`, `npm run test:e2e`, `test -f archivo`).
 {{stackRules}}
+{{archRules}}
 - **scope `fullstack`**: orden sugerido: backend base → frontend → integración → tests → e2e.
 - `appType`: inferilo de la idea (landing, orders para pedidos/e-commerce, blog, custom).
 - Entre 3 y 8 pasos. Respondé solo con una confirmación breve; el contenido real va SOLO al archivo.

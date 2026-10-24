@@ -1,10 +1,11 @@
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
 import { checkDevinAuth } from '../tools/devin.js';
 import { startInstall } from '../tools/install.js';
 import { ensureProjectDir } from '../tools/slug.js';
+import { resolveArch } from '../arch/index.js';
 import { resolveStacks } from '../stacks/index.js';
 import { getVertical } from '../verticals/index.js';
 import { activity, log } from './common.js';
@@ -55,8 +56,20 @@ function prewarmPlaywright(dir) {
     .catch(() => {});
 }
 
+/**
+ * AGENTS.md de la app generada: template base + sección de
+ * arquitectura backend (src/arch/) cuando el scope tiene backend.
+ * Es lo que el builder/fixer/reviewer leen como contrato del código.
+ */
+function writeAgentsMd(dir, { withBackend, arch }) {
+  const base = readFileSync(join(config.templatesDir, 'AGENTS.md'), 'utf8');
+  const rules = withBackend ? `\n## Arquitectura backend\n\n${arch.agentsRules}\n` : '';
+  writeFileSync(join(dir, 'AGENTS.md'), base + rules);
+}
+
 export async function preflightNode(state) {
   const history = [log('preflight', 'verificando binarios y autenticación')];
+  const arch = resolveArch(state.arch);
 
   // Probes en paralelo: binarios requeridos + auth Devin (ACP).
   const [bins, auth] = await Promise.all([
@@ -89,7 +102,10 @@ export async function preflightNode(state) {
     const runDir = join(config.runsDir, runId);
     mkdirSync(join(runDir, 'prompts'), { recursive: true });
 
-    copyFileSync(join(config.templatesDir, 'AGENTS.md'), join(dir, 'AGENTS.md'));
+    writeAgentsMd(dir, {
+      withBackend: existsSync(join(dir, 'server')),
+      arch,
+    });
     if (existsSync(join(dir, 'package.json'))) {
       startInstall(dir);
       history.push(log('preflight', 'npm install corriendo en background (resume)'));
@@ -111,10 +127,7 @@ export async function preflightNode(state) {
   const runDir = join(config.runsDir, runId);
   mkdirSync(join(runDir, 'prompts'), { recursive: true });
 
-  copyFileSync(
-    join(config.templatesDir, 'AGENTS.md'),
-    join(dir, 'AGENTS.md'),
-  );
+  writeAgentsMd(dir, { withBackend: state.scope !== 'frontend', arch });
 
   // Vertical conocido con frontend → copiar el skeleton del stack
   // frontend activo. Scope con backend → skeleton del stack backend;
