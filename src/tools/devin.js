@@ -353,6 +353,11 @@ export async function runDevinPrompt({
       client.onUpdate = null;
       if (client.isAlive) client.unref();
       else dropPooledClient(client);
+    } else if (acpPool.client?.isAlive) {
+      // startSession lanzó tras pool-ear el cliente (session/new o
+      // set_config falló): quedó ref()'d sin dueño — hay que
+      // descartarlo o retiene el event loop para siempre.
+      dropPooledClient(acpPool.client);
     }
     releaseSlot();
   }

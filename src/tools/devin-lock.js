@@ -45,7 +45,7 @@ export async function acquireDevinSlot({
   onWait,
   baseDir,
 } = {}) {
-  const base = baseDir ?? devinSlotsDir();
+  const base = baseDir ?? process.env.DEVIN_SLOTS_DIR ?? devinSlotsDir();
   mkdirSync(base, { recursive: true });
   let waited = false;
   for (;;) {

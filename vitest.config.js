@@ -1,5 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 export default defineConfig({
   test: {
@@ -13,6 +15,10 @@ export default defineConfig({
       DEVIN_CREDENTIALS_PATH: fileURLToPath(
         new URL('./tests/fixtures/credentials.toml', import.meta.url),
       ),
+      // Semáforo aislado: sin esto los tests que llaman runDevinPrompt
+      // compiten por el slot real ~/.metabuilder/devin-slots — se
+      // bloquean durante un validate:pr o un npm start concurrente.
+      DEVIN_SLOTS_DIR: join(tmpdir(), 'mb-test-devin-slots'),
     },
   },
 });

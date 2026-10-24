@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { acpPoolStats, runDevinPrompt } from '../src/tools/devin.js';
 
 // DEVIN_BIN → fake-devin.mjs, DEVIN_CREDENTIALS_PATH → credentials.toml
-// fake (vitest.config.js). El semáforo usa el dir real
-// (~/.metabuilder/devin-slots) pero se crea y libera en cada llamada.
+// fake, DEVIN_SLOTS_DIR → tmpdir aislado (vitest.config.js): los tests
+// no compiten por el slot real del semáforo.
 
 const promptOpts = { prompt: 'hola', cwd: process.cwd(), timeoutMs: 10_000 };
 
@@ -50,5 +50,14 @@ describe('pool de procesos devin acp', () => {
     const r = await runDevinPrompt({ ...promptOpts, onText: (t) => texts.push(t) });
     expect(r.ok).toBe(true);
     expect(texts.join('')).toContain('hola desde fake');
+  });
+
+  it('si session/new falla tras pool-ear, el cliente no queda ref\'d sin dueño', async () => {
+    // El stub rechaza session/new cuando el cwd contiene FAIL_SESSION_NEW.
+    const r = await runDevinPrompt({ prompt: 'x', cwd: '/tmp/FAIL_SESSION_NEW', timeoutMs: 10_000 });
+    expect(r.ok).toBe(false);
+    // El cliente pooled huérfano debe haberse descartado — si quedara
+    // ref()'d retendría el event loop del proceso para siempre.
+    expect(acpPoolStats().warm).toBe(false);
   });
 });
