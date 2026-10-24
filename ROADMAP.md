@@ -2,9 +2,9 @@
 
 Estado: T1–T7 + `api-skeleton` + semáforo Devin + suite de tests +
 validador de PRs por sub-agente completados. Pipeline end-to-end
-validado dos veces: `casa-comidas` (orders frontend → repo +
-GitHub Pages live) y `tienda-stock` (custom fullstack con concurrencia
-de stock).
+validado tres veces: `casa-comidas` (orders frontend → repo +
+GitHub Pages live), `tienda-stock` (custom fullstack con concurrencia
+de stock) y `rotiseria-esquina` (orders fullstack con overlay api/).
 
 ## Validación de PRs del orquestador
 
