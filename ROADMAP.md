@@ -41,27 +41,29 @@ finalVerify), pre-warm de Playwright chromium en background, y
 `MAX_CONCURRENT_DEVIN_SESSIONS=1`): varios `npm start` concurrentes
 se serializan solos — nunca más de una sesión `devin acp` a la vez.
 
-## Candidatos lógicos (prioridad sugerida)
+## Backlog priorizado (revisión 2026-10-24)
+
+Ordenado por impacto/esfuerzo. **El #1 es la recomendación actual.**
 
 | # | Candidato | Descripción | Valor |
 | --- | --- | --- | --- |
-| ~~A~~ | ~~**Tests del orquestador**~~ ✅ | Implementado: `tests/` con 42 tests — validator+verticales, `ghAuthArgs`/sanitize, commit idempotente (git real en tmp), `parseReviewResult`, serialización ACP con stub `devin`, semáforo, install lazy, `copyApiSkeleton`, slug, shell | ~5s, sin tocar Devin ni red |
-| B | **orders fullstack real** | Parcialmente validado: `tienda-stock` corrió el camino api-skeleton E2E (custom). Falta correr el vertical `orders` fullstack propiamente (overlay schema/seed/routes + paso generativo-lite) | Completaría el segundo vertical en su forma real |
-| C | **Nuevo vertical** (blog/portfolio/catálogo) | Carpeta `src/verticals/<nuevo>` con plan + secciones + checks e2e + overlay `api/` (es el que demuestra el patrón overlay: un blog es `schema.sql` grande + routes, mismo motor) | Amplía el catálogo sin tocar el grafo |
-| ~~D~~ | ~~**Robustez de Pages**~~ ✅ parcial | `finalize` ya cae a `getPages` tras fallo de `enablePages` (409/500 tratados como OK). Falta solo retry del POST ante 500 | Residual |
-| E | **orders con delivery real** | Costo de envío por zona/mapa, persistir pedido en Sheets, panel admin | Más complejo; probablemente fuera del scope "apps básicas" |
+| ~~1~~ | ~~**`--resume <dir>`**~~ (F) ✅ | Implementado y validado E2E — ver sección Completados | Un Ctrl+C/timeout ya no pierde el run |
+| **2** | **CI: `npm test` en PRs** (G) | No existe `.github/workflows`. La suite corre en ~5s sin Devin ni red — compuerta determinística y gratis que complementa al sub-agente `validate:pr` (que cuesta sesiones) | **Alto y barato**: workflow de ~20 líneas |
+| **3** | **orders fullstack real** (B) | Parcialmente validado: `tienda-stock` corrió el camino api-skeleton E2E (custom). Falta correr el vertical `orders` fullstack propiamente (overlay schema/seed/routes + paso generativo-lite) | Completaría el segundo vertical en su forma real |
+| **4** | **Nuevo vertical** (C) | Carpeta `src/verticals/<nuevo>` (blog/portfolio/catálogo) con plan + secciones + checks e2e + overlay `api/` — es el que demuestra el patrón overlay: un blog es `schema.sql` grande + routes, mismo motor | Amplía el catálogo sin tocar el grafo |
+| **5** | **Pool de procesos `devin acp`** (H) | Cada paso paga initialize + authenticate + session/new + set_config (overhead por paso). Mantener el proceso ACP vivo entre pasos del mismo run — `session/new` por paso sigue aislando el contexto — recorta ese costo | Medio: performance, sin cambio semántico |
+| **6** | **Automatizar `validate:pr`** (I) | Hoy es manual (`npm run validate:pr -- <N>`). Opciones: hook post-push local, GitHub Action (requeriría credenciales Devin en secrets — evaluar) o cron | Medio: conveniencia; el camino CI tiene consideraciones de secretos |
+| **7** | **Cola de jobs (`jobs.json` + worker)** (J) | Sigue siendo la decisión pendiente original — formalizar serialización de runs (ver sección abajo) | Medio — **requiere decisión previa** |
+| **8** | **Retry de `enablePages` ante 500** (D residual) | `finalize` ya cae a `getPages` tras fallo (409/500 tratados como OK) — falta solo reintentar el POST ante 500 transitorio | Bajo: pulido chico |
+| **9** | **Reporte de run** (L) | `runs/<runId>/` guarda JSON-RPC crudo; un resumen por run (pasos, reintentos, duración por sesión) ayuda a iterar prompts y detectar patrones de fallo | Bajo-medio |
+| **10** | **Convención `.env` en api-skeleton** (K) | Una app `custom` que necesite API keys no tiene convención (dotenv + `.env.example` en el template) | Bajo |
+| **11** | **orders con delivery real** (E) | Costo de envío por zona/mapa, persistir pedido en Sheets, panel admin | Fuera del scope "apps básicas" por ahora |
 
-### Candidatos nuevos (revisión 2026-10-24)
+### Completados
 
-| # | Candidato | Descripción | Valor |
-| --- | --- | --- | --- |
-| ~~F~~ | ~~**`--resume <dir>`**~~ ✅ | Implementado: `npm start -- --resume <dir|slug>` — `resolveResumeDir` (ruta o slug), preflight reanuda sin re-copiar, planner normaliza pasos no-done → `pending` y retoma en el primero (todo done → `finalVerify`), restaura scope/appType/idea del plan (`idea` persistido en plan.json). Validado E2E | Un Ctrl+C/timeout ya no pierde el run |
-| G | **CI: `npm test` en PRs** | No existe `.github/workflows`. La suite corre en ~5s sin Devin ni red — compuerta determinística y gratis que complementa al sub-agente `validate:pr` (que cuesta sesiones) | **Alto y barato**: workflow de ~20 líneas |
-| H | **Pool de procesos `devin acp`** | Cada paso paga initialize + authenticate + session/new + set_config (overhead por paso). Mantener el proceso ACP vivo entre pasos del mismo run — `session/new` por paso sigue aislando el contexto — recorta ese costo | Medio: performance, sin cambio semántico |
-| I | **Automatizar `validate:pr`** | Hoy es manual (`npm run validate:pr -- <N>`). Opciones: hook post-push local, GitHub Action (requeriría credenciales Devin en secrets — evaluar) o cron | Medio: conveniencia; el camino CI tiene consideraciones de secretos |
-| J | **Cola de jobs (`jobs.json` + worker)** | Sigue siendo la decisión pendiente original — formalizar serialización de runs | Medio |
-| K | **Convención `.env` en api-skeleton** | Una app `custom` que necesite API keys no tiene convención (dotenv + `.env.example` en el template) | Bajo |
-| L | **Reporte de run** | `runs/<runId>/` guarda JSON-RPC crudo; un resumen por run (pasos, reintentos, duración por sesión) ayuda a iterar prompts y detectar patrones de fallo | Bajo-medio |
+- ~~A~~ **Tests del orquestador** ✅ — `tests/` con 52 tests (validator+verticales, `ghAuthArgs`/sanitize, commit idempotente, `parseReviewResult`, serialización ACP con stub `devin`, semáforo, install lazy, `copyApiSkeleton`, slug, shell, `extractVerdictComment`, resume), ~5s sin Devin ni red.
+- ~~D~~ **Robustez de Pages** ✅ parcial — fallback `getPages` ya implementado; el retry del 500 quedó como ítem #8.
+- ~~F~~ **`--resume <dir>`** ✅ — `npm start -- --resume <dir|slug>`: `resolveResumeDir` (ruta o slug), preflight reanuda sin re-copiar, planner normaliza pasos no-done → `pending` y retoma en el primero (todo done → `finalVerify`), restaura scope/appType/idea del plan (`idea` persistido en plan.json). Validado E2E: resume a mitad de plan → done. Un Ctrl+C/timeout ya no pierde el run.
 
 ## Ejecución asincrónica sin saturar (análisis)
 
