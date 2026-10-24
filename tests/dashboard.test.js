@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDashboardApp } from '../src/dashboard/server.js';
 
-let base, appsDir, runsDir, server, url, startTestCalls;
+let base, appsDir, runsDir, server, url, startTestCalls, fakeEngine, runCmdCalls, runCmdHandler;
 
 const writeJson = (p, data) => writeFileSync(p, JSON.stringify(data));
 
@@ -39,6 +39,9 @@ const post = (path, body) =>
 beforeEach(async () => {
   base = mkdtempSync(join(tmpdir(), 'mb-dash-'));
   startTestCalls = [];
+  fakeEngine = null;
+  runCmdCalls = [];
+  runCmdHandler = () => ({ ok: true, stdout: '', stderr: '' });
   appsDir = join(base, 'generated-apps');
   runsDir = join(base, 'runs');
   mkdirSync(appsDir, { recursive: true });
@@ -51,6 +54,11 @@ beforeEach(async () => {
     startTest: (dir, commands, label) => {
       startTestCalls.push({ dir, commands, label });
       return { status: 'running', command: label, startedAt: '2026-01-01T00:00:00Z' };
+    },
+    engineProbe: async () => fakeEngine,
+    runCmd: async (cmd) => {
+      runCmdCalls.push(cmd);
+      return runCmdHandler(cmd);
     },
   });
   await new Promise((resolveListen) => {
@@ -388,5 +396,104 @@ describe('detalle enriquecido + acción test', () => {
     expect(state.status).toBe('failed');
     expect(state.exitCode).toBe(3);
     expect(readFileSync(join(dir, 'test-run.log'), 'utf8')).not.toContain('NUNCA');
+  });
+});
+
+describe('runtime de containers (docker/podman)', () => {
+  it('GET /api/runtime reporta el engine detectado (o null)', async () => {
+    expect((await api('/api/runtime')).body.engine).toBeNull();
+    fakeEngine = 'podman';
+    expect((await api('/api/runtime')).body.engine).toBe('podman');
+  });
+
+  it('detalle expone runtime: engine, container vivo y puertos sugeridos', async () => {
+    const dir = seedApp('app-uno');
+    mkdirSync(join(dir, 'server')); // fullstack → containerPort 4000
+    fakeEngine = 'docker';
+    runCmdHandler = (cmd) =>
+      cmd.includes('ps --filter')
+        ? { ok: true, stdout: 'app-uno 0.0.0.0:4000->4000/tcp' }
+        : { ok: true, stdout: '' };
+    const { body } = await api('/api/projects/app-uno');
+    expect(body.runtime.engine).toBe('docker');
+    expect(body.runtime.container).toEqual({
+      name: 'app-uno', running: true, hostPort: 4000, containerPort: 4000,
+    });
+    expect(body.runtime.suggested).toEqual({ containerPort: 4000, suggestedHostPort: 4000 });
+  });
+
+  it('frontend-only sugiere nginx :80 → host 8080', async () => {
+    const dir = seedApp('app-front');
+    writeFileSync(join(dir, 'vite.config.js'), ''); // frontend sin server/
+    fakeEngine = 'docker';
+    const { body } = await api('/api/projects/app-front');
+    expect(body.runtime.suggested).toEqual({ containerPort: 80, suggestedHostPort: 8080 });
+    expect(body.runtime.container).toBeNull();
+  });
+
+  it('run-container: 503 sin engine, 400 sin imagen, 201 corre docker run', async () => {
+    const dir = seedApp('app-uno');
+    mkdirSync(join(dir, 'server'));
+
+    // sin engine → 503
+    expect((await post('/api/projects/app-uno/actions', { action: 'run-container' })).status).toBe(503);
+
+    fakeEngine = 'docker';
+    // imagen inexistente → 400
+    runCmdHandler = (cmd) =>
+      cmd.includes('image inspect') ? { ok: false, stderr: 'no such image' } : { ok: true, stdout: '' };
+    const noImg = await post('/api/projects/app-uno/actions', { action: 'run-container' });
+    expect(noImg.status).toBe(400);
+    expect(noImg.body.error).toContain('Dockerize');
+
+    // imagen ok → 201 + docker run con puertos correctos (rm -f previo)
+    runCmdHandler = () => ({ ok: true, stdout: 'abc123' });
+    runCmdCalls = [];
+    const { status, body } = await post('/api/projects/app-uno/actions', { action: 'run-container', port: 5050 });
+    expect(status).toBe(201);
+    expect(body.container).toEqual({ name: 'app-uno', hostPort: 5050, containerPort: 4000, engine: 'docker' });
+    expect(runCmdCalls).toContain('docker rm -f app-uno');
+    expect(runCmdCalls).toContain('docker run -d --name app-uno -p 5050:4000 app-uno:local');
+  });
+
+  it('run-container usa el puerto sugerido cuando no se pasa port', async () => {
+    const dir = seedApp('app-front');
+    writeFileSync(join(dir, 'vite.config.js'), '');
+    fakeEngine = 'podman';
+    runCmdHandler = () => ({ ok: true, stdout: '' });
+    runCmdCalls = [];
+    const { status } = await post('/api/projects/app-front/actions', { action: 'run-container' });
+    expect(status).toBe(201);
+    expect(runCmdCalls).toContain('podman run -d --name app-front -p 8080:80 app-front:local');
+  });
+
+  it('stop-container hace rm -f del container', async () => {
+    seedApp('app-uno');
+    fakeEngine = 'docker';
+    runCmdCalls = [];
+    const { status, body } = await post('/api/projects/app-uno/actions', { action: 'stop-container' });
+    expect(status).toBe(200);
+    expect(body.stopped).toBe(true);
+    expect(runCmdCalls).toContain('docker rm -f app-uno');
+  });
+
+  it('container-log: logs del container si corre, running:false si no', async () => {
+    seedApp('app-uno');
+    fakeEngine = 'docker';
+    runCmdHandler = (cmd) => {
+      if (cmd.includes('ps --filter')) return { ok: true, stdout: 'app-uno 0.0.0.0:4000->4000/tcp' };
+      if (cmd.includes('logs --tail')) return { ok: true, stdout: 'GET /api/health 200\nGET /api/products 200\n' };
+      return { ok: true, stdout: '' };
+    };
+    const { status, body } = await api('/api/projects/app-uno/container-log?tail=10');
+    expect(status).toBe(200);
+    expect(body.running).toBe(true);
+    expect(body.log.lines).toEqual(['GET /api/health 200', 'GET /api/products 200']);
+
+    runCmdHandler = (cmd) =>
+      cmd.includes('ps --filter') ? { ok: true, stdout: '' } : { ok: true, stdout: '' };
+    const off = await api('/api/projects/app-uno/container-log');
+    expect(off.body.running).toBe(false);
+    expect(off.body.log).toBeNull();
   });
 });

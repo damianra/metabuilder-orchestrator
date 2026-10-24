@@ -167,6 +167,13 @@ fina sobre la infra existente:
   plan.stacks, `scripts` del package.json de la app y test-run.json.
 - `GET /api/projects/:slug/test-log` — tail del `test-run.log` de la
   app + el estado del último test run (mismo formato que el log de job).
+- `GET /api/runtime` — `{engine: 'docker'|'podman'|null}` (probe
+  `docker info` → `podman info`, cacheado por instancia). El mismo
+  binario sirve para todas las acciones de containers (CLI-compatible).
+- `GET /api/projects/:slug/container-log?tail=N` — `<engine> logs
+  --tail` del container `<slug>` si corre (`docker ps` filtrado por
+  nombre es la fuente de verdad — no hay estado persistido);
+  `running:false` si no hay engine o no corre.
 - `GET /api/jobs` — `{ jobs, worker }`: cada job enriquecido con
   `projectSlug` (derivado de `--name`/`--resume`/slug de la idea) y
   `progress` (node/step/totalSteps del `status.json` de la app);
@@ -189,7 +196,12 @@ fina sobre la infra existente:
   si hay un run en curso **con pid vivo** — un `running` con pid muerto
   es stale (dashboard caído a mitad) y no bloquea el relanzamiento),
   `open-repo` (devuelve la URL https del
-  remote para que la UI la abra).
+  remote para que la UI la abra), `run-container` (`<engine> run -d
+  --name <slug> -p <host>:<container>` — containerPort 4000 si hay
+  backend, 80 si es frontend-only/nginx; `port` opcional para el host,
+  default sugerido por variante; 503 sin engine, 400 si no existe la
+  imagen `<slug>:local`, rm -f previo para reemplazo idempotente) y
+  `stop-container` (`<engine> rm -f <slug>`).
 - `GET /api/options` — scopes/verticales/archs/stacks leídos de los
   registries; la UI alimenta sus pickers de acá (nada hardcodeado).
 

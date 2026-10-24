@@ -171,10 +171,20 @@ const detectVariant = (dir) => ({
   outDir: detectOutDir(dir),
 });
 
+// Puerto interno del container según la variante: frontend-only va por
+// nginx en :80; backend y fullstack los sirve el Express en :4000.
+const containerPorts = (dir) => {
+  const v = detectVariant(dir);
+  const containerPort = v.frontend && !v.backend ? 80 : 4000;
+  return { containerPort, suggestedHostPort: containerPort === 80 ? 8080 : 4000 };
+};
+
 /**
  * App Express del dashboard. Deps inyectables para tests:
  * appsDir/runsDir/baseDir (jobs/), dockerProbe y startBuild (el build
- * real solo corre si hay daemon — en tests se inyecta un fake).
+ * real solo corre si hay daemon — en tests se inyecta un fake),
+ * startTest (runner de tests), runCmd (ejecución de comandos de
+ * container) y engineProbe (detección docker/podman).
  */
 export function createDashboardApp({
   appsDir = config.generatedAppsDir,
@@ -183,7 +193,19 @@ export function createDashboardApp({
   dockerProbe = dockerAvailable,
   startBuild = startDockerBuild,
   startTest = startTestRun,
+  runCmd = run,
+  // docker primero, podman como fallback — el CLI de containers es
+  // compatible, así que un solo binario alcanza para todas las acciones.
+  engineProbe = async () => {
+    if ((await runCmd('docker info', { timeoutMs: 10_000 })).ok) return 'docker';
+    if ((await runCmd('podman info', { timeoutMs: 10_000 })).ok) return 'podman';
+    return null;
+  },
 } = {}) {
+  // El engine se cachea por instancia: instalar docker a mitad de
+  // sesión se descubre al reiniciar el dashboard.
+  let engineCache;
+  const getEngine = async () => (engineCache ??= await engineProbe());
   const app = express();
   app.use(express.json({ limit: '64kb' }));
 
@@ -313,6 +335,47 @@ export function createDashboardApp({
     res.json({ testRun: readTestRun(dir), log });
   });
 
+  // Engine de containers disponible en la máquina (docker o podman).
+  app.get('/api/runtime', async (req, res) => res.json({ engine: await getEngine() }));
+
+  // Estado vivo del container del proyecto (docker ps filtrado por
+  // nombre) — la fuente de verdad es el daemon, no un archivo.
+  const containerStatus = async (slug) => {
+    const engine = await getEngine();
+    if (!engine) return { engine: null, container: null };
+    const r = await runCmd(
+      `${engine} ps --filter name=^/${slug}$ --format "{{.Names}} {{.Ports}}"`,
+      { timeoutMs: 10_000 },
+    );
+    const m = r.ok ? r.stdout.match(/(\d+)->(\d+)/) : null;
+    const running = r.ok && r.stdout.includes(slug);
+    return {
+      engine,
+      container: running
+        ? { name: slug, running: true, hostPort: m ? Number(m[1]) : null, containerPort: m ? Number(m[2]) : null }
+        : null,
+    };
+  };
+
+  // Logs del container en ejecución (docker logs --tail) — solo si corre.
+  app.get('/api/projects/:slug/container-log', async (req, res) => {
+    const slug = validSlug(req, res);
+    if (!slug) return;
+    const { engine, container } = await containerStatus(slug);
+    if (!engine || !container) {
+      return res.json({ engine, running: false, log: null });
+    }
+    const tail = Math.min(Math.max(Number(req.query.tail) || 200, 1), 500);
+    const r = await runCmd(`${engine} logs --tail ${tail} ${slug}`, { timeoutMs: 15_000 });
+    res.json({
+      engine,
+      running: true,
+      container,
+      log: r.ok ? { lines: r.stdout.replace(/\n$/, '').split('\n') } : null,
+      error: r.ok ? undefined : (r.stderr || 'no se pudo leer docker logs'),
+    });
+  });
+
   app.get('/api/projects/:slug', async (req, res) => {
     const slug = validSlug(req, res);
     if (!slug) return;
@@ -333,6 +396,10 @@ export function createDashboardApp({
       report: runId ? buildReport({ runId, runDir: join(runsDir, runId), projectDir: dir }) : null,
       dockerBuild: readBuildState(dir),
       testRun: readTestRun(dir),
+      runtime: {
+        ...(await containerStatus(slug)),
+        suggested: containerPorts(dir),
+      },
     });
   });
 
@@ -426,6 +493,40 @@ export function createDashboardApp({
       return res.status(202).json({ testRun: startTest(dir, commands, label) });
     }
 
+    if (action === 'run-container') {
+      const engine = await getEngine();
+      if (!engine) {
+        return res.status(503).json({ error: 'ni docker ni podman están instalados' });
+      }
+      const { containerPort } = containerPorts(dir);
+      const hostPort = Number(req.body.port) || containerPorts(dir).suggestedHostPort;
+      if (!Number.isInteger(hostPort) || hostPort < 1 || hostPort > 65535) {
+        return res.status(400).json({ error: 'port inválido (1-65535)' });
+      }
+      const inspect = await runCmd(`${engine} image inspect ${slug}:local`, { cwd: dir, timeoutMs: 10_000 });
+      if (!inspect.ok) {
+        return res.status(400).json({ error: `no hay imagen ${slug}:local — corré Dockerize primero` });
+      }
+      await runCmd(`${engine} rm -f ${slug}`, { timeoutMs: 10_000 }); // reemplazo idempotente
+      const r = await runCmd(
+        `${engine} run -d --name ${slug} -p ${hostPort}:${containerPort} ${slug}:local`,
+        { cwd: dir, timeoutMs: 20_000 },
+      );
+      if (!r.ok) {
+        return res.status(500).json({ error: r.stderr || `${engine} run falló` });
+      }
+      return res.status(201).json({ container: { name: slug, hostPort, containerPort, engine } });
+    }
+
+    if (action === 'stop-container') {
+      const engine = await getEngine();
+      if (!engine) {
+        return res.status(503).json({ error: 'ni docker ni podman están instalados' });
+      }
+      await runCmd(`${engine} rm -f ${slug}`, { timeoutMs: 15_000 });
+      return res.json({ stopped: true });
+    }
+
     if (action === 'open-repo') {
       const remote = (await run('git remote get-url origin', { cwd: dir, timeoutMs: 5000 })).stdout.trim();
       const url = toWebUrl(remote || null);
@@ -433,7 +534,7 @@ export function createDashboardApp({
       return res.json({ url });
     }
 
-    res.status(400).json({ error: 'action debe ser resume|dockerize|test|open-repo' });
+    res.status(400).json({ error: 'action debe ser resume|dockerize|test|run-container|stop-container|open-repo' });
   });
 
   return app;
