@@ -36,6 +36,12 @@ rl.on('line', (line) => {
   const reply =
     msg.method === 'fail'
       ? { jsonrpc: '2.0', id: msg.id, error: { code: -1, message: 'fake failure' } }
-      : { jsonrpc: '2.0', id: msg.id, result: { echo: msg.method, sessionId: 'fake-session' } };
+      : {
+          jsonrpc: '2.0',
+          id: msg.id,
+          // pid: los tests del pool verifican que llamadas sucesivas
+          // comparten el mismo proceso stub.
+          result: { echo: msg.method, sessionId: 'fake-session', pid: process.pid },
+        };
   process.stdout.write(JSON.stringify(reply) + '\n');
 });
