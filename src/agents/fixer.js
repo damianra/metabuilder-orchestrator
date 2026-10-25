@@ -1,7 +1,7 @@
 import { config } from '../config.js';
 import { finalCheckCommands, stacksFor } from '../stacks/index.js';
 import { runDevinPrompt } from '../tools/devin.js';
-import { activity, log, loadPrompt, runLogPath, writePlan } from './common.js';
+import { activity, log, loadPrompt, runLogPath, textFeed, writePlan } from './common.js';
 
 /**
  * Envía el fallo de verificación a Devin para reparar la causa raíz.
@@ -33,13 +33,16 @@ export async function fixerNode(state) {
     error: (state.lastOutput || state.lastError || 'sin salida').slice(-3500),
   });
 
+  const feed = textFeed();
   const res = await runDevinPrompt({
     prompt,
     cwd: state.projectDir,
     timeoutMs: config.devinTimeoutMs,
     logPath: runLogPath(state, `fix-${isFinal ? 'final' : step?.id}-${attempt}`),
     onActivity: activity,
+    onText: feed.onText,
   });
+  feed.flush();
 
   return {
     plan,

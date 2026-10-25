@@ -11,6 +11,32 @@ export function activity(msg) {
   if (!quiet) process.stderr.write(`   ▸ ${msg}\n`);
 }
 
+// Feed del texto del agente → stderr (cae en jobs/<id>.log vía el
+// worker, igual que activity). Los chunks de ACP llegan como tokens
+// sueltos — se acumulan y se emiten por ventana/tamaño para que el log
+// quede legible en vez de una línea por token. Llamar flush() cuando
+// el prompt termina para no perder la cola del último mensaje.
+export function textFeed({ maxLen = 280, flushMs = 3000, out = process.stderr } = {}) {
+  let buf = '';
+  // last arranca en "ahora": el primer emit también espera la ventana —
+  // con 0 la diferencia epoch supera flushMs y saldría un emit por token.
+  let last = Date.now();
+  const emit = () => {
+    const line = buf.replace(/\s+/g, ' ').trim();
+    buf = '';
+    last = Date.now();
+    if (!quiet && line)
+      out.write(`   ▸ ${line.slice(0, 500)}${line.length > 500 ? '…' : ''}\n`);
+  };
+  return {
+    onText(t) {
+      buf += t;
+      if (buf.length >= maxLen || Date.now() - last >= flushMs) emit();
+    },
+    flush: emit,
+  };
+}
+
 export function planPath(projectDir) {
   return join(projectDir, 'plan.json');
 }

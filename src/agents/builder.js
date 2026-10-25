@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { config } from '../config.js';
 import { runDevinPrompt } from '../tools/devin.js';
 import { awaitInstall, isInstalling } from '../tools/install.js';
-import { activity, log, loadPrompt, runLogPath, writePlan } from './common.js';
+import { activity, log, loadPrompt, runLogPath, textFeed, writePlan } from './common.js';
 
 /**
  * Ejecuta el paso actual del plan via Devin ACP.
@@ -50,13 +50,16 @@ export async function builderNode(state) {
     appType: state.appType,
   });
 
+  const feed = textFeed();
   const res = await runDevinPrompt({
     prompt,
     cwd: state.projectDir,
     timeoutMs: config.devinTimeoutMs,
     logPath: runLogPath(state, `build-${step.id}`),
     onActivity: activity,
+    onText: feed.onText,
   });
+  feed.flush();
 
   if (!res.ok) {
     return {

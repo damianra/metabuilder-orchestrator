@@ -3,7 +3,7 @@ import { applyArch, archRuleBullet, resolveArch, resolveArchSafe } from '../arch
 import { resolveStacks, stackIds, stackRuleBullets } from '../stacks/index.js';
 import { runDevinPrompt } from '../tools/devin.js';
 import { getVertical } from '../verticals/index.js';
-import { activity, log, loadPrompt, readPlan, runLogPath, writePlan } from './common.js';
+import { activity, log, loadPrompt, readPlan, runLogPath, textFeed, writePlan } from './common.js';
 
 /**
  * Genera plan.json. Tres caminos en orden:
@@ -103,13 +103,16 @@ export async function plannerNode(state) {
     archRules: archRuleBullet(arch),
   });
 
+  const feed = textFeed();
   const res = await runDevinPrompt({
     prompt,
     cwd: state.projectDir,
     timeoutMs: config.devinTimeoutMs,
     logPath: runLogPath(state, 'planner'),
     onActivity: activity,
+    onText: feed.onText,
   });
+  feed.flush();
 
   if (!res.ok) {
     return {
@@ -165,12 +168,16 @@ export async function repairPlanNode(state) {
     }),
   });
 
+  const feed = textFeed();
   const res = await runDevinPrompt({
     prompt,
     cwd: state.projectDir,
     timeoutMs: config.devinTimeoutMs,
     logPath: runLogPath(state, `repair-${state.planRetries + 1}`),
+    onActivity: activity,
+    onText: feed.onText,
   });
+  feed.flush();
 
   let plan = null;
   try {
