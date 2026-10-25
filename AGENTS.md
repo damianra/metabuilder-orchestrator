@@ -209,6 +209,19 @@ fina sobre la infra existente:
   `stop-container` (`<engine> rm -f <slug>`).
 - `GET /api/options` — scopes/verticales/archs/stacks leídos de los
   registries; la UI alimenta sus pickers de acá (nada hardcodeado).
+- `WS /api/projects/:slug/terminal` (`src/dashboard/terminal.js`,
+  `attachTerminal(server)` colgado en `main()`): spawnea `devin` TUI
+  via `node-pty` con cwd en la app. La sesión adquiere un slot de
+  `acquireDevinSlot` (espera si hay generación en curso — el cliente
+  ve "esperando slot"). Protocolo JSON: in `in`/`resize`/`close`, out
+  `out`/`status`/`exit`/`error`. Una sesión por slug — clientes extra
+  se adjuntan al mismo pty (mirror + replay de scrollback ~200KB); se
+  mata con `close` explícito, exit del pty, o 5 min sin clientes
+  (IDLE_KILL_MS). Guardas: slug regex + dir con plan.json bajo
+  appsDir, Origin solo localhost (anti-CSWSH), upgrade bajo /api/ que
+  no matchea se destruye (si no, el request queda colgado). `node-pty`
+  se importa lazy — si el nativo falta, el error va al cliente y la
+  API HTTP sigue andando.
 
 La UI vive en `dashboard/` (subpackage propio con su package.json —
 Vite+React+Tailwind+Vitest, mismo stack que el app-skeleton). Hash

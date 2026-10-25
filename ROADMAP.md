@@ -28,7 +28,7 @@ lo demás es observabilidad, control o housekeeping alrededor del run.
 
 | # | Tarea | Descripción | Esfuerzo |
 | --- | --- | --- | --- |
-| 1 | **Terminal Devin embebida en el dashboard** | Sección "Terminal Devin" en el detalle de cada proyecto: botón "Abrir sesión" que spawnea `devin` (CLI interactivo) con cwd en `generated-apps/<slug>/` — el usuario chatea con Devin directamente sobre el repo de la app y le pide cambios. Backend: `node-pty` (spawn con PTY real — el TUI de devin lo requiere) + WebSocket (`ws`) en la API del dashboard (`/api/projects/:slug/terminal`); la UI usa xterm.js + fit addon. Respetar el semáforo `devin-lock.js`: la sesión interactiva adquiere un slot como cualquier `runDevinPrompt` (si una generación está corriendo, mostrar "esperando slot"). Una sesión por slug; kill del pty al cerrar. Solo se permiten dirs dentro de `generated-apps/` (la API sigue bindeando 127.0.0.1). Opcional: botón "Verificar" post-sesión que reusa el runner de tests. `node-pty` es dep nativa — documentar fallback si no compila. | L |
+| ~~1~~ | ~~**Terminal Devin embebida en el dashboard**~~ ✅ | Implementado — `src/dashboard/terminal.js` (`attachTerminal` sobre el http.Server de la API): WS `/api/projects/:slug/terminal` ↔ `node-pty` corriendo `devin` TUI en `generated-apps/<slug>/`; slot del semáforo Devin con status "esperando slot"; una sesión por slug con reattach + scrollback (~200KB), idle-kill 5min, guardas slug/plan.json/Origin-localhost; UI xterm.js lazy-loaded (TerminalPanel) en el detalle. `node-pty` import lazy — la API funciona aunque el nativo falte. Ojo: el TUI interactivo necesita `devin auth login` propio (el `windsurf_api_key` de credentials.toml solo sirve para ACP). | L |
 | 2 | **Feed en vivo de la actividad del agente** | Hoy entre "builder paso N empezó" y "terminó" hay minutos de caja negra — `runs/<id>/` ya guarda los `agent_message_chunk` JSON-RPC. Condensarlos (texto del agente + tool calls resumidos) en el log del job o en un stream SSE que el acordeón "Log del run" muestre mientras el job corre. | M |
 | 3 | **Cancelar jobs** | Acción por job: `pending` → borrar de la cola; `running` → matar el árbol de procesos del `npm start` (cuidando no dejar hijos Devin huérfanos) + marcar el job `cancelled`. Botón en QueuePanel y en el detalle del proyecto afectado. | M |
 | 4 | **Correr la app en dev sin containers** | Acción `run-dev` que spawnea `npm run dev`/`npm run api` de la app (state + log persistidos estilo test-run), expone la URL local (5173/4000) y permite detenerla. Para máquinas sin docker/podman y para desarrollo interactivo post-terminal. | M |
@@ -72,10 +72,10 @@ lo demás es observabilidad, control o housekeeping alrededor del run.
 
 ## Decisiones pendientes
 
-- **node-pty vs alternativa sin dep nativa**: `node-pty` necesita
-  toolchain de compilación en algunas plataformas; si pesa, plan B =
-  `script(1)` (pty vía comando del sistema) o chat ACP (ver evaluación).
-- **Terminal Devin y semáforo**: una sesión interactiva ocupa el único
-  slot por defecto (`MAX_CONCURRENT_DEVIN_SESSIONS=1`) — decidir si se
-  permite subirlo a 2 para dashboard+worker en paralelo, o si la
-  terminal espera/avisada cuando hay generación en curso.
+- ~~**node-pty vs alternativa sin dep nativa**~~ → resuelto: `node-pty`
+  1.1.0 trae prebuilds (verificado en Node 24 sin toolchain); el import
+  lazy hace que su ausencia degrade solo la terminal, no la API.
+- **Terminal Devin y semáforo**: implementado con slot compartido — la
+  sesión interactiva espera si una generación ocupa el slot. Abierto
+  aún: si conviene `MAX_CONCURRENT_DEVIN_SESSIONS=2` para chatear
+  mientras corre un job (depende de cuánto estrés aguante la cuenta).
