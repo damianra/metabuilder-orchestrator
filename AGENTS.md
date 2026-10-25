@@ -265,6 +265,10 @@ routing (`#/` lista, `#/p/<slug>` detalle), polling 4-5s. `dev.js`
 lanza API+Vite+worker (`queue.js watch`) en un proceso — los jobs
 encolados desde la UI se procesan solos; la UI es un consumidor más de
 la API — no conoce paths del FS ni los registries directamente.
+`src/notifications.js` compara el snapshot de jobs entre polls y dispara
+`Notification` del browser cuando un job pasa a done/failed/cancelled
+(permiso on-demand via el botón campana del header; solo con la pestaña
+en background — el primer poll nunca notifica).
 
 ## Dockerfile por app
 
