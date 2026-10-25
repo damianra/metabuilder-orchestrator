@@ -1,8 +1,26 @@
 # MetaBuilder — Orquestador de desarrollo con agentes
 
+[![tests](https://github.com/damianra/metabuilder-orchestrator/actions/workflows/test.yml/badge.svg)](https://github.com/damianra/metabuilder-orchestrator/actions/workflows/test.yml)
+![Node ≥22](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=node.js&logoColor=white)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 *Desarrollado con [Devin](https://devin.ai) (ex Windsurf) utilizando el modelo SWE-2.*
 
-MetaBuilder convierte una idea en texto libre en una aplicación funcionando (landing pages, webs de pedidos con carrito y WhatsApp, blogs, etc.) mediante un **harness multi-agente construido sobre LangGraph**: un orquestador determinístico coordina sub-agentes que escriben el código con **Devin CLI via ACP**. La arquitectura es **híbrida** — cada tarea la ejecuta el recurso más barato capaz de resolverla: código local para lo predecible (planes por vertical, copia del skeleton, validación del plan, verificaciones, git/README/deploy) y **sesiones Devin solo para lo generativo** (un builder por paso del plan, un fixer que recibe el stderr real del fallo, y un revisor QA que aprueba o rechaza la app terminada). Cada paso corre en su propia sesión aislada (sobre un proceso `devin acp` reutilizado por el run — initialize+authenticate una sola vez, `session/new` por paso) y el estado vive en `plan.json` + el filesystem, con lo que el pipeline puede reintentar, reanudar y pedir aprobación del plan antes de gastar una sola llamada al agente. Los beneficios: una app lista en ~5 minutos y pocas sesiones en lugar de un agente pesado por tarea; fallos acotados al paso que los causó con reparación dirigida; verificaciones reales (build + tests + e2e) como compuertas entre etapas; y un humano en el loop (plan → aprobar → construir) que evita desperdiciar trabajo en planes equivocados.
+MetaBuilder convierte una idea en texto libre en una aplicación funcionando (landing pages, webs de pedidos con carrito y WhatsApp, blogs, etc.) mediante un **harness multi-agente construido sobre LangGraph**: un orquestador determinístico coordina sub-agentes que escriben el código con **Devin CLI via ACP**. La arquitectura es **híbrida** — cada tarea la ejecuta el recurso más barato capaz de resolverla: código local para lo predecible (planes por vertical, copia del skeleton, validación del plan, verificaciones, git/README/deploy) y **sesiones Devin solo para lo generativo** (un builder por paso del plan, un fixer que recibe el stderr real del fallo, y un revisor QA que aprueba o rechaza la app terminada). Cada paso corre en su propia sesión aislada (sobre un proceso `devin acp` reutilizado por el run — initialize+authenticate una sola vez, `session/new` por paso) y el estado vive en `plan.json` + el filesystem, con lo que el pipeline puede reintentar, reanudar y pedir aprobación del plan antes de gastar una sola llamada al agente.
+
+Los beneficios: una app lista en ~5 minutos y pocas sesiones en lugar de un agente pesado por tarea; fallos acotados al paso que los causó con reparación dirigida; verificaciones reales (build + tests + e2e) como compuertas entre etapas; y un humano en el loop (plan → aprobar → construir) que evita desperdiciar trabajo en planes equivocados.
+
+![Dashboard: lista de proyectos y formulario de nueva app](docs/screenshots/dashboard-list.png)
+
+## Quickstart
+
+```bash
+npm install                        # deps del orquestador
+npm --prefix dashboard install     # deps de la UI (una sola vez)
+cp .env.example .env               # GITHUB_TOKEN si vas a usar --github
+npm run doctor                     # verifica prereqs en segundos
+npm run dashboard                  # API :4100 + UI :4173 + worker — listo para generar
+```
 
 ## Features
 
@@ -123,6 +141,8 @@ npm run dashboard                  # API :4100 + UI :4173 + worker de la cola
 # npm run worker no hace falta: el dashboard ya levanta el worker en
 # modo watch (queue.js). Solo se usa para procesar la cola a mano.
 ```
+
+![Detalle de proyecto: acciones, contenedor, dev local, terminal Devin](docs/screenshots/dashboard-detail.png)
 
 La UI (mismo stack que las apps generadas) sirve para lanzar generaciones y supervisar `generated-apps/`:
 
