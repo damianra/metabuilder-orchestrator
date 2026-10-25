@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { addJob, readJobs, runJob, runQueue } from '../src/queue.js';
+import { addJob, cancelJob, readJobs, runJob, runQueue } from '../src/queue.js';
 
 // baseDir aislado por test; el hijo es un script fixture (no `-e`:
 // `node -e 's' --idea` parsearía --idea como flag de node, no como
@@ -43,19 +43,50 @@ describe('cola de jobs', () => {
 
   it('runJob marca done con exitCode 0', async () => {
     const job = addJob(['--idea', 'x'], dir);
-    expect(await runJob(job, { baseDir: dir, cmd })).toBe(true);
+    expect(await runJob(job, { baseDir: dir, cmd })).toBe('done');
     const j = readJobs(dir)[0];
     expect(j.status).toBe('done');
     expect(j.exitCode).toBe(0);
     expect(j.finishedAt).toBeTruthy();
+    expect(j.pid).toBeGreaterThan(0); // pid persistido mientras corría
   });
 
   it('runJob marca failed con exitCode del subproceso', async () => {
     const job = addJob(['--idea', 'malo'], dir);
-    expect(await runJob(job, { baseDir: dir, cmd })).toBe(false);
+    expect(await runJob(job, { baseDir: dir, cmd })).toBe('failed');
     const j = readJobs(dir)[0];
     expect(j.status).toBe('failed');
     expect(j.exitCode).toBe(3);
+  });
+
+  it('cancelJob en pending → cancelled al toque y el worker lo salta', async () => {
+    const job = addJob(['--idea', 'x'], dir);
+    const res = cancelJob(job.id, dir);
+    expect(res).toEqual({ ok: true, status: 'cancelled' });
+    expect(await runQueue({ baseDir: dir, cmd })).toBe(0);
+    expect(readJobs(dir)[0].status).toBe('cancelled');
+  });
+
+  it('cancelJob en running → el worker mata el árbol y marca cancelled', async () => {
+    const sleepy = fileURLToPath(new URL('./fixtures/queue-child-sleep.mjs', import.meta.url));
+    const job = addJob(['--idea', 'largo'], dir);
+    const running = runJob(job, { baseDir: dir, cmd: [process.execPath, sleepy] });
+    // esperar a que el hijo arranque y el watcher esté vivo
+    await new Promise((r) => setTimeout(r, 400));
+    const res = cancelJob(job.id, dir);
+    expect(res).toEqual({ ok: true, status: 'cancelling' });
+    const status = await running;
+    expect(status).toBe('cancelled');
+    const j = readJobs(dir)[0];
+    expect(j.status).toBe('cancelled');
+    expect(j.note).toContain('cancelado');
+  });
+
+  it('cancelJob en job terminado o inexistente → error', async () => {
+    const job = addJob(['--idea', 'x'], dir);
+    await runJob(job, { baseDir: dir, cmd });
+    expect(cancelJob(job.id, dir).ok).toBe(false);
+    expect(cancelJob(999, dir).ok).toBe(false);
   });
 
   it('runQueue procesa pendientes en orden y para en la cola vacía', async () => {

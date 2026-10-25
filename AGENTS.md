@@ -22,6 +22,7 @@ npm start -- --resume generated-apps/<slug> [--github] [--no-push] [-y]
 # Cola batch: encolar ideas y procesarlas en serie
 npm run queue -- add --idea "..." [-y]   # encola (args = los de npm start)
 npm run queue -- list|clear              # estado / limpieza
+npm run queue -- cancel <id>             # pending→cancelled; running→flag y el worker mata el árbol
 npm run worker                           # procesa jobs/ en orden (una pasada)
 npm run queue -- watch                   # idem en loop + heartbeat jobs/.worker
                                          # + stdout/stderr de cada job → jobs/<id>.log
@@ -211,6 +212,12 @@ fina sobre la infra existente:
   `stop-container` (`<engine> rm -f <slug>`).
 - `GET /api/options` — scopes/verticales/archs/stacks leídos de los
   registries; la UI alimenta sus pickers de acá (nada hardcodeado).
+- `POST /api/jobs/:id/cancel` — `cancelJob(id)` de queue.js: pending →
+  `cancelled` (el worker solo consume pending → nunca arranca); running
+  → `cancelRequested` en el JSON y el watcher de `runJob` (500ms) hace
+  `kill(-pid)` al process group del child (spawn `detached`), con
+  SIGKILL de escalación a los 4s → el close lo marca `cancelled`.
+  El pid del child queda persistido en el job mientras corre.
 - `WS /api/projects/:slug/terminal` (`src/dashboard/terminal.js`,
   `attachTerminal(server)` colgado en `main()`): spawnea `devin` TUI
   via `node-pty` con cwd en la app. La sesión adquiere un slot de

@@ -293,6 +293,44 @@ describe('logs del run', () => {
   });
 });
 
+describe('POST /api/jobs/:id/cancel', () => {
+  const seedJob = (status) => {
+    mkdirSync(join(base, 'jobs'), { recursive: true });
+    writeJson(join(base, 'jobs', '9.json'), {
+      id: 9,
+      args: ['--idea', 'x'],
+      status,
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+  };
+
+  it('pending → cancelled al toque', async () => {
+    seedJob('pending');
+    const { status, body } = await api('/api/jobs/9/cancel', { method: 'POST' });
+    expect(status).toBe(200);
+    expect(body.status).toBe('cancelled');
+    const job = JSON.parse(readFileSync(join(base, 'jobs', '9.json'), 'utf8'));
+    expect(job.status).toBe('cancelled');
+    expect(job.finishedAt).toBeTruthy();
+  });
+
+  it('running → cancelling + flag cancelRequested (el worker mata)', async () => {
+    seedJob('running');
+    const { status, body } = await api('/api/jobs/9/cancel', { method: 'POST' });
+    expect(status).toBe(200);
+    expect(body.status).toBe('cancelling');
+    const job = JSON.parse(readFileSync(join(base, 'jobs', '9.json'), 'utf8'));
+    expect(job.cancelRequested).toBe(true);
+    expect(job.status).toBe('running'); // el close del worker lo marca cancelled
+  });
+
+  it('terminado → 409, inexistente → 404', async () => {
+    seedJob('done');
+    expect((await api('/api/jobs/9/cancel', { method: 'POST' })).status).toBe(409);
+    expect((await api('/api/jobs/77/cancel', { method: 'POST' })).status).toBe(404);
+  });
+});
+
 describe('detalle enriquecido + acción test', () => {
   const seedPkg = (slug, scripts = { test: 'vitest run', 'test:e2e': 'playwright test' }) => {
     const dir = seedApp(slug);

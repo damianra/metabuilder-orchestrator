@@ -1,14 +1,23 @@
-import { ListOrdered, LoaderCircle, TriangleAlert } from 'lucide-react';
+import { useState } from 'react';
+import { ListOrdered, LoaderCircle, Square, TriangleAlert } from 'lucide-react';
+import { api } from '../api.js';
 import { jobSummary } from '../util.js';
 
-const chip = (status) =>
-  status === 'done'
-    ? 'bg-emerald-100 text-emerald-800'
-    : status === 'failed'
-      ? 'bg-red-100 text-red-800'
-      : status === 'running'
-        ? 'bg-sky-100 text-sky-800 animate-pulse'
-        : 'bg-slate-100 text-slate-600';
+const chip = (j) =>
+  j.cancelRequested
+    ? 'bg-amber-100 text-amber-800 animate-pulse'
+    : j.status === 'done'
+      ? 'bg-emerald-100 text-emerald-800'
+      : j.status === 'failed'
+        ? 'bg-red-100 text-red-800'
+        : j.status === 'running'
+          ? 'bg-sky-100 text-sky-800 animate-pulse'
+          : 'bg-slate-100 text-slate-600';
+
+// pending → borrar; running → flag cancelRequested y el worker mata el
+// árbol del run. Mientras se procesa se muestra "cancelando".
+const canCancel = (j) =>
+  (j.status === 'pending' || j.status === 'running') && !j.cancelRequested;
 
 // Texto del stepper: pending → running (nodo + paso del pipeline) →
 // done/failed. progress viene del status.json de la app (lo enriquece
@@ -23,7 +32,8 @@ const progress = (j) => {
   return '';
 };
 
-export default function QueuePanel({ jobs, worker }) {
+export default function QueuePanel({ jobs, worker, onChanged }) {
+  const [busy, setBusy] = useState(null);
   const active = jobs.filter((j) => j.status === 'pending' || j.status === 'running');
   const recent = jobs.filter((j) => !active.includes(j)).slice(-5).reverse();
   const shown = [...active, ...recent];
@@ -45,8 +55,8 @@ export default function QueuePanel({ jobs, worker }) {
       <ul className="mt-3 space-y-1.5 text-sm">
         {shown.map((j) => (
           <li key={j.id} className="flex items-center gap-3">
-            <span className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${chip(j.status)}`}>
-              {j.status}
+            <span className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${chip(j)}`}>
+              {j.cancelRequested ? 'cancelando' : j.status}
             </span>
             <span className="truncate text-slate-600">
               #{j.id} {jobSummary(j.args)}
@@ -55,6 +65,29 @@ export default function QueuePanel({ jobs, worker }) {
                 {progress(j)}
               </span>
             </span>
+            {canCancel(j) && (
+              <button
+                title="Cancelar job"
+                disabled={busy === j.id}
+                onClick={async () => {
+                  setBusy(j.id);
+                  try {
+                    await api.cancelJob(j.id);
+                  } finally {
+                    setBusy(null);
+                    onChanged?.();
+                  }
+                }}
+                className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50 disabled:opacity-40"
+              >
+                {busy === j.id ? (
+                  <LoaderCircle size={12} className="animate-spin" />
+                ) : (
+                  <Square size={11} />
+                )}
+                cancelar
+              </button>
+            )}
           </li>
         ))}
       </ul>

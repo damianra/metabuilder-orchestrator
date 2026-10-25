@@ -77,10 +77,11 @@ Para encolar varias ideas y procesarlas desatendido, una por vez:
 ```bash
 npm run queue -- add --idea "Blog de recetas" --app-type blog -y
 npm run queue -- add --idea "Landing veterinaria" --app-type landing --scope frontend -y
-npm run queue -- list        # estado de cada job (pending/running/done/failed)
+npm run queue -- list        # estado de cada job (pending/running/done/failed/cancelled)
+npm run queue -- cancel <id> # cancela: pending se borra al toque, running mata el árbol del run
 npm run worker               # procesa la cola en orden, logs en vivo
 npm run queue -- watch       # idem en loop + heartbeat (el modo que usa el dashboard)
-npm run queue -- clear       # borra jobs terminados
+npm run queue -- clear       # borra jobs terminados (json + log)
 ```
 
 Cada job es un archivo en `jobs/` (gitignored); el worker spawnea `node src/index.js` por job — equivale a correr `npm start` a mano, en serie — y captura su stdout/stderr en `jobs/<id>.log`. Un job `failed` se retoma con `--resume generated-apps/<slug>`. El semáforo de sesiones Devin sigue siendo la red de seguridad para runs sueltos.
@@ -111,13 +112,14 @@ La UI (mismo stack que las apps generadas) sirve para lanzar generaciones y supe
 - **Proyectos** — cards con status, pasos done/total con barra, scope/arch, badge docker; click → detalle.
 - **Detalle** (`#/p/<slug>`) — acciones **Resume** (opción con GitHub) / **Dockerize** (build async con docker o podman) / **Ejecutar tests** (`npm test` + opcional `test:e2e`, async → `test-run.json`/`test-run.log` en la app) / **Abrir repo**; acordeón del prompt original con los parámetros del plan, tabla de comandos del package.json, sección **Contenedor** (crear/detener/ver logs del container — detecta docker o podman, deshabilitado si no hay engine o si falta la imagen), log del run del pipeline, output del último test run y reporte del último run.
 - **Terminal Devin** — acordeón en el detalle que abre una sesión interactiva de `devin` (el CLI completo, TUI) con cwd en `generated-apps/<slug>/` — el usuario chatea con Devin directamente sobre el repo de la app para pedir cambios (xterm.js ↔ WebSocket ↔ PTY). La sesión adquiere un slot del semáforo Devin: si hay una generación corriendo espera ("slot ocupado"). Colapsar no mata la sesión (queda ~5 min para reattach con scrollback); **Cerrar sesión** la termina. Requiere `node-pty` (dep nativa — si no compila, el resto del dashboard funciona igual) y que `devin` esté autenticado (`devin auth login` — la primera vez se puede hacer desde la misma terminal embebida; el `windsurf_api_key` de credentials.toml solo alcanza para el modo ACP del orquestador, no para el TUI interactivo).
-- **Cola** — jobs activos y recientes; indicador de API caída en el header.
+- **Cola** — jobs activos y recientes; indicador de API caída en el header; botón **cancelar** por job pending/running (running → mata el árbol del run; el detalle del proyecto también lo expone en "Log del run").
 
 Endpoints de la API:
 
 - `GET /api/projects` · `GET /api/projects/:slug` · `GET /api/jobs` · `GET /api/options` · `GET /api/health`
 - `GET /api/jobs/:id/log?tail=N` — tail del log del worker para ese job (`jobs/<id>.log` — incluye la **actividad del agente en vivo**: tool calls y el texto que Devin va emitiendo, colapsado a líneas `▸`); `GET /api/projects/:slug/log` — idem resolviendo el último job del proyecto; `GET /api/projects/:slug/test-log` — tail del output del último test run (`test-run.log` en la app); `GET /api/runtime` — engine de containers (`docker`/`podman`/`null`); `GET /api/projects/:slug/container-log` — `docker logs --tail` del container si corre
 - `POST /api/runs` — `{idea, scope?, appType?, name?, arch?, stackFrontend?, stackBackend?, phone?, github?, ghpages?, verifyDocker?}` (valida enums/slug, encola con `--yes`)
+- `POST /api/jobs/:id/cancel` — pending → `cancelled`; running → flag `cancelRequested` (`cancelling`) y el worker mata el árbol del subproceso (spawn `detached` → `kill(-pid)` SIGTERM con SIGKILL a los 4s); 404/409
 - `POST /api/projects/:slug/actions` — `{action: "resume"|"dockerize"|"test"|"run-container"|"stop-container"|"open-repo"}` (`test` acepta `e2e: true`; `run-container` acepta `port` para el puerto host — default 4000 o 8080 según la variante)
 - `WS /api/projects/:slug/terminal` — sesión `devin` interactiva (PTY) en el dir de la app. Mensajes JSON: client→server `{t:'in'|'resize'|'close'}`, server→client `{t:'out'|'status'|'exit'|'error'}`. Una sesión por slug (clientes extra se adjuntan con replay de scrollback); se cierra con `close`, exit del pty, o ~5 min sin clientes
 
