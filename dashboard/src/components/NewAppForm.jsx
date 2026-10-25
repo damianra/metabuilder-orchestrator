@@ -17,16 +17,37 @@ const EMPTY = {
 };
 
 // Form "Nueva app" — los pickers se alimentan de GET /api/options
-// (registries del orquestador), nada hardcodeado.
-export default function NewAppForm({ onEnqueued }) {
+// (registries del orquestador), nada hardcodeado. `cloneSlug` (viene de
+// #/?clone=<slug>) pre-llena scope/vertical/arch/stacks con la config de
+// ese proyecto — idea y nombre quedan como los tenga el usuario.
+export default function NewAppForm({ onEnqueued, cloneSlug }) {
   const [options, setOptions] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [clonedFrom, setClonedFrom] = useState(null);
 
   useEffect(() => {
     api.options().then(setOptions).catch(() => setOptions({ scopes: [], appTypes: [], archs: [] }));
   }, []);
+
+  useEffect(() => {
+    if (!cloneSlug) return;
+    api
+      .project(cloneSlug)
+      .then((p) => {
+        setForm((f) => ({
+          ...f,
+          scope: p.scope ?? f.scope,
+          appType: p.appType ?? f.appType,
+          arch: p.arch ?? f.arch,
+          stackFrontend: p.stacks?.frontend ?? f.stackFrontend,
+          stackBackend: p.stacks?.backend ?? f.stackBackend,
+        }));
+        setClonedFrom(cloneSlug);
+      })
+      .catch(() => {});
+  }, [cloneSlug]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const hasBackend = form.scope !== 'frontend';
@@ -67,6 +88,11 @@ export default function NewAppForm({ onEnqueued }) {
     <form onSubmit={submit} className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
       <h2 className="flex items-center gap-2 text-lg font-bold tracking-tight text-slate-900">
         <Plus size={18} className="text-sky-600" /> Nueva app
+        {clonedFrom && (
+          <span className="rounded-lg bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-700 ring-1 ring-sky-200">
+            config de {clonedFrom}
+          </span>
+        )}
       </h2>
 
       <div className="mt-4">
