@@ -221,8 +221,15 @@ fina sobre la infra existente:
   `detached` con pids en dev-run.json y output compartido en
   dev-run.log; 400 si la app no tiene scripts dev/api, 409 si hay un
   run con pids vivos — `running` con pids muertos es stale y no
-  bloquea) y `stop-dev` (`kill(-pid)` SIGTERM al process group de cada
-  proc → cubre npm + vite/next + descendientes; marca stopped).
+  bloquea), `stop-dev` (`kill(-pid)` SIGTERM al process group de cada
+  proc → cubre npm + vite/next + descendientes; marca stopped) y
+  `delete` (borra `generated-apps/<slug>` recursivo + `<engine> rm -f`
+  y `rmi -f <slug>:local` si hay engine + frena el dev run vigente +
+  cierra la sesión de terminal Devin via `attachTerminal().killBySlug`;
+  **no exige plan.json** — cubre dirs huérfanos de runs muertos en
+  preflight, única acción con `requirePlan:false`; 409 si hay job
+  pending/running del slug — el worker escribe dentro del dir, con
+  re-check justo antes del rmSync por TOCTOU).
 - `GET /api/options` — scopes/verticales/archs/stacks leídos de los
   registries; la UI alimenta sus pickers de acá (nada hardcodeado).
 - `POST /api/jobs/:id/cancel` — `cancelJob(id)` de queue.js: pending →

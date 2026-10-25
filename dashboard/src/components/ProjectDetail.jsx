@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { ArrowLeft, Container, ExternalLink, FileText, FlaskConical, LoaderCircle, Play, Square } from 'lucide-react';
+import { ArrowLeft, Container, ExternalLink, FileText, FlaskConical, LoaderCircle, Play, Square, Trash2 } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import { api } from '../api.js';
 import { timeAgo } from '../util.js';
@@ -98,6 +98,25 @@ export default function ProjectDetail({ slug, onChanged }) {
     }
   };
 
+  // Borrar va al listado — la confirmación es el único gate (no hay undo).
+  const del = async () => {
+    if (
+      !window.confirm(
+        `¿Eliminar ${slug}?\n\nSe borra generated-apps/${slug} entero, más su container y la imagen ${slug}:local si existen. No hay vuelta atrás.`,
+      )
+    )
+      return;
+    setBusy('delete');
+    setNotice(null);
+    try {
+      await api.action(slug, { action: 'delete' });
+      window.location.hash = '#/';
+    } catch (err) {
+      setNotice(`error: ${err.message}`);
+      setBusy(null);
+    }
+  };
+
   const openRepo = async () => {
     try {
       const { url } = await api.action(slug, { action: 'open-repo' });
@@ -107,7 +126,27 @@ export default function ProjectDetail({ slug, onChanged }) {
     }
   };
 
-  if (error) return <p className="text-sm text-red-700">error: {error}</p>;
+  const spin = <LoaderCircle size={15} className="animate-spin" />;
+
+  // El detalle da 404 en dirs sin plan.json (run muerto en preflight) —
+  // justo el caso de limpieza: ofrecer eliminar igual desde acá.
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <a href="#/" className="inline-flex items-center gap-1.5 text-sm text-sky-700 hover:underline">
+          <ArrowLeft size={15} /> proyectos
+        </a>
+        <p className="text-sm text-red-700">error: {error}</p>
+        <button
+          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 bg-white hover:bg-red-50 disabled:opacity-40"
+          disabled={busy}
+          onClick={del}
+        >
+          {busy === 'delete' ? spin : <Trash2 size={15} />} Eliminar la carpeta
+        </button>
+      </div>
+    );
+  }
   if (!project) return <p className="text-sm text-slate-500">cargando…</p>;
 
   const build = project.dockerBuild;
@@ -122,7 +161,6 @@ export default function ProjectDetail({ slug, onChanged }) {
   // docker-build.json: cubre builds por podman o hechas a mano por CLI.
   const imageReady = runtime?.image === true;
   const building = build?.status === 'running';
-  const spin = <LoaderCircle size={15} className="animate-spin" />;
   const hasTestScript = (project.scripts ?? []).some((s) => s.name === 'test');
   const hasE2eScript = (project.scripts ?? []).some((s) => s.name === 'test:e2e');
   // done = pipeline terminado; no-plan = sin plan.json (resume imposible).
@@ -218,6 +256,14 @@ export default function ProjectDetail({ slug, onChanged }) {
               <ExternalLink size={15} /> Abrir repo
             </button>
           )}
+          <button
+            className="ml-auto inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 bg-white hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={busy}
+            title="Borra generated-apps/<slug> + container + imagen (si hay engine)"
+            onClick={del}
+          >
+            {busy === 'delete' ? spin : <Trash2 size={15} />} Eliminar
+          </button>
         </div>
         {notice && <p className="mt-2 text-sm text-slate-600">{notice}</p>}
         {build && (
