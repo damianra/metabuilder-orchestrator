@@ -207,5 +207,12 @@ export function attachTerminal(
     });
   });
 
-  return { sessions, wss };
+  // Mata la sesión de un slug (p.ej. al eliminar el proyecto) — no-op
+  // si no hay ninguna. Los clientes reciben {t:'exit', why}.
+  const killBySlug = (slug, why = 'proyecto eliminado') => {
+    const s = sessions.get(slug);
+    if (s) killSession(slug, s, why);
+  };
+
+  return { sessions, wss, killBySlug };
 }

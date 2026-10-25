@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { ArrowLeft, Container, ExternalLink, FileText, FlaskConical, LoaderCircle, Play, Square } from 'lucide-react';
+import { ArrowLeft, Container, ExternalLink, FileText, FlaskConical, LoaderCircle, Play, Square, Trash2 } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import { api } from '../api.js';
 import { timeAgo } from '../util.js';
@@ -94,6 +94,25 @@ export default function ProjectDetail({ slug, onChanged }) {
     } catch (err) {
       setNotice(`error: ${err.message}`);
     } finally {
+      setBusy(null);
+    }
+  };
+
+  // Borrar va al listado — la confirmación es el único gate (no hay undo).
+  const del = async () => {
+    if (
+      !window.confirm(
+        `¿Eliminar ${slug}?\n\nSe borra generated-apps/${slug} entero, más su container y la imagen ${slug}:local si existen. No hay vuelta atrás.`,
+      )
+    )
+      return;
+    setBusy('delete');
+    setNotice(null);
+    try {
+      await api.action(slug, { action: 'delete' });
+      window.location.hash = '#/';
+    } catch (err) {
+      setNotice(`error: ${err.message}`);
       setBusy(null);
     }
   };
@@ -218,6 +237,14 @@ export default function ProjectDetail({ slug, onChanged }) {
               <ExternalLink size={15} /> Abrir repo
             </button>
           )}
+          <button
+            className="ml-auto inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 bg-white hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={busy}
+            title="Borra generated-apps/<slug> + container + imagen (si hay engine)"
+            onClick={del}
+          >
+            {busy === 'delete' ? spin : <Trash2 size={15} />} Eliminar
+          </button>
         </div>
         {notice && <p className="mt-2 text-sm text-slate-600">{notice}</p>}
         {build && (

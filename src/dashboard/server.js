@@ -8,7 +8,7 @@
 // docker-build.json dentro de la app. Bindea a 127.0.0.1 por default —
 // es una herramienta local, no un servicio expuesto.
 
-import { existsSync, openSync, readSync, closeSync, readdirSync, readFileSync, statSync, writeFileSync, createWriteStream } from 'node:fs';
+import { existsSync, openSync, readSync, closeSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync, createWriteStream } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -308,6 +308,7 @@ export function createDashboardApp({
   startTest = startTestRun,
   startDev = startDevRun,
   stopDev = stopDevRun,
+  killTerminal = () => {},
   runCmd = run,
   // docker primero, podman como fallback — el CLI de containers es
   // compatible, así que un solo binario alcanza para todas las acciones
@@ -697,6 +698,27 @@ export function createDashboardApp({
       return res.json(stopDev(dir));
     }
 
+    // Eliminar el proyecto: dir + container + imagen + sesiones vivas.
+    // Rechaza si hay un job pending/running del proyecto — el worker
+    // escribe dentro del dir y borrarlo debajo deja estados rotos.
+    if (action === 'delete') {
+      const jobs = readJobs(baseDir).filter((j) => jobProjectSlug(j.args) === slug);
+      if (jobs.some((j) => j.status === 'pending' || j.status === 'running')) {
+        return res.status(409).json({
+          error: 'hay un job pending/running para este proyecto — cancelalo antes de borrar',
+        });
+      }
+      stopDev(dir); // dev run vigente → process group afuera
+      killTerminal(slug); // PTY Devin abierto → cerrado
+      const engine = await getEngine();
+      if (engine) {
+        await runCmd(`${engine} rm -f ${slug}`, { timeoutMs: 15_000 });
+        await runCmd(`${engine} rmi -f ${slug}:local`, { timeoutMs: 30_000 });
+      }
+      rmSync(dir, { recursive: true, force: true });
+      return res.json({ deleted: true, slug });
+    }
+
     if (action === 'open-repo') {
       const remote = (await run('git remote get-url origin', { cwd: dir, timeoutMs: 5000 })).stdout.trim();
       const url = toWebUrl(remote || null);
@@ -704,7 +726,7 @@ export function createDashboardApp({
       return res.json({ url });
     }
 
-    res.status(400).json({ error: 'action debe ser resume|dockerize|test|run-container|stop-container|run-dev|stop-dev|open-repo' });
+    res.status(400).json({ error: 'action debe ser resume|dockerize|test|run-container|stop-container|run-dev|stop-dev|delete|open-repo' });
   });
 
   return app;
@@ -713,14 +735,19 @@ export function createDashboardApp({
 const main = async () => {
   const port = Number(process.env.DASHBOARD_PORT ?? 4100);
   const host = process.env.DASHBOARD_HOST ?? '127.0.0.1';
-  const server = createDashboardApp().listen(port, host, () =>
+  // La terminal se attachea después de crear la app — el ref deja que
+  // la acción delete cierre la sesión Devin del proyecto borrado.
+  const terminalRef = {};
+  const server = createDashboardApp({
+    killTerminal: (slug) => terminalRef.kill?.(slug),
+  }).listen(port, host, () =>
     console.log(`dashboard api en http://${host}:${port}`),
   );
   // Import lazy: terminal.js carga ws (y node-pty on-demand) — si algo
   // falta, la API HTTP sigue sirviendo y solo la terminal falla.
   try {
     const { attachTerminal } = await import('./terminal.js');
-    attachTerminal(server, {});
+    terminalRef.kill = attachTerminal(server, {}).killBySlug;
   } catch (err) {
     console.error(`terminal Devin deshabilitada: ${err.message}`);
   }

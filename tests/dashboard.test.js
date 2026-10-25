@@ -702,3 +702,56 @@ describe('run-dev sin containers', () => {
     stopDevRun(dir); // limpieza de B
   });
 });
+
+describe('eliminar proyecto', () => {
+  it('delete → borra el dir, frena el dev run y limpia container+imagen con engine', async () => {
+    const dir = seedApp('app-uno');
+    writeJson(join(dir, 'dev-run.json'), {
+      status: 'running',
+      procs: [{ script: 'dev', pid: process.pid, port: 5173, alive: true }],
+    });
+    fakeEngine = 'podman';
+    runCmdCalls = [];
+    const { status, body } = await post('/api/projects/app-uno/actions', { action: 'delete' });
+    expect(status).toBe(200);
+    expect(body).toMatchObject({ deleted: true, slug: 'app-uno' });
+    expect(existsSync(dir)).toBe(false);
+    expect(stopDevCalls).toEqual([dir]);
+    expect(runCmdCalls).toContain('podman rm -f app-uno');
+    expect(runCmdCalls).toContain('podman rmi -f app-uno:local');
+    expect((await api('/api/projects/app-uno')).status).toBe(404);
+  });
+
+  it('sin engine borra el dir igual (salta container/imagen)', async () => {
+    const dir = seedApp('app-uno');
+    runCmdCalls = [];
+    const { status } = await post('/api/projects/app-uno/actions', { action: 'delete' });
+    expect(status).toBe(200);
+    expect(existsSync(dir)).toBe(false);
+    expect(runCmdCalls.filter((c) => c.includes('rm -f') || c.includes('rmi'))).toHaveLength(0);
+  });
+
+  it('409 con job pending/running del proyecto; job terminado no bloquea', async () => {
+    const dir = seedApp('app-uno');
+    mkdirSync(join(base, 'jobs'), { recursive: true });
+    writeJson(join(base, 'jobs', '5.json'), {
+      id: 5,
+      args: ['--idea', 'x', '--name', 'app-uno'],
+      status: 'running',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    const busy = await post('/api/projects/app-uno/actions', { action: 'delete' });
+    expect(busy.status).toBe(409);
+    expect(busy.body.error).toContain('cancelalo');
+    expect(existsSync(dir)).toBe(true);
+
+    writeJson(join(base, 'jobs', '5.json'), {
+      id: 5,
+      args: ['--idea', 'x', '--name', 'app-uno'],
+      status: 'cancelled',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    expect((await post('/api/projects/app-uno/actions', { action: 'delete' })).status).toBe(200);
+    expect(existsSync(dir)).toBe(false);
+  });
+});
