@@ -195,12 +195,15 @@ export function startDevRun(dir, { spawnFn = spawn } = {}) {
     child.on('close', (code) => {
       proc.alive = false;
       proc.exitCode = code ?? 1;
-      if (!stillCurrent()) return;
-      writeDevState(dir, state);
-      // Cuando muere el último proceso vivo → la sesión terminó.
+      const current = stillCurrent();
+      if (current) writeDevState(dir, state);
+      // Al morir el último proc: cerrar el stream SIEMPRE (sino cada
+      // stop-dev/re-run deja un fd de dev-run.log abierto), pero el
+      // estado final solo se escribe si esta sigue siendo la sesión
+      // vigente.
       if (state.procs.every((p) => !p.alive)) {
         log.end(() => {
-          if (stillCurrent())
+          if (current)
             writeDevState(dir, { ...state, status: 'exited', finishedAt: new Date().toISOString() });
         });
       }
@@ -216,9 +219,11 @@ export function startDevRun(dir, { spawnFn = spawn } = {}) {
 
 export function stopDevRun(dir, { killGroup = (pid) => process.kill(-pid, 'SIGTERM') } = {}) {
   const state = readDevState(dir);
-  if (!state?.procs) return { stopped: false };
+  // Solo una sesión vigente: señalar procs de un run ya 'stopped'/
+  // 'exited' sería SIGTERM a pids que el SO pudo reciclar (grupo ajeno).
+  if (state?.status !== 'running' || !state.procs) return { stopped: false };
   for (const p of state.procs) {
-    if (!p.pid) continue;
+    if (!p.pid || p.alive === false) continue;
     try {
       killGroup(p.pid);
     } catch {
