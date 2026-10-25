@@ -184,8 +184,10 @@ fina sobre la infra existente:
   `worker` = liveness leído del heartbeat `jobs/.worker`.
 - `GET /api/jobs/:id/log?tail=N` — tail (default 200 líneas) del log que
   el worker captura en `jobs/<id>.log` (stdout+stderr del `npm start` del
-  job). `GET /api/projects/:slug/log` — idem resolviendo el job más
-  reciente cuyo `projectSlug` coincide con el slug.
+  job — incluye el feed del agente: `onActivity` (tool calls) y `onText`
+  (texto del agente) de `runDevinPrompt` caen a stderr via `activity`/
+  `textFeed` de agents/common.js). `GET /api/projects/:slug/log` — idem
+  resolviendo el job más reciente cuyo `projectSlug` coincide con el slug.
 - `POST /api/runs` — encola una generación: whitelist de campos
   (idea/scope/appType/name/arch/phone + flags github/ghpages/
   verifyDocker) → args del CLI + `--yes` siempre (un job bajo el worker
