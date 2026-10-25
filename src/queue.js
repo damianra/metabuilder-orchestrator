@@ -26,6 +26,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { spawn } from 'node:child_process';
+import { finished } from 'node:stream/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
@@ -193,6 +194,11 @@ export async function runJob(
       resolveCode(1);
     });
   });
+
+  // El close del child no garantiza que el log ya flusheó a disco —
+  // sin el await, quien lee <id>.log apenas termina runJob puede verlo
+  // vacío/incompleto (flaky en CI).
+  await finished(logStream).catch(() => {});
 
   // Re-leer: el flag pudo llegar mientras corría.
   const cancelled = Boolean(readJob(job.id, baseDir)?.cancelRequested);

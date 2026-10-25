@@ -7,3 +7,4 @@ server/uploads/*
 !server/uploads/.gitkeep
 docker-build.*
 test-run.*
+dev-run.*

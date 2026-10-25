@@ -165,9 +165,16 @@ fina sobre la infra existente:
   status.json → status, pasos done/total, arch, hasDockerfile).
 - `GET /api/projects/:slug` — detalle: pasos, reporte del último run
   (buildReport en vivo), repoUrl (ssh→https), docker-build.json,
-  plan.stacks, `scripts` del package.json de la app y test-run.json.
+  plan.stacks, `scripts` del package.json de la app, test-run.json,
+  `devRun` (dev-run.json enriquecido con alive por pid + `stale`) y
+  `devTargets` (scripts dev/api disponibles → puerto esperado:
+  dev→5173 Vite / 3000 Next según `next.config.*`, api→4000).
 - `GET /api/projects/:slug/test-log` — tail del `test-run.log` de la
   app + el estado del último test run (mismo formato que el log de job).
+- `GET /api/projects/:slug/dev-log` — tail del `dev-run.log` + estado
+  del dev run + `urls` parseadas del output (`http://localhost:<port>`)
+  — vite/next/api imprimen su puerto real al arrancar, que puede no ser
+  el convencional si estaba ocupado.
 - `GET /api/runtime` — `{engine: 'docker'|'podman'|null}` (probe
   `docker info` → `podman info`; positivo cacheado permanente, `null`
   re-probea pasados 30s — el daemon puede aparecer después). El mismo
@@ -208,8 +215,14 @@ fina sobre la infra existente:
   --name <slug> -p <host>:<container>` — containerPort 4000 si hay
   backend, 80 si es frontend-only/nginx; `port` opcional para el host,
   default sugerido por variante; 503 sin engine, 400 si no existe la
-  imagen `<slug>:local`, rm -f previo para reemplazo idempotente) y
-  `stop-container` (`<engine> rm -f <slug>`).
+  imagen `<slug>:local`, rm -f previo para reemplazo idempotente),
+  `stop-container` (`<engine> rm -f <slug>`), `run-dev` (spawnea
+  `npm run dev`/`npm run api` según los scripts de la app — childs
+  `detached` con pids en dev-run.json y output compartido en
+  dev-run.log; 400 si la app no tiene scripts dev/api, 409 si hay un
+  run con pids vivos — `running` con pids muertos es stale y no
+  bloquea) y `stop-dev` (`kill(-pid)` SIGTERM al process group de cada
+  proc → cubre npm + vite/next + descendientes; marca stopped).
 - `GET /api/options` — scopes/verticales/archs/stacks leídos de los
   registries; la UI alimenta sus pickers de acá (nada hardcodeado).
 - `POST /api/jobs/:id/cancel` — `cancelJob(id)` de queue.js: pending →
