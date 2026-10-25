@@ -144,7 +144,9 @@ process.env.PAGES_BASE` permite el re-build para GitHub Pages.
 `src/templates/api-skeleton/` es el equivalente de backend: Express 5 +
 better-sqlite3 + multer, auto-mount de `server/routes/<name>.js` en
 `/api/<name>`, `schema.sql` + `seed-data.js` (seed solo si la tabla está
-vacía), `POST /api/uploads` → `/uploads/<file>`. `preflight` lo copia
+vacía), `POST /api/uploads` → `/uploads/<file>`, request logging propio
+(`server/log.js` — línea `método url status ms` por request, así los
+logs del container/dev-run muestran tráfico real). `preflight` lo copia
 cuando el scope tiene backend (standalone si scope=backend — el
 `package.partial.json` pasa a `package.json`; overlay sobre app-skeleton
 si fullstack — mergea deps/scripts). Si el vertical tiene

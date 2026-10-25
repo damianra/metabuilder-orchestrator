@@ -2,6 +2,7 @@ import express from 'express';
 import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { requestLogger } from './log.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -14,6 +15,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 export async function createApp() {
   const app = express();
   app.use(express.json({ limit: '2mb' }));
+  app.use(requestLogger);
 
   app.get('/api/health', (req, res) => res.json({ ok: true }));
 
