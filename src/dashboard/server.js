@@ -139,6 +139,109 @@ const readTestRun = (dir) => {
   return s;
 };
 
+// --- Dev local sin containers: `npm run dev`/`npm run api` de la app ---
+// Mismo patrón que startTestRun pero los procesos son de larga vida:
+// estado en dev-run.json (pids por script para detectar stale), output
+// en dev-run.log (stream compartido, end:false). Spawn detached →
+// stop-dev mata el process group entero (npm → vite/next → hijos).
+const devRunPath = (dir) => join(dir, 'dev-run.json');
+const devLogPath = (dir) => join(dir, 'dev-run.log');
+const readDevState = (dir) => readJson(devRunPath(dir));
+const writeDevState = (dir, state) => writeJson(devRunPath(dir), state);
+
+// Qué scripts levantar según lo que la app generada tenga: `api` →
+// Express :4000; `dev` → Vite :5173 o Next :3000 según el config.
+const devTargets = (dir) => {
+  const scripts = readJson(join(dir, 'package.json'))?.scripts ?? {};
+  const targets = [];
+  if (scripts.dev) {
+    const isNext = existsSync(dir) && readdirSync(dir).some((f) => /^next\.config\.(m?js|ts)$/.test(f));
+    targets.push({ script: 'dev', port: isNext ? 3000 : 5173 });
+  }
+  if (scripts.api) targets.push({ script: 'api', port: 4000 });
+  return targets;
+};
+
+export function startDevRun(dir, { spawnFn = spawn } = {}) {
+  const targets = devTargets(dir);
+  const state = {
+    status: 'running',
+    procs: targets.map((t) => ({ ...t, pid: null, alive: true })),
+    startedAt: new Date().toISOString(),
+  };
+  writeDevState(dir, state);
+  const log = createWriteStream(devLogPath(dir), { flags: 'a' });
+  // stream de larga vida: si el archivo desaparece (app borrada) no
+  // queremos un uncaught que tumbe toda la API.
+  log.on('error', () => {});
+  log.write(`\n━━ dev run · ${targets.map((t) => `npm run ${t.script}`).join(' + ')} · ${state.startedAt}\n`);
+  state.procs.forEach((proc, i) => {
+    const child = spawnFn('npm', ['run', proc.script], {
+      cwd: dir,
+      detached: true,
+      env: process.env,
+    });
+    proc.pid = child.pid;
+    child.stdout?.pipe(log, { end: false });
+    child.stderr?.pipe(log, { end: false });
+    child.on('close', (code) => {
+      proc.alive = false;
+      proc.exitCode = code ?? 1;
+      writeDevState(dir, state);
+      // Cuando muere el último proceso vivo → la sesión terminó.
+      if (state.procs.every((p) => !p.alive)) {
+        log.end(() =>
+          writeDevState(dir, { ...state, status: 'exited', finishedAt: new Date().toISOString() }),
+        );
+      }
+    });
+    child.on('error', () => {
+      proc.alive = false;
+      proc.exitCode = 1;
+    });
+  });
+  writeDevState(dir, state);
+  return state;
+}
+
+export function stopDevRun(dir, { killGroup = (pid) => process.kill(-pid, 'SIGTERM') } = {}) {
+  const state = readDevState(dir);
+  if (!state?.procs) return { stopped: false };
+  for (const p of state.procs) {
+    if (!p.pid) continue;
+    try {
+      killGroup(p.pid);
+    } catch {
+      /* ya muerto */
+    }
+    p.alive = false;
+  }
+  writeDevState(dir, { ...state, status: 'stopped', finishedAt: new Date().toISOString() });
+  return { stopped: true };
+}
+
+// devRun enriquecido: refresca alive por pid real (el JSON pudo quedar
+// 'running' si el dashboard murió a mitad — mismas reglas que testRun).
+const readDevRun = (dir) => {
+  const s = readDevState(dir);
+  if (!s) return null;
+  const procs = (s.procs ?? []).map((p) => ({ ...p, alive: p.alive && pidAlive(p.pid) }));
+  const live = procs.filter((p) => p.alive);
+  const stale = s.status === 'running' && !live.length;
+  return { ...s, procs, stale };
+};
+
+// URLs publicadas en el log del dev run — vite/next/api imprimen su
+// URL real al arrancar (el puerto puede no ser el convencional si
+// estaba ocupado). Se scanea el tail del log en el endpoint.
+const parseDevUrls = (logText) => {
+  if (!logText) return [];
+  const found = new Set();
+  for (const m of logText.matchAll(/https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d+)\/?/g))
+    found.add(`http://localhost:${m[1]}`);
+  return [...found];
+};
+
 function projectSummary(dir, slug) {
   const plan = readJson(join(dir, 'plan.json'));
   const status = readJson(join(dir, 'status.json'));
@@ -188,6 +291,8 @@ export function createDashboardApp({
   baseDir = config.rootDir,
   startBuild = startDockerBuild,
   startTest = startTestRun,
+  startDev = startDevRun,
+  stopDev = stopDevRun,
   runCmd = run,
   // docker primero, podman como fallback — el CLI de containers es
   // compatible, así que un solo binario alcanza para todas las acciones
@@ -352,6 +457,16 @@ export function createDashboardApp({
     res.json({ testRun: readTestRun(dir), log });
   });
 
+  // Log + estado del dev run local (dev-run.log) + URLs detectadas en
+  // el output (vite/next/api imprimen su puerto real al arrancar).
+  app.get('/api/projects/:slug/dev-log', (req, res) => {
+    const slug = validSlug(req, res);
+    if (!slug) return;
+    const dir = appDir(slug);
+    const log = tailFile(devLogPath(dir), { lines: Number(req.query.tail) || 200 });
+    res.json({ devRun: readDevRun(dir), log, urls: parseDevUrls(log?.lines?.join('\n') ?? '') });
+  });
+
   // Engine de containers disponible en la máquina (docker o podman).
   app.get('/api/runtime', async (req, res) => res.json({ engine: await getEngine() }));
 
@@ -415,6 +530,8 @@ export function createDashboardApp({
       report: runId ? buildReport({ runId, runDir: join(runsDir, runId), projectDir: dir }) : null,
       dockerBuild: readBuildState(dir),
       testRun: readTestRun(dir),
+      devRun: readDevRun(dir),
+      devTargets: devTargets(dir),
       runtime: {
         ...(await containerStatus(dir, slug)),
         suggested: containerPorts(dir),
@@ -547,6 +664,24 @@ export function createDashboardApp({
       return res.json({ stopped: true });
     }
 
+    // Correr la app en modo dev sin containers: npm run dev (Vite/Next)
+    // + npm run api (Express :4000) según los scripts del proyecto.
+    if (action === 'run-dev') {
+      const targets = devTargets(dir);
+      if (!targets.length) {
+        return res.status(400).json({ error: 'el proyecto no tiene scripts dev/api' });
+      }
+      const current = readDevRun(dir);
+      if (current?.status === 'running' && !current.stale) {
+        return res.status(409).json({ error: 'ya hay un dev run en curso' });
+      }
+      return res.status(202).json({ devRun: startDev(dir) });
+    }
+
+    if (action === 'stop-dev') {
+      return res.json(stopDev(dir));
+    }
+
     if (action === 'open-repo') {
       const remote = (await run('git remote get-url origin', { cwd: dir, timeoutMs: 5000 })).stdout.trim();
       const url = toWebUrl(remote || null);
@@ -554,7 +689,7 @@ export function createDashboardApp({
       return res.json({ url });
     }
 
-    res.status(400).json({ error: 'action debe ser resume|dockerize|test|run-container|stop-container|open-repo' });
+    res.status(400).json({ error: 'action debe ser resume|dockerize|test|run-container|stop-container|run-dev|stop-dev|open-repo' });
   });
 
   return app;

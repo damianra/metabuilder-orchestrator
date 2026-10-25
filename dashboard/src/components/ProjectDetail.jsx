@@ -27,6 +27,8 @@ export default function ProjectDetail({ slug, onChanged }) {
   const [hostPort, setHostPort] = useState('');
   const [showContainerLog, setShowContainerLog] = useState(false);
   const [containerLog, setContainerLog] = useState(null);
+  const [showDevLog, setShowDevLog] = useState(false);
+  const [devLog, setDevLog] = useState(null);
   const [notice, setNotice] = useState(null);
 
   const load = () =>
@@ -68,6 +70,16 @@ export default function ProjectDetail({ slug, onChanged }) {
     const t = setInterval(loadCLog, 4000);
     return () => clearInterval(t);
   }, [showContainerLog, slug]);
+
+  // Log del dev run local: acordeón con polling — además trae las URLs
+  // parseadas del output (vite/next imprimen su puerto real).
+  useEffect(() => {
+    if (!showDevLog) return;
+    const loadDev = () => api.devLog(slug).then(setDevLog).catch(() => {});
+    loadDev();
+    const t = setInterval(loadDev, 4000);
+    return () => clearInterval(t);
+  }, [showDevLog, slug]);
 
   const act = async (body, okMsg) => {
     setBusy(body.action);
@@ -113,6 +125,10 @@ export default function ProjectDetail({ slug, onChanged }) {
   const hasE2eScript = (project.scripts ?? []).some((s) => s.name === 'test:e2e');
   // done = pipeline terminado; no-plan = sin plan.json (resume imposible).
   const canResume = project.status !== 'done' && project.status !== 'no-plan';
+  // Dev local: devTargets viene del server (scripts dev/api presentes).
+  const devTargets = project.devTargets ?? [];
+  const devRun = project.devRun;
+  const devRunning = devRun?.status === 'running' && !devRun.stale;
 
   return (
     <div className="space-y-4">
@@ -302,6 +318,78 @@ export default function ProjectDetail({ slug, onChanged }) {
           </div>
         )}
       </section>
+
+      {(devTargets.length > 0 || devRun) && (
+        <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800">
+            <Play size={16} /> Dev local <span className="font-normal text-slate-400">sin containers</span>
+          </h3>
+          {devRunning ? (
+            <div className="mt-2">
+              <p className="text-xs text-slate-500">
+                corriendo ·{' '}
+                {(devLog?.urls?.length ? devLog.urls : devRun.procs.filter((p) => p.alive).map((p) => `http://localhost:${p.port}`)).map(
+                  (u) => (
+                    <a
+                      key={u}
+                      href={u}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mr-3 font-medium text-sky-700 hover:underline"
+                    >
+                      {u}
+                    </a>
+                  ),
+                )}
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <button className={btn} onClick={() => setShowDevLog((v) => !v)}>
+                  <FileText size={15} /> Ver logs {showDevLog ? '▾' : '▸'}
+                </button>
+                <button
+                  className={btn}
+                  disabled={busy}
+                  onClick={() => act({ action: 'stop-dev' }, () => 'dev detenido')}
+                >
+                  {busy === 'stop-dev' ? spin : <Square size={15} />} Detener
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                className={btn}
+                disabled={busy || !devTargets.length}
+                title={
+                  devTargets.length
+                    ? `Corre ${devTargets.map((t) => `npm run ${t.script}`).join(' + ')} en background`
+                    : 'El proyecto no tiene scripts dev/api'
+                }
+                onClick={() => act({ action: 'run-dev' }, () => 'dev run iniciado')}
+              >
+                {busy === 'run-dev' ? spin : <Play size={15} />} Correr en dev
+              </button>
+              {devRun && (
+                <button
+                  className="text-xs text-slate-500 hover:underline"
+                  onClick={() => setShowDevLog((v) => !v)}
+                >
+                  último dev run: <b>{devRun.stale ? `${devRun.status} (interrumpido)` : devRun.status}</b>
+                  {devRun.finishedAt ? ` · ${timeAgo(devRun.finishedAt)}` : ''} · log {showDevLog ? '▾' : '▸'}
+                </button>
+              )}
+            </div>
+          )}
+          {showDevLog &&
+            (devLog?.log ? (
+              <pre className="mt-3 max-h-96 overflow-auto rounded-lg bg-slate-900 p-4 text-xs text-slate-100 whitespace-pre-wrap">
+                {devLog.log.lines.join('\n')}
+              </pre>
+            ) : (
+              <p className="mt-3 text-xs text-slate-500">sin output todavía — el dev server está arrancando</p>
+            ))}
+        </section>
+      )}
 
       {/* lazy: xterm.js pesa — solo se baja cuando se entra a un detalle */}
       <Suspense fallback={null}>

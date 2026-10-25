@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDashboardApp } from '../src/dashboard/server.js';
 
-let base, appsDir, runsDir, server, url, startTestCalls, startBuildCalls, fakeEngine, runCmdCalls, runCmdHandler;
+let base, appsDir, runsDir, server, url, startTestCalls, startBuildCalls, startDevCalls, stopDevCalls, fakeEngine, runCmdCalls, runCmdHandler;
 
 const writeJson = (p, data) => writeFileSync(p, JSON.stringify(data));
 
@@ -40,6 +40,8 @@ beforeEach(async () => {
   base = mkdtempSync(join(tmpdir(), 'mb-dash-'));
   startTestCalls = [];
   startBuildCalls = [];
+  startDevCalls = [];
+  stopDevCalls = [];
   fakeEngine = null;
   runCmdCalls = [];
   runCmdHandler = () => ({ ok: true, stdout: '', stderr: '' });
@@ -57,6 +59,14 @@ beforeEach(async () => {
     startTest: (dir, commands, label) => {
       startTestCalls.push({ dir, commands, label });
       return { status: 'running', command: label, startedAt: '2026-01-01T00:00:00Z' };
+    },
+    startDev: (dir) => {
+      startDevCalls.push(dir);
+      return { status: 'running', procs: [{ script: 'dev', pid: process.pid, port: 5173 }] };
+    },
+    stopDev: (dir) => {
+      stopDevCalls.push(dir);
+      return { stopped: true };
     },
     engineProbe: async () => fakeEngine,
     engineTtlMs: 0, // sin cache negativo → fakeEngine se puede cambiar mid-test
@@ -546,5 +556,129 @@ describe('runtime de containers (docker/podman)', () => {
     const off = await api('/api/projects/app-uno/container-log');
     expect(off.body.running).toBe(false);
     expect(off.body.log).toBeNull();
+  });
+});
+
+describe('run-dev sin containers', () => {
+  const seedDevApp = (slug, scripts = { dev: 'vite', api: 'node server/index.js' }) => {
+    const dir = seedApp(slug);
+    writeJson(join(dir, 'package.json'), { name: slug, scripts });
+    return dir;
+  };
+
+  it('run-dev → 202 y dispara startDev; stop-dev → stopped', async () => {
+    const dir = seedDevApp('app-uno');
+    const { status, body } = await post('/api/projects/app-uno/actions', { action: 'run-dev' });
+    expect(status).toBe(202);
+    expect(startDevCalls).toEqual([dir]);
+    expect(body.devRun.status).toBe('running');
+
+    const stop = await post('/api/projects/app-uno/actions', { action: 'stop-dev' });
+    expect(stop.status).toBe(200);
+    expect(stop.body.stopped).toBe(true);
+    expect(stopDevCalls).toEqual([dir]);
+  });
+
+  it('400 sin scripts dev/api; detalle expone devTargets por script', async () => {
+    seedApp('app-sin-scripts');
+    expect((await post('/api/projects/app-sin-scripts/actions', { action: 'run-dev' })).status).toBe(400);
+
+    // vite (sin next.config) → dev:5173 + api:4000
+    seedDevApp('app-vite');
+    const vite = await api('/api/projects/app-vite');
+    expect(vite.body.devTargets).toEqual([
+      { script: 'dev', port: 5173 },
+      { script: 'api', port: 4000 },
+    ]);
+
+    // next.config.mjs → dev:3000; backend-only → solo api
+    const dirNext = seedDevApp('app-next', { dev: 'next dev' });
+    writeFileSync(join(dirNext, 'next.config.mjs'), '');
+    expect((await api('/api/projects/app-next')).body.devTargets).toEqual([{ script: 'dev', port: 3000 }]);
+    seedDevApp('app-back', { api: 'node server/index.js' });
+    expect((await api('/api/projects/app-back')).body.devTargets).toEqual([{ script: 'api', port: 4000 }]);
+  });
+
+  it('409 si el dev run sigue vivo; running con pids muertos = stale → relanza', async () => {
+    const dir = seedDevApp('app-uno');
+    writeJson(join(dir, 'dev-run.json'), {
+      status: 'running',
+      procs: [{ script: 'dev', pid: process.pid, port: 5173, alive: true }],
+    });
+    expect((await post('/api/projects/app-uno/actions', { action: 'run-dev' })).status).toBe(409);
+
+    writeJson(join(dir, 'dev-run.json'), {
+      status: 'running',
+      procs: [{ script: 'dev', pid: 999999, port: 5173, alive: true }],
+    });
+    expect((await api('/api/projects/app-uno')).body.devRun.stale).toBe(true);
+    expect((await post('/api/projects/app-uno/actions', { action: 'run-dev' })).status).toBe(202);
+  });
+
+  it('dev-log devuelve tail del log + urls parseadas del output', async () => {
+    const dir = seedDevApp('app-uno');
+    writeFileSync(
+      join(dir, 'dev-run.log'),
+      'arrancando\n  ➜  Local:   http://localhost:5174/\napi en http://localhost:4000\n',
+    );
+    writeJson(join(dir, 'dev-run.json'), { status: 'exited', procs: [] });
+    const { status, body } = await api('/api/projects/app-uno/dev-log');
+    expect(status).toBe(200);
+    expect(body.devRun.status).toBe('exited');
+    expect(body.log.lines.join('\n')).toContain('localhost:4000');
+    expect(body.urls).toEqual(['http://localhost:5174', 'http://localhost:4000']);
+  });
+
+  it('startDevRun real: spawn npm run <script> detached por target', async () => {
+    const { startDevRun } = await import('../src/dashboard/server.js');
+    const dir = seedDevApp('app-fake');
+    const spawned = [];
+    const fakeChild = () => ({ pid: process.pid, on() {}, stdout: null, stderr: null });
+    const state = startDevRun(dir, {
+      spawnFn: (cmd, args, opts) => {
+        spawned.push({ cmd, args, cwd: opts.cwd, detached: opts.detached });
+        return fakeChild();
+      },
+    });
+    expect(state.procs).toMatchObject([
+      { script: 'dev', port: 5173 },
+      { script: 'api', port: 4000 },
+    ]);
+    expect(spawned).toEqual([
+      { cmd: 'npm', args: ['run', 'dev'], cwd: dir, detached: true },
+      { cmd: 'npm', args: ['run', 'api'], cwd: dir, detached: true },
+    ]);
+  });
+
+  it('ciclo de vida real: startDevRun + stopDevRun mata el process group', async () => {
+    const { spawn } = await import('node:child_process');
+    const { startDevRun, stopDevRun } = await import('../src/dashboard/server.js');
+    const dir = seedDevApp('app-real', { dev: 'sleep forever' });
+    startDevRun(dir, {
+      // npm run dev → en realidad un node dormilón detached (grupo propio)
+      spawnFn: () =>
+        spawn(process.execPath, ['-e', 'console.log("Local: http://localhost:5199"); setInterval(()=>{},60000)'], {
+          cwd: dir,
+          detached: true,
+        }),
+    });
+    let state = JSON.parse(readFileSync(join(dir, 'dev-run.json'), 'utf8'));
+    const pid = state.procs[0].pid;
+    expect(state.status).toBe('running');
+    const detail = await api('/api/projects/app-real');
+    expect(detail.body.devRun.stale).toBeFalsy();
+
+    // el log captura la URL impresa por el proceso
+    await new Promise((r) => setTimeout(r, 300));
+    const { body } = await api('/api/projects/app-real/dev-log');
+    expect(body.urls).toContain('http://localhost:5199');
+
+    const { stopped } = stopDevRun(dir);
+    expect(stopped).toBe(true);
+    state = JSON.parse(readFileSync(join(dir, 'dev-run.json'), 'utf8'));
+    expect(state.status).toBe('stopped');
+    // el grupo entero (node + descendientes) quedó muerto
+    await new Promise((r) => setTimeout(r, 300));
+    expect(() => process.kill(pid, 0)).toThrow();
   });
 });
