@@ -63,6 +63,13 @@ export function attachTerminal(
     );
   };
 
+  // Si la sesión quedó huérfana (killSession la sacó del mapa) o sin
+  // clientes mientras esperábamos un await, abortar sin spawnear —
+  // si no, el pty nace sin dueño y el slot del semáforo queda tomado
+  // para siempre.
+  const stale = (session, slug) =>
+    !session.clients.size || sessions.get(slug) !== session;
+
   const startSession = async (slug, dir, cols, rows, ws) => {
     const session = {
       pty: null,
@@ -73,15 +80,28 @@ export function attachTerminal(
     };
     sessions.set(slug, session);
     send(ws, { t: 'status', msg: 'esperando slot Devin…' });
-    session.release = await acquireSlot({
-      onWait: () =>
-        send(ws, {
-          t: 'status',
-          msg: 'slot ocupado (hay una generación en curso) — esperando…',
-        }),
-    });
+    try {
+      session.release = await acquireSlot({
+        onWait: () =>
+          send(ws, {
+            t: 'status',
+            msg: 'slot ocupado (hay una generación en curso) — esperando…',
+          }),
+      });
+    } catch (err) {
+      for (const c of session.clients)
+        send(c, { t: 'error', msg: `sin slot Devin: ${err.message}` });
+      killSession(slug, session, 'slot-failed');
+      return;
+    }
+    if (stale(session, slug)) {
+      session.release?.();
+      sessions.delete(slug);
+      return;
+    }
     try {
       const spawn = await spawnPty();
+      if (stale(session, slug)) throw new Error('sesión abandonada');
       session.pty = spawn(devinBin, [], {
         name: 'xterm-256color',
         cols: cols || 80,
@@ -126,7 +146,15 @@ export function attachTerminal(
     if (!dir.startsWith(resolve(appsDir) + sep) || !existsSync(join(dir, 'plan.json')))
       return reject();
     const origin = req.headers.origin;
-    if (origin && !LOCAL_HOST.test(new URL(origin).host)) return reject();
+    if (origin) {
+      let host;
+      try {
+        host = new URL(origin).host;
+      } catch {
+        return reject(); // Origin malformado — tratar como no-local
+      }
+      if (!LOCAL_HOST.test(host)) return reject();
+    }
 
     wss.handleUpgrade(req, socket, head, (ws) => {
       const q = new URL(req.url, 'http://x').searchParams;

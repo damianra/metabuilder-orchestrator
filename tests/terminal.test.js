@@ -183,6 +183,33 @@ describe('terminal Devin (WS + pty)', () => {
     ws.close();
   });
 
+  it('cliente que se desconecta esperando el slot no deja pty huérfano', async () => {
+    // slot que se resuelve a mano — simula espera larga del semáforo
+    let resolveSlot;
+    const slotPromise = new Promise((r) => (resolveSlot = r));
+    const app2 = express();
+    const srv2 = createServer(app2);
+    attachTerminal(srv2, {
+      appsDir: dir,
+      acquireSlot: () => slotPromise,
+      spawnPty: spawnFake,
+      idleKillMs: 60_000,
+    });
+    await new Promise((r) => srv2.listen(0, '127.0.0.1', r));
+    const p2 = srv2.address().port;
+
+    const ws = await connect(wsUrl(p2, 'demo-app'));
+    expect((await nextMsg(ws)).msg).toMatch(/slot/i);
+    ws.close(); // se fue antes de conseguir slot
+    await new Promise((r) => setTimeout(r, 30));
+    let released2 = false;
+    resolveSlot(() => (released2 = true)); // el semáforo cede tarde
+    await new Promise((r) => setTimeout(r, 30));
+    expect(lastPty).toBeNull(); // no se spawnó nada
+    expect(released2).toBe(true); // y el slot se soltó
+    srv2.close();
+  });
+
   it('exit del pty notifica y libera', async () => {
     const ws = await connect(wsUrl(port, 'demo-app'));
     await nextMsg(ws);
