@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { ArrowLeft, Container, ExternalLink, FileText, FlaskConical, LoaderCircle, Play, RotateCcw, Square, Trash2 } from 'lucide-react';
+import { ArrowLeft, Container, Copy, ExternalLink, FileText, FlaskConical, LoaderCircle, Play, RotateCcw, Square, Trash2 } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import { api } from '../api.js';
 import { timeAgo } from '../util.js';
@@ -256,6 +256,13 @@ export default function ProjectDetail({ slug, onChanged }) {
               <ExternalLink size={15} /> Abrir repo
             </button>
           )}
+          <button
+            className={btn}
+            title="Nueva app con la misma config (scope/vertical/arch/stacks)"
+            onClick={() => { window.location.hash = `#/?clone=${slug}`; }}
+          >
+            <Copy size={15} /> Nueva app igual
+          </button>
           <button
             className="ml-auto inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 bg-white hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
             disabled={busy}

@@ -9,7 +9,9 @@ import QueuePanel from './components/QueuePanel.jsx';
 
 const parseHash = () => {
   const m = window.location.hash.match(/^#\/p\/([a-z0-9-]+)/);
-  return m ? { view: 'detail', slug: m[1] } : { view: 'list' };
+  if (m) return { view: 'detail', slug: m[1] };
+  const c = window.location.hash.match(/[?&]clone=([a-z0-9-]+)/);
+  return { view: 'list', clone: c?.[1] ?? null };
 };
 
 export default function App() {
@@ -106,7 +108,7 @@ export default function App() {
           <ProjectDetail slug={route.slug} onChanged={refresh} />
         ) : (
           <>
-            <NewAppForm onEnqueued={refresh} />
+            <NewAppForm onEnqueued={refresh} cloneSlug={route.clone} />
             <QueuePanel jobs={jobs} worker={worker} onChanged={refresh} />
             <ProjectList projects={projects} />
           </>
