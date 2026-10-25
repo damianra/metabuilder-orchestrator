@@ -26,6 +26,11 @@ Estadística:
      skeletons a /tmp, correr un helper con node -e). Documentá qué corriste.
    - Si es docs-only, con revisar el contenido alcanza — decilo así.
 3. **NO commitees ni pushees nada.** Solo leer/correr.
+4. **NUNCA corras `npm run validate:pr`** — VOS sos esa validación:
+   lanzarla spawnea otra sesión Devin que espera el slot que ocupás →
+   deadlock garantizado (y el pkill para frenarla puede matarte a vos).
+   Si el diff toca el validador, validalo leyendo el código y corriendo
+   los tests directos — nunca el script mismo.
 
 ## Formato de salida OBLIGATORIO
 
