@@ -83,7 +83,9 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await new Promise((r) => server.close(r));
-  rmSync(base, { recursive: true, force: true });
+  // maxRetries: un write stream recién cerrado puede recrear el archivo
+  // mientras rmSync recorre el árbol → ENOTEMPTY transitorio en CI.
+  rmSync(base, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 describe('GET /api/options', () => {
@@ -631,9 +633,20 @@ describe('run-dev sin containers', () => {
 
   it('startDevRun real: spawn npm run <script> detached por target', async () => {
     const { startDevRun } = await import('../src/dashboard/server.js');
+    const { EventEmitter } = await import('node:events');
     const dir = seedDevApp('app-fake');
     const spawned = [];
-    const fakeChild = () => ({ pid: process.pid, on() {}, stdout: null, stderr: null });
+    // Emite close → el log stream cierra (sin esto el WriteStream queda
+    // abierto y su open lazy puede recrear dev-run.log DURANTE el rmSync
+    // del afterEach → ENOTEMPTY en CI).
+    const fakeChild = () => {
+      const c = new EventEmitter();
+      c.pid = process.pid;
+      c.stdout = null;
+      c.stderr = null;
+      setImmediate(() => c.emit('close', 1));
+      return c;
+    };
     const state = startDevRun(dir, {
       spawnFn: (cmd, args, opts) => {
         spawned.push({ cmd, args, cwd: opts.cwd, detached: opts.detached });
