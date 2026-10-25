@@ -343,6 +343,44 @@ describe('POST /api/jobs/:id/cancel', () => {
   });
 });
 
+describe('POST /api/jobs/:id/requeue', () => {
+  const seedJob = (status) => {
+    mkdirSync(join(base, 'jobs'), { recursive: true });
+    writeJson(join(base, 'jobs', '9.json'), {
+      id: 9,
+      args: ['--idea', 'blog de gatos', '--yes', '--scope', 'frontend', '--no-push'],
+      status,
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+  };
+
+  it('failed/cancelled → 201 re-encola los mismos args', async () => {
+    for (const st of ['failed', 'cancelled']) {
+      seedJob(st);
+      const { status, body } = await api('/api/jobs/9/requeue', { method: 'POST' });
+      expect(status).toBe(201);
+      expect(body.job.id).not.toBe(9);
+      expect(body.job.status).toBe('pending');
+      expect(body.job.args).toEqual([
+        '--idea', 'blog de gatos', '--yes', '--scope', 'frontend', '--no-push',
+      ]);
+      // el nuevo job quedó persistido en la cola
+      const jobs = JSON.parse(
+        readFileSync(join(base, 'jobs', `${body.job.id}.json`), 'utf8'),
+      );
+      expect(jobs.status).toBe('pending');
+    }
+  });
+
+  it('pending/running → 409 (no se duplica), inexistente → 404', async () => {
+    seedJob('running');
+    expect((await api('/api/jobs/9/requeue', { method: 'POST' })).status).toBe(409);
+    seedJob('pending');
+    expect((await api('/api/jobs/9/requeue', { method: 'POST' })).status).toBe(409);
+    expect((await api('/api/jobs/77/requeue', { method: 'POST' })).status).toBe(404);
+  });
+});
+
 describe('detalle enriquecido + acción test', () => {
   const seedPkg = (slug, scripts = { test: 'vitest run', 'test:e2e': 'playwright test' }) => {
     const dir = seedApp(slug);
