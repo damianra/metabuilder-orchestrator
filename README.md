@@ -86,6 +86,14 @@ npm run queue -- clear       # borra jobs terminados (json + log)
 
 Cada job es un archivo en `jobs/` (gitignored); el worker spawnea `node src/index.js` por job — equivale a correr `npm start` a mano, en serie — y captura su stdout/stderr en `jobs/<id>.log`. Un job `failed` se retoma con `--resume generated-apps/<slug>`. El semáforo de sesiones Devin sigue siendo la red de seguridad para runs sueltos.
 
+## Doctor
+
+```bash
+npm run doctor   # chequeo de prereqs sin encolar nada
+```
+
+Verifica lo mismo que `preflight` pero por adelantado: binarios (`node`/`npm`/`git`/`devin` con versión) y el handshake real de Devin via ACP. Exit `1` si falta algo obligatorio. Features opcionales salen como warning sin frenar: engine de containers (docker/podman — `run-dev` funciona igual), playwright chromium (se descarga en el primer `test:e2e`), `GITHUB_TOKEN` en `.env` (necesario para `--github`/Pages/`validate:pr`) y `node-pty` (terminal Devin del dashboard).
+
 ## Dashboard
 
 Dos componentes locales en el propio repo:

@@ -37,7 +37,7 @@ lo demás es observabilidad, control o housekeeping alrededor del run.
 | ~~7~~ | ~~**Request logging en api-skeleton**~~ ✅ | Implementado — `server/log.js` exporta `requestLogger` (línea `método url status ms` por request en `res.on('finish')`), montado en `app.js` tras `express.json`. Sin deps nuevas (nada de morgan). Test root contra Express real (`tests/request-logger.test.js`). | S |
 | ~~8~~ | ~~**Notificación al terminar un run**~~ ✅ | Implementado — `dashboard/src/notifications.js`: `diffFinished` compara el snapshot de jobs entre polls y `notifyFinished` dispara `Notification` del OS (title `Job #N terminó/falló/fue cancelado` + `jobSummary` de body, click → foco). Botón campana "avisar al terminar" en el header pide el permiso on-demand; solo dispara con la pestaña en background; el primer poll nunca notifica. | S |
 | ~~9~~ | ~~**Clonar configuración**~~ ✅ | Implementado — botón "Nueva app igual" en el detalle → `#/?clone=<slug>`; `NewAppForm` resuelve `api.project(slug)` y pre-llena scope/vertical/arch/stacks (idea/nombre intactos, badge "config de \<slug\>" en el título). | S |
-| 10 | **`npm run doctor`** | Chequeo standalone de prereqs (node/npm, auth Devin, playwright browsers, docker/podman, gh) sin encolar nada — separa "mi máquina está lista" de "el job arrancó y falló en preflight". | S |
+| ~~10~~ | ~~**`npm run doctor`**~~ ✅ | Implementado — `src/doctor.js`: bins `node`/`npm`/`git`/`devin` con versión + handshake ACP real (`checkDevinAuth`) → exit 1 si falta algo obligatorio. Warnings sin frenar: container engine (docker/podman), playwright chromium, `GITHUB_TOKEN`, `node-pty`. Probes inyectables → tests sin depender de la máquina. | S |
 
 ## Pulido (cola de nits acumulados)
 

@@ -52,6 +52,17 @@ export class AcpClient {
     this.setLog(logPath);
     this.#proc.stdout.on('data', (chunk) => this.#onData(chunk));
     this.#proc.stderr.on('data', (chunk) => this.#writeLog(`[stderr] ${chunk}`));
+    // spawn ENOENT (binario devin ausente): sin handler 'error' el
+    // evento es uncaught y tumba el proceso entero antes de que el
+    // caller vea nada — doctor/preflight necesitan el error limpio.
+    this.#proc.on('error', (err) => {
+      this.#alive = false;
+      const pending = [...this.#pending.values()];
+      this.#pending.clear();
+      for (const settle of pending) {
+        settle({ error: { message: `devin acp no arrancó: ${err.message}` } });
+      }
+    });
     // Si el proceso muere, las calls pendientes no pueden quedar
     // colgadas — se rechazan y el pool descarta al cliente.
     this.#proc.on('exit', () => {

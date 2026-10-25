@@ -24,6 +24,9 @@ npm run queue -- add --idea "..." [-y]   # encola (args = los de npm start)
 npm run queue -- list|clear              # estado / limpieza
 npm run queue -- cancel <id>             # pending→cancelled; running→flag y el worker mata el árbol
 npm run worker                           # procesa jobs/ en orden (una pasada)
+npm run doctor                           # prereqs: bins + auth ACP (exit 1 si falta
+                                         # algo obligatorio; engine/playwright/token/
+                                         # node-pty son warnings)
 npm run queue -- watch                   # idem en loop + heartbeat jobs/.worker
                                          # + stdout/stderr de cada job → jobs/<id>.log
                                          # (es el modo que levanta npm run dashboard)
