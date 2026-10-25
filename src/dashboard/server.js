@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
-import { addJob, jobsDir, readJobs, readWorker } from '../queue.js';
+import { addJob, cancelJob, jobsDir, readJobs, readWorker } from '../queue.js';
 import { slugify } from '../tools/slug.js';
 import { buildReport, resolveRunId } from '../report.js';
 import { writeDockerFiles, detectFrontend, detectOutDir } from '../tools/docker.js';
@@ -318,6 +318,18 @@ export function createDashboardApp({
     if (!job) return res.status(404).json({ error: 'job no encontrado' });
     const log = tailFile(join(jobsDir(baseDir), `${job.id}.log`), { lines: Number(req.query.tail) || 200 });
     res.json({ jobId: job.id, jobStatus: job.status, projectSlug: jobProjectSlug(job.args), log });
+  });
+
+  // Cancelar: pending → 'cancelled' al toque; running → flag
+  // cancelRequested y el worker mata el árbol del subproceso (queda
+  // 'cancelling' hasta que el close lo marque 'cancelled').
+  app.post('/api/jobs/:id/cancel', (req, res) => {
+    const out = cancelJob(Number(req.params.id), baseDir);
+    if (!out.ok)
+      return res
+        .status(out.error.includes('no existe') ? 404 : 409)
+        .json({ error: out.error });
+    res.json(out);
   });
 
   // Log del pipeline del proyecto: el job más reciente cuyo slug matchea.

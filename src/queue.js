@@ -57,6 +57,36 @@ export function readJobs(baseDir = config.rootDir) {
     .sort((a, b) => a.id - b.id);
 }
 
+export function readJob(id, baseDir = config.rootDir) {
+  try {
+    return JSON.parse(readFileSync(jobPath(id, baseDir), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+// Cancelación: pending → 'cancelled' inmediato (el worker solo consume
+// pending, así que nunca arranca). running → flag `cancelRequested` en
+// el JSON; el watcher de runJob lo ve y mata el árbol del subproceso
+// (spawn detached → kill(-pid) cubre npm/node/devin acp). La API no
+// mata directo: el dueño del child es el worker.
+export function cancelJob(id, baseDir = config.rootDir) {
+  const job = readJob(id, baseDir);
+  if (!job) return { ok: false, error: `job #${id} no existe` };
+  if (job.status === 'pending') {
+    writeJob(
+      { ...job, status: 'cancelled', finishedAt: new Date().toISOString() },
+      baseDir,
+    );
+    return { ok: true, status: 'cancelled' };
+  }
+  if (job.status === 'running') {
+    writeJob({ ...job, cancelRequested: true }, baseDir);
+    return { ok: true, status: 'cancelling' };
+  }
+  return { ok: false, error: `job #${id} ya terminó (${job.status})` };
+}
+
 // Hard link como create-exclusivo atómico: linkSync falla EEXIST si el
 // destino ya existe — sin la ventana que tendría wx sobre un archivo
 // temporal (que al renombrarse libera el nombre temporal y permite que
@@ -92,6 +122,9 @@ export async function runJob(
   job,
   { baseDir = config.rootDir, cmd = [process.execPath, join(config.rootDir, 'src/index.js')] } = {},
 ) {
+  // Re-check: pudo ser cancelado entre el find() de runQueue y acá.
+  if (readJob(job.id, baseDir)?.status !== 'pending') return 'cancelled';
+
   const startedAt = new Date().toISOString();
   writeJob({ ...job, status: 'running', startedAt }, baseDir);
 
@@ -103,12 +136,44 @@ export async function runJob(
   );
   logStream.write(`\n━━ job #${job.id} · ${startedAt} · ${job.args.join(' ')}\n`);
 
+  let childPid = null;
   const exitCode = await new Promise((resolveCode) => {
     const child = spawn(cmd[0], [...cmd.slice(1), ...job.args], {
       cwd: config.rootDir,
       stdio: ['inherit', 'pipe', 'pipe'],
       env: process.env,
+      // detached → process group propio: kill(-pid) mata el árbol
+      // entero (node → npm → devin acp → nietos) al cancelar.
+      detached: true,
     });
+    // Persistir el pid — referencia para debugging/operación externa.
+    childPid = child.pid;
+    writeJob({ ...job, status: 'running', startedAt, pid: childPid }, baseDir);
+
+    // Watcher de cancelRequested: el API solo escribe el flag; acá se
+    // ejecuta el kill (somos dueños del child). SIGTERM al grupo y
+    // SIGKILL de escalación si no murió en 4s.
+    let killedAt = 0;
+    const cancelWatch = setInterval(() => {
+      if (!readJob(job.id, baseDir)?.cancelRequested) return;
+      if (!killedAt) {
+        killedAt = Date.now();
+        logStream.write('\n━━ cancelación solicitada — matando el run\n');
+        try {
+          process.kill(-child.pid, 'SIGTERM');
+        } catch {
+          /* ya murió */
+        }
+      } else if (Date.now() - killedAt > 4000) {
+        try {
+          process.kill(-child.pid, 'SIGKILL');
+        } catch {
+          /* ya murió */
+        }
+      }
+    }, 500);
+    cancelWatch.unref?.();
+
     child.stdout.on('data', (d) => {
       process.stdout.write(d);
       logStream.write(d);
@@ -118,27 +183,33 @@ export async function runJob(
       logStream.write(d);
     });
     child.on('close', (code) => {
+      clearInterval(cancelWatch);
       logStream.end();
       resolveCode(code ?? 1);
     });
     child.on('error', () => {
+      clearInterval(cancelWatch);
       logStream.end();
       resolveCode(1);
     });
   });
 
-  const done = exitCode === 0;
+  // Re-leer: el flag pudo llegar mientras corría.
+  const cancelled = Boolean(readJob(job.id, baseDir)?.cancelRequested);
+  const status = cancelled ? 'cancelled' : exitCode === 0 ? 'done' : 'failed';
   writeJob(
     {
       ...job,
-      status: done ? 'done' : 'failed',
+      status,
       startedAt,
       finishedAt: new Date().toISOString(),
       exitCode,
+      pid: childPid,
+      ...(cancelled ? { note: 'cancelado por el usuario' } : {}),
     },
     baseDir,
   );
-  return done;
+  return status;
 }
 
 // Heartbeat del worker: jobs/.worker {pid, ts} — el dashboard lo lee
@@ -183,11 +254,10 @@ export async function runQueue(opts = {}) {
     const next = readJobs(baseDir).find((j) => j.status === 'pending');
     if (!next) return done;
     console.log(`\n━━ job #${next.id} → node src/index.js ${next.args.join(' ')}`);
-    if (await runJob(next, { ...opts, baseDir })) {
-      done++;
-    } else {
-      console.error(`   ✗ job #${next.id} falló`);
-    }
+    const status = await runJob(next, { ...opts, baseDir });
+    if (status === 'done') done++;
+    else if (status === 'cancelled') console.log(`   ◌ job #${next.id} cancelado`);
+    else console.error(`   ✗ job #${next.id} falló`);
   }
 }
 
@@ -221,6 +291,13 @@ const main = async () => {
       console.log(`✔ job #${job.id} encolado: ${rest.join(' ')}`);
       break;
     }
+    case 'cancel': {
+      const id = Number(rest[0]);
+      const res = Number.isInteger(id) ? cancelJob(id) : { ok: false, error: 'uso: cancel <id>' };
+      console.log(res.ok ? `✔ job #${id} → ${res.status}` : `✗ ${res.error}`);
+      if (!res.ok) process.exitCode = 1;
+      break;
+    }
     case 'list': {
       const jobs = readJobs();
       console.log(jobs.length ? jobs.map(fmtJob).join('\n') : 'cola vacía');
@@ -231,6 +308,7 @@ const main = async () => {
       const keep = jobs.filter((j) => j.status === 'pending' || j.status === 'running');
       for (const j of jobs.filter((j) => !keep.includes(j))) {
         rmSync(jobPath(j.id), { force: true });
+        rmSync(jobPath(j.id).replace(/\.json$/, '.log'), { force: true });
       }
       console.log(`✔ ${jobs.length - keep.length} jobs terminados borrados`);
       break;
@@ -246,7 +324,7 @@ const main = async () => {
       break;
     }
     default:
-      console.error('uso: npm run queue -- add|list|clear|run|watch …   (run = npm run worker)');
+      console.error('uso: npm run queue -- add|list|cancel <id>|clear|run|watch …   (run = npm run worker)');
       process.exit(1);
   }
 };

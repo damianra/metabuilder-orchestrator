@@ -74,7 +74,7 @@ export default function App() {
         ) : (
           <>
             <NewAppForm onEnqueued={refresh} />
-            <QueuePanel jobs={jobs} worker={worker} />
+            <QueuePanel jobs={jobs} worker={worker} onChanged={refresh} />
             <ProjectList projects={projects} />
           </>
         )}

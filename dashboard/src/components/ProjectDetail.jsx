@@ -318,9 +318,32 @@ export default function ProjectDetail({ slug, onChanged }) {
         {showLog &&
           (logData?.log ? (
             <>
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 flex items-center gap-2 text-xs text-slate-500">
                 job #{logData.jobId} · {logData.jobStatus}
                 {logData.log.truncated ? ' · (últimas líneas — log truncado)' : ''}
+                {(logData.jobStatus === 'pending' || logData.jobStatus === 'running') && (
+                  <button
+                    disabled={busy === 'cancel-job'}
+                    onClick={async () => {
+                      setBusy('cancel-job');
+                      try {
+                        await api.cancelJob(logData.jobId);
+                      } finally {
+                        setBusy(null);
+                        api.projectLog(slug).then(setLogData).catch(() => {});
+                        onChanged?.();
+                      }
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-red-600 ring-1 ring-red-200 hover:bg-red-50 disabled:opacity-40"
+                  >
+                    {busy === 'cancel-job' ? (
+                      <LoaderCircle size={11} className="animate-spin" />
+                    ) : (
+                      <Square size={10} />
+                    )}
+                    cancelar job
+                  </button>
+                )}
               </p>
               <pre className="mt-2 max-h-96 overflow-auto rounded-lg bg-slate-900 p-4 text-xs text-slate-100 whitespace-pre-wrap">
                 {logData.log.lines.join('\n')}
