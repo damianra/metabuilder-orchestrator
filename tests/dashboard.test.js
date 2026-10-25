@@ -699,6 +699,16 @@ describe('run-dev sin containers', () => {
       { cmd: 'npm', args: ['run', 'dev'], cwd: dir, detached: true },
       { cmd: 'npm', args: ['run', 'api'], cwd: dir, detached: true },
     ]);
+    // Esperar status 'exited': ese write corre dentro de log.end() →
+    // garantiza que el WriteStream ya abrió y cerró su fd. Emitir close
+    // solo con setImmediate no basta: el fs.open lazy puede caer DENTRO
+    // del rmSync del afterEach y recrear dev-run.log → ENOTEMPTY en CI.
+    for (let i = 0; i < 100; i++) {
+      const s = JSON.parse(readFileSync(join(dir, 'dev-run.json'), 'utf8'));
+      if (s.status === 'exited') break;
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    expect(JSON.parse(readFileSync(join(dir, 'dev-run.json'), 'utf8')).status).toBe('exited');
   });
 
   it('ciclo de vida real: startDevRun + stopDevRun mata el process group', async () => {
