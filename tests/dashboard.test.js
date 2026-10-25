@@ -681,4 +681,24 @@ describe('run-dev sin containers', () => {
     await new Promise((r) => setTimeout(r, 300));
     expect(() => process.kill(pid, 0)).toThrow();
   });
+
+  it('race stop→run: el close de la sesión vieja no pisa el estado nuevo', async () => {
+    const { spawn } = await import('node:child_process');
+    const { startDevRun, stopDevRun } = await import('../src/dashboard/server.js');
+    const dir = seedDevApp('app-race', { dev: 'x' });
+    const sleeper = () =>
+      spawn(process.execPath, ['-e', 'setInterval(()=>{},60000)'], { cwd: dir, detached: true });
+    // sesión A corre, se detiene y se arranca B al toque: el close
+    // tardío de A no debe pisar el dev-run.json de B.
+    startDevRun(dir, { spawnFn: sleeper });
+    stopDevRun(dir);
+    startDevRun(dir, { spawnFn: sleeper });
+    const pidB = JSON.parse(readFileSync(join(dir, 'dev-run.json'), 'utf8')).procs[0].pid;
+    await new Promise((r) => setTimeout(r, 500)); // el close de A ya llegó
+    const state = JSON.parse(readFileSync(join(dir, 'dev-run.json'), 'utf8'));
+    expect(state.status).toBe('running');
+    expect(state.procs[0].pid).toBe(pidB);
+    expect(state.procs[0].alive).toBe(true);
+    stopDevRun(dir); // limpieza de B
+  });
 });

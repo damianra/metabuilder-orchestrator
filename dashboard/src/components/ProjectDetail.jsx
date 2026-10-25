@@ -71,15 +71,17 @@ export default function ProjectDetail({ slug, onChanged }) {
     return () => clearInterval(t);
   }, [showContainerLog, slug]);
 
-  // Log del dev run local: acordeón con polling — además trae las URLs
-  // parseadas del output (vite/next imprimen su puerto real).
+  // Log del dev run local: polling con el acordeón abierto O mientras
+  // el run esté vivo — trae las URLs parseadas del output (vite/next
+  // imprimen su puerto real si el convencional estaba ocupado).
+  const devLive = project?.devRun?.status === 'running' && !project?.devRun?.stale;
   useEffect(() => {
-    if (!showDevLog) return;
+    if (!showDevLog && !devLive) return;
     const loadDev = () => api.devLog(slug).then(setDevLog).catch(() => {});
     loadDev();
     const t = setInterval(loadDev, 4000);
     return () => clearInterval(t);
-  }, [showDevLog, slug]);
+  }, [showDevLog, devLive, slug]);
 
   const act = async (body, okMsg) => {
     setBusy(body.action);

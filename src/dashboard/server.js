@@ -175,7 +175,7 @@ export function startDevRun(dir, { spawnFn = spawn } = {}) {
   // queremos un uncaught que tumbe toda la API.
   log.on('error', () => {});
   log.write(`\n━━ dev run · ${targets.map((t) => `npm run ${t.script}`).join(' + ')} · ${state.startedAt}\n`);
-  state.procs.forEach((proc, i) => {
+  state.procs.forEach((proc) => {
     const child = spawnFn('npm', ['run', proc.script], {
       cwd: dir,
       detached: true,
@@ -184,15 +184,25 @@ export function startDevRun(dir, { spawnFn = spawn } = {}) {
     proc.pid = child.pid;
     child.stdout?.pipe(log, { end: false });
     child.stderr?.pipe(log, { end: false });
+    // El close puede llegar tarde: si stopDevRun marcó 'stopped' o ya
+    // arrancó una sesión nueva (startedAt distinto), este handler NO
+    // debe pisar dev-run.json — de lo contrario un stop→run rápido
+    // deja el proc nuevo huérfano e incontrolable desde la UI.
+    const stillCurrent = () => {
+      const c = readDevState(dir);
+      return c?.startedAt === state.startedAt && c.status === 'running';
+    };
     child.on('close', (code) => {
       proc.alive = false;
       proc.exitCode = code ?? 1;
+      if (!stillCurrent()) return;
       writeDevState(dir, state);
       // Cuando muere el último proceso vivo → la sesión terminó.
       if (state.procs.every((p) => !p.alive)) {
-        log.end(() =>
-          writeDevState(dir, { ...state, status: 'exited', finishedAt: new Date().toISOString() }),
-        );
+        log.end(() => {
+          if (stillCurrent())
+            writeDevState(dir, { ...state, status: 'exited', finishedAt: new Date().toISOString() });
+        });
       }
     });
     child.on('error', () => {
