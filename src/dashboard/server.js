@@ -456,6 +456,18 @@ export function createDashboardApp({
     res.json(out);
   });
 
+  // Reintentar: re-encola los mismos args de un job terminado
+  // (failed/cancelled/done) — cubre el caso "murió en preflight y no
+  // dejó app" donde no hay resume posible. pending/running → 409.
+  app.post('/api/jobs/:id/requeue', (req, res) => {
+    const job = readJobs(baseDir).find((j) => j.id === Number(req.params.id));
+    if (!job) return res.status(404).json({ error: `job ${req.params.id} no existe` });
+    if (job.status === 'pending' || job.status === 'running') {
+      return res.status(409).json({ error: `el job ${job.id} sigue ${job.status} — no se duplica` });
+    }
+    res.status(201).json({ job: addJob(job.args, baseDir) });
+  });
+
   // Log del pipeline del proyecto: el job más reciente cuyo slug matchea.
   app.get('/api/projects/:slug/log', (req, res) => {
     const slug = validSlug(req, res);

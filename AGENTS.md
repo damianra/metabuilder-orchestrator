@@ -239,6 +239,11 @@ fina sobre la infra existente:
   → `cancelRequested` en el JSON y el watcher de `runJob` (500ms) hace
   `kill(-pid)` al process group del child (spawn `detached`), con
   SIGKILL de escalación a los 4s → el close lo marca `cancelled`.
+- `POST /api/jobs/:id/requeue` — re-encola los args verbatim de un job
+  terminado (`addJob` → nuevo id, nuevo `.log`); 409 si sigue
+  pending/running (no se duplica), 404 si no existe. La UI expone
+  "reintentar" en failed/cancelled (QueuePanel y "Log del run" del
+  detalle).
   El pid del child queda persistido en el job mientras corre.
 - `WS /api/projects/:slug/terminal` (`src/dashboard/terminal.js`,
   `attachTerminal(server)` colgado en `main()`): spawnea `devin` TUI

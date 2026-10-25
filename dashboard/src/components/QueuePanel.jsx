@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ListOrdered, LoaderCircle, Square, TriangleAlert } from 'lucide-react';
+import { ListOrdered, LoaderCircle, RotateCcw, Square, TriangleAlert } from 'lucide-react';
 import { api } from '../api.js';
 import { jobSummary } from '../util.js';
 
@@ -19,6 +19,11 @@ const chip = (j) =>
 const canCancel = (j) =>
   (j.status === 'pending' || j.status === 'running') && !j.cancelRequested;
 
+// Terminado mal → re-encola los mismos args (cubre "murió en preflight"
+// donde no hay app que resumir). 'done' no: regenerar sobre una app
+// terminada casi nunca es lo que se quiere.
+const canRetry = (j) => j.status === 'failed' || j.status === 'cancelled';
+
 // Texto del stepper: pending → running (nodo + paso del pipeline) →
 // done/failed. progress viene del status.json de la app (lo enriquece
 // GET /api/jobs).
@@ -34,6 +39,7 @@ const progress = (j) => {
 
 export default function QueuePanel({ jobs, worker, onChanged }) {
   const [busy, setBusy] = useState(null);
+  const [retryBusy, setRetryBusy] = useState(null);
   const active = jobs.filter((j) => j.status === 'pending' || j.status === 'running');
   const recent = jobs.filter((j) => !active.includes(j)).slice(-5).reverse();
   const shown = [...active, ...recent];
@@ -86,6 +92,29 @@ export default function QueuePanel({ jobs, worker, onChanged }) {
                   <Square size={11} />
                 )}
                 cancelar
+              </button>
+            )}
+            {canRetry(j) && (
+              <button
+                title="Re-encola los mismos args"
+                disabled={retryBusy === j.id}
+                onClick={async () => {
+                  setRetryBusy(j.id);
+                  try {
+                    await api.requeueJob(j.id);
+                  } finally {
+                    setRetryBusy(null);
+                    onChanged?.();
+                  }
+                }}
+                className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40"
+              >
+                {retryBusy === j.id ? (
+                  <LoaderCircle size={12} className="animate-spin" />
+                ) : (
+                  <RotateCcw size={11} />
+                )}
+                reintentar
               </button>
             )}
           </li>

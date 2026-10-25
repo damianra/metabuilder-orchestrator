@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { ArrowLeft, Container, ExternalLink, FileText, FlaskConical, LoaderCircle, Play, Square, Trash2 } from 'lucide-react';
+import { ArrowLeft, Container, ExternalLink, FileText, FlaskConical, LoaderCircle, Play, RotateCcw, Square, Trash2 } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import { api } from '../api.js';
 import { timeAgo } from '../util.js';
@@ -457,6 +457,29 @@ export default function ProjectDetail({ slug, onChanged }) {
               <p className="mt-2 flex items-center gap-2 text-xs text-slate-500">
                 job #{logData.jobId} · {logData.jobStatus}
                 {logData.log.truncated ? ' · (últimas líneas — log truncado)' : ''}
+                {(logData.jobStatus === 'failed' || logData.jobStatus === 'cancelled') && (
+                  <button
+                    disabled={busy === 'requeue-job'}
+                    onClick={async () => {
+                      setBusy('requeue-job');
+                      try {
+                        await api.requeueJob(logData.jobId);
+                      } finally {
+                        setBusy(null);
+                        api.projectLog(slug).then(setLogData).catch(() => {});
+                        onChanged?.();
+                      }
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    {busy === 'requeue-job' ? (
+                      <LoaderCircle size={11} className="animate-spin" />
+                    ) : (
+                      <RotateCcw size={10} />
+                    )}
+                    reintentar
+                  </button>
+                )}
                 {(logData.jobStatus === 'pending' || logData.jobStatus === 'running') && (
                   <button
                     disabled={busy === 'cancel-job'}
