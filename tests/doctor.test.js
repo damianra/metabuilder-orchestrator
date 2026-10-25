@@ -24,7 +24,6 @@ const base = (over = {}) => ({
   importFn: async () => ({}),
   home: (dir = mkdtempSync(join(tmpdir(), 'mb-doctor-'))),
   env: { GITHUB_TOKEN: 'x' },
-  dotenvDir: '/tmp',
   ...over,
 });
 
@@ -40,11 +39,28 @@ describe('runDoctor', () => {
     expect(exitCode(rs)).toBe(0);
   });
 
-  it('binario faltante o auth caída → fail y exit 1', async () => {
+  it('binario devin faltante → auth ni se prueba (el spawn crashearía)', async () => {
+    let probed = false;
     const rs = await runDoctor(
-      base({ runCmd: fakeRun({ node: 1, npm: 1, git: 1 }), authProbe: async () => ({ ok: false, error: 'sin credenciales' }) }),
+      base({
+        runCmd: fakeRun({ node: 1, npm: 1, git: 1 }),
+        authProbe: async () => {
+          probed = true;
+          return { ok: true };
+        },
+      }),
     );
+    expect(probed).toBe(false);
     expect(byName(rs)['devin'].level).toBe('fail');
+    expect(byName(rs)['devin auth (ACP)'].level).toBe('fail');
+    expect(byName(rs)['devin auth (ACP)'].detail).toContain('no está en PATH');
+    expect(exitCode(rs)).toBe(1);
+  });
+
+  it('binario ok pero auth caída → fail y exit 1', async () => {
+    const rs = await runDoctor(
+      base({ authProbe: async () => ({ ok: false, error: 'sin credenciales' }) }),
+    );
     expect(byName(rs)['devin auth (ACP)'].level).toBe('fail');
     expect(byName(rs)['devin auth (ACP)'].detail).toBe('sin credenciales');
     expect(exitCode(rs)).toBe(1);

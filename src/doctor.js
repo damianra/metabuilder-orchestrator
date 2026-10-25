@@ -9,8 +9,8 @@
 
 import { existsSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
-import { config } from './config.js';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { run } from './tools/shell.js';
 import { checkDevinAuth } from './tools/devin.js';
 
@@ -31,7 +31,6 @@ export async function runDoctor({
   importFn = (m) => import(m),
   home = homedir(),
   env = process.env,
-  dotenvDir = config.rootDir,
 } = {}) {
   const results = [];
 
@@ -42,9 +41,15 @@ export async function runDoctor({
   }
 
   // Auth Devin via ACP — el handshake real (initialize+authenticate,
-  // ~1s, sin consumir slot del semáforo).
-  const auth = await authProbe(15_000);
-  results.push(auth.ok ? ok('devin auth (ACP)') : fail('devin auth (ACP)', auth.error ?? 'falló'));
+  // ~1s, sin consumir slot del semáforo). Si el binario `devin` no
+  // está, el spawn crashearía — se reporta directo sin probar.
+  const devinBin = results.find((r) => r.name === 'devin').level !== 'fail';
+  if (!devinBin) {
+    results.push(fail('devin auth (ACP)', 'no probada — el binario devin no está en PATH'));
+  } else {
+    const auth = await authProbe(15_000);
+    results.push(auth.ok ? ok('devin auth (ACP)') : fail('devin auth (ACP)', auth.error ?? 'falló'));
+  }
 
   // Opcionales de acá en adelante — warnings, no frenan la generación.
 
@@ -65,10 +70,10 @@ export async function runDoctor({
       : warn('container engine', 'ni docker ni podman — dockerize/run-container no van a funcionar (run-dev sí)'),
   );
 
-  // dotenv/config ya cargó <root>/.env en process.env.
+  // dotenv/config ya cargó .env en process.env (vía config.js → cwd).
   results.push(
     env.GITHUB_TOKEN
-      ? ok('GITHUB_TOKEN', 'declarado en .env')
+      ? ok('GITHUB_TOKEN', 'presente en el entorno')
       : warn('GITHUB_TOKEN', 'no está en .env — --github/Pages/validate:pr no van a funcionar'),
   );
 
@@ -92,7 +97,9 @@ export function printResults(results, out = console.log) {
 
 export const exitCode = (results) => (results.some((r) => r.level === 'fail') ? 1 : 0);
 
-const isMain = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
+// Convención del repo (queue.js, report.js, validate-pr.js): robusta a
+// paths con espacios/caracteres que import.meta.url percent-encodea.
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (isMain) {
   console.log('\nmetabuilder doctor\n');
   const results = await runDoctor();
