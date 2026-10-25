@@ -754,4 +754,18 @@ describe('eliminar proyecto', () => {
     expect((await post('/api/projects/app-uno/actions', { action: 'delete' })).status).toBe(200);
     expect(existsSync(dir)).toBe(false);
   });
+
+  it('delete funciona en dir sin plan.json (run muerto en preflight)', async () => {
+    const dir = join(appsDir, 'app-huerfana');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'algo.txt'), 'x');
+    const { status, body } = await post('/api/projects/app-huerfana/actions', { action: 'delete' });
+    expect(status).toBe(200);
+    expect(body.deleted).toBe(true);
+    expect(existsSync(dir)).toBe(false);
+    // las demás acciones siguen exigiendo plan.json
+    expect((await post('/api/projects/app-huerfana/actions', { action: 'resume' })).status).toBe(404);
+    // slug inexistente → 404
+    expect((await post('/api/projects/nope-nope/actions', { action: 'delete' })).status).toBe(404);
+  });
 });

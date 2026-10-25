@@ -226,8 +226,10 @@ fina sobre la infra existente:
   `delete` (borra `generated-apps/<slug>` recursivo + `<engine> rm -f`
   y `rmi -f <slug>:local` si hay engine + frena el dev run vigente +
   cierra la sesión de terminal Devin via `attachTerminal().killBySlug`;
-  409 si hay job pending/running del slug — el worker escribe dentro
-  del dir).
+  **no exige plan.json** — cubre dirs huérfanos de runs muertos en
+  preflight, única acción con `requirePlan:false`; 409 si hay job
+  pending/running del slug — el worker escribe dentro del dir, con
+  re-check justo antes del rmSync por TOCTOU).
 - `GET /api/options` — scopes/verticales/archs/stacks leídos de los
   registries; la UI alimenta sus pickers de acá (nada hardcodeado).
 - `POST /api/jobs/:id/cancel` — `cancelJob(id)` de queue.js: pending →

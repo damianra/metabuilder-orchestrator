@@ -126,7 +126,27 @@ export default function ProjectDetail({ slug, onChanged }) {
     }
   };
 
-  if (error) return <p className="text-sm text-red-700">error: {error}</p>;
+  const spin = <LoaderCircle size={15} className="animate-spin" />;
+
+  // El detalle da 404 en dirs sin plan.json (run muerto en preflight) —
+  // justo el caso de limpieza: ofrecer eliminar igual desde acá.
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <a href="#/" className="inline-flex items-center gap-1.5 text-sm text-sky-700 hover:underline">
+          <ArrowLeft size={15} /> proyectos
+        </a>
+        <p className="text-sm text-red-700">error: {error}</p>
+        <button
+          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 bg-white hover:bg-red-50 disabled:opacity-40"
+          disabled={busy}
+          onClick={del}
+        >
+          {busy === 'delete' ? spin : <Trash2 size={15} />} Eliminar la carpeta
+        </button>
+      </div>
+    );
+  }
   if (!project) return <p className="text-sm text-slate-500">cargando…</p>;
 
   const build = project.dockerBuild;
@@ -141,7 +161,6 @@ export default function ProjectDetail({ slug, onChanged }) {
   // docker-build.json: cubre builds por podman o hechas a mano por CLI.
   const imageReady = runtime?.image === true;
   const building = build?.status === 'running';
-  const spin = <LoaderCircle size={15} className="animate-spin" />;
   const hasTestScript = (project.scripts ?? []).some((s) => s.name === 'test');
   const hasE2eScript = (project.scripts ?? []).some((s) => s.name === 'test:e2e');
   // done = pipeline terminado; no-plan = sin plan.json (resume imposible).

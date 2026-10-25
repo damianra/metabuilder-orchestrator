@@ -336,9 +336,12 @@ export function createDashboardApp({
   app.use(express.json({ limit: '64kb' }));
 
   const appDir = (slug) => join(appsDir, slug);
-  const validSlug = (req, res) => {
+  const validSlug = (req, res, { requirePlan = true } = {}) => {
     const { slug } = req.params;
-    if (!SLUG_RE.test(slug) || !existsSync(join(appDir(slug), 'plan.json'))) {
+    const dir = appDir(slug);
+    const exists = existsSync(dir) && statSync(dir).isDirectory();
+    const ok = exists && (!requirePlan || existsSync(join(dir, 'plan.json')));
+    if (!SLUG_RE.test(slug) || !ok) {
       res.status(404).json({ error: `proyecto "${slug}" no encontrado` });
       return null;
     }
@@ -599,10 +602,12 @@ export function createDashboardApp({
 
   // Acciones sobre un proyecto existente.
   app.post('/api/projects/:slug/actions', async (req, res) => {
-    const slug = validSlug(req, res);
+    const { action } = req.body ?? {};
+    // delete no exige plan.json: un run que murió en preflight deja un
+    // dir sin plan — justo lo que hay que poder limpiar desde acá.
+    const slug = validSlug(req, res, { requirePlan: action !== 'delete' });
     if (!slug) return;
     const dir = appDir(slug);
-    const { action } = req.body ?? {};
 
     if (action === 'resume') {
       const args = ['--resume', slug, '--yes'];
@@ -714,6 +719,16 @@ export function createDashboardApp({
       if (engine) {
         await runCmd(`${engine} rm -f ${slug}`, { timeoutMs: 15_000 });
         await runCmd(`${engine} rmi -f ${slug}:local`, { timeoutMs: 30_000 });
+      }
+      // Re-check antes de borrar: un POST /api/runs pudo encolar un job
+      // del mismo slug durante los awaits del engine.
+      const stillBusy = readJobs(baseDir).some(
+        (j) => jobProjectSlug(j.args) === slug && (j.status === 'pending' || j.status === 'running'),
+      );
+      if (stillBusy) {
+        return res.status(409).json({
+          error: 'hay un job pending/running para este proyecto — cancelalo antes de borrar',
+        });
       }
       rmSync(dir, { recursive: true, force: true });
       return res.json({ deleted: true, slug });
