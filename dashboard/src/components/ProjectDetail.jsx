@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { ArrowLeft, Container, ExternalLink, FileText, FlaskConical, LoaderCircle, Play, Square } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import { api } from '../api.js';
 import { timeAgo } from '../util.js';
+
+// lazy: xterm.js pesa — solo se baja cuando se entra a un detalle
+const TerminalPanel = lazy(() => import('./TerminalPanel.jsx'));
 
 const btn =
   'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ring-1 ring-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed';
@@ -299,6 +302,11 @@ export default function ProjectDetail({ slug, onChanged }) {
           </div>
         )}
       </section>
+
+      {/* lazy: xterm.js pesa — solo se baja cuando se entra a un detalle */}
+      <Suspense fallback={null}>
+        <TerminalPanel slug={slug} />
+      </Suspense>
 
       <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
         <button

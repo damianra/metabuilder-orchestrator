@@ -548,12 +548,20 @@ export function createDashboardApp({
   return app;
 }
 
-const main = () => {
+const main = async () => {
   const port = Number(process.env.DASHBOARD_PORT ?? 4100);
   const host = process.env.DASHBOARD_HOST ?? '127.0.0.1';
-  createDashboardApp().listen(port, host, () =>
+  const server = createDashboardApp().listen(port, host, () =>
     console.log(`dashboard api en http://${host}:${port}`),
   );
+  // Import lazy: terminal.js carga ws (y node-pty on-demand) — si algo
+  // falta, la API HTTP sigue sirviendo y solo la terminal falla.
+  try {
+    const { attachTerminal } = await import('./terminal.js');
+    attachTerminal(server, {});
+  } catch (err) {
+    console.error(`terminal Devin deshabilitada: ${err.message}`);
+  }
 };
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
