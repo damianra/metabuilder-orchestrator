@@ -1,5 +1,7 @@
 # MetaBuilder — Orquestador de desarrollo con agentes
 
+*Desarrollado con [Devin](https://devin.ai) (ex Windsurf) utilizando el modelo SWE-2.*
+
 MetaBuilder convierte una idea en texto libre en una aplicación funcionando (landing pages, webs de pedidos con carrito y WhatsApp, blogs, etc.) mediante un **harness multi-agente construido sobre LangGraph**: un orquestador determinístico coordina sub-agentes que escriben el código con **Devin CLI via ACP**. La arquitectura es **híbrida** — cada tarea la ejecuta el recurso más barato capaz de resolverla: código local para lo predecible (planes por vertical, copia del skeleton, validación del plan, verificaciones, git/README/deploy) y **sesiones Devin solo para lo generativo** (un builder por paso del plan, un fixer que recibe el stderr real del fallo, y un revisor QA que aprueba o rechaza la app terminada). Cada paso corre en su propia sesión aislada (sobre un proceso `devin acp` reutilizado por el run — initialize+authenticate una sola vez, `session/new` por paso) y el estado vive en `plan.json` + el filesystem, con lo que el pipeline puede reintentar, reanudar y pedir aprobación del plan antes de gastar una sola llamada al agente. Los beneficios: una app lista en ~5 minutos y pocas sesiones en lugar de un agente pesado por tarea; fallos acotados al paso que los causó con reparación dirigida; verificaciones reales (build + tests + e2e) como compuertas entre etapas; y un humano en el loop (plan → aprobar → construir) que evita desperdiciar trabajo en planes equivocados.
 
 ## Cómo funciona
@@ -77,6 +79,7 @@ npm run queue -- add --idea "Blog de recetas" --app-type blog -y
 npm run queue -- add --idea "Landing veterinaria" --app-type landing --scope frontend -y
 npm run queue -- list        # estado de cada job (pending/running/done/failed)
 npm run worker               # procesa la cola en orden, logs en vivo
+npm run queue -- watch       # idem en loop + heartbeat (el modo que usa el dashboard)
 npm run queue -- clear       # borra jobs terminados
 ```
 
@@ -91,7 +94,7 @@ Dos componentes locales en el propio repo:
 | **Backend (API)** | `src/dashboard/server.js` — Express 5 | `npm run dashboard:api` → `http://127.0.0.1:4100` (`DASHBOARD_PORT`/`DASHBOARD_HOST` para cambiar) |
 | **Frontend (UI)** | `dashboard/` — subpackage Vite+React+Tailwind con su propio `package.json` | `npm --prefix dashboard install` (una vez) y `npm --prefix dashboard run dev` → `http://127.0.0.1:4173` (proxy `/api` → :4100) |
 
-O ambos juntos con un solo comando (recomendado — `Ctrl+C` mata los dos):
+O todo junto con un solo comando (recomendado — `Ctrl+C` mata los tres):
 
 ```bash
 npm install                        # deps del orquestador
@@ -138,7 +141,7 @@ La API solo encola, no ejecuta — el worker procesa los jobs como siempre.
 | `--keep-going` | Continuar al siguiente paso aunque uno agote reintentos (en vez de `fail`). |
 | `--quiet` | Sin reporte por nodo ni actividad de tools (solo resultado/historial final). `status.json` se escribe igual. |
 | `--verbose` | Mensajes de los nodos sin truncar (default: 220 chars por línea). |
-| `--verify-docker` | En `finalVerify`, corre `docker build -t <slug>:verify .` sobre el `Dockerfile` de la app (cada app generada ya lo trae, junto a `.dockerignore`; frontend-only también `nginx.conf`). Si no hay daemon Docker disponible se omite sin fallar. |
+| `--verify-docker` | En `finalVerify`, corre `docker build -t <slug>:verify .` sobre el `Dockerfile` de la app (cada app generada ya lo trae, junto a `.dockerignore`; frontend-only también `nginx.conf`). Si no hay daemon **docker** disponible se omite sin fallar — es docker-only: en hosts con solo podman siempre se omite. |
 
 ## Configuración (`.env`)
 
@@ -175,7 +178,7 @@ cp .env.example .env
 - `src/stacks/` — registry declarativo de stacks (`vite-react`, `nextjs`, `express-sqlite`): skeleton, `buildDir`, comandos de verify, requisitos de `validatePlan` y bullets que los prompts inyectan (`{{stackRules}}`) — una sola fuente para validator y planner. `--stack-frontend`/`--stack-backend` seleccionan; `plan.stacks` persiste para resume.
 - `src/arch/` — registry de patrones de arquitectura de backend (`flat`, `mvc`, `layers`, `feature`): `--arch <id>` selecciona; `applyArch` inyecta el patrón en los pasos backend, `plan.arch` persiste para resume, el AGENTS.md de la app generada recibe las reglas del patrón.
 - `src/verticals/` — paquetes por tipo de app (`landing`, `orders`, `blog`): `buildPlan()` determinístico; `orders` y `blog` traen overlay `api/` (schema + seed + routes) para el api-skeleton.
-- `src/templates/` — `AGENTS.md` (reglas UI + guía de diseño copiadas a cada app), `README.md`, `app-skeleton/` (frontend Vite), `app-skeleton-next/` (frontend Next.js export estático), `api-skeleton/` (backend Express+SQLite+uploads), `docker/` (Dockerfile por variante + `.dockerignore` + `nginx.conf` para frontend-only).
+- `src/templates/` — `AGENTS.md` (reglas UI + guía de diseño copiadas a cada app), `README.md`, `app-skeleton/` (frontend Vite), `app-skeleton-next/` (frontend Next.js export estático), `api-skeleton/` (backend Express+SQLite+uploads), `docker/` (Dockerfile por variante + `.dockerignore` + `nginx.conf` para frontend-only; `FROM` fully-qualified `docker.io/library/...` para compat podman).
 - `src/verticals/<v>/api/` — overlay de backend por vertical (schema.sql + seed-data.js + routes/) que se copia sobre `server/`.
 - `generated-apps/` — apps generadas (**gitignored**, cada una con su repo git).
 - `runs/` — logs JSON-RPC de cada sesión Devin (**gitignored**). `npm run report -- <runId|slug>` los resume en markdown (pasos, intentos, duración por sesión, totales) y lo guarda en `runs/<runId>/report.md`; sin args lista los runs recientes.
