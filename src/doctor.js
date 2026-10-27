@@ -12,7 +12,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { run } from './tools/shell.js';
-import { checkDevinAuth } from './tools/devin.js';
+import { checkEngineAuth } from './tools/acp.js';
 
 const ok = (name, detail = '') => ({ name, level: 'ok', detail });
 const warn = (name, detail = '') => ({ name, level: 'warn', detail });
@@ -27,7 +27,7 @@ const binVersion = async (runCmd, bin) => {
 
 export async function runDoctor({
   runCmd = run,
-  authProbe = checkDevinAuth,
+  authProbe = (timeoutMs) => checkEngineAuth('devin', timeoutMs),
   importFn = (m) => import(m),
   home = homedir(),
   env = process.env,

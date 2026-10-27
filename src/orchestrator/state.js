@@ -49,6 +49,9 @@ export const OrchestratorState = Annotation.Root({
   // (src/stacks/). plan.stacks los persiste y manda en resume.
   stackFrontend: Annotation({ reducer: replace, default: () => null }),
   stackBackend: Annotation({ reducer: replace, default: () => null }),
+  // --agent: engine ACP para los nodos generativos (src/engines/).
+  // '' → resolveEngine decide (env AGENT_PROVIDER → 'devin').
+  agent: Annotation({ reducer: replace, default: () => '' }),
 
   status: Annotation({ reducer: replace, default: () => 'pending' }),
   history: Annotation({ reducer: append, default: () => [] }),

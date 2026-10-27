@@ -1,7 +1,7 @@
 import { config } from '../config.js';
 import { applyArch, archRuleBullet, resolveArch, resolveArchSafe } from '../arch/index.js';
 import { resolveStacks, stackIds, stackRuleBullets } from '../stacks/index.js';
-import { runDevinPrompt } from '../tools/devin.js';
+import { runAgentPrompt } from '../tools/acp.js';
 import { getVertical } from '../verticals/index.js';
 import { activity, log, loadPrompt, readPlan, runLogPath, textFeed, writePlan } from './common.js';
 
@@ -104,7 +104,8 @@ export async function plannerNode(state) {
   });
 
   const feed = textFeed();
-  const res = await runDevinPrompt({
+  const res = await runAgentPrompt({
+    agent: state.agent,
     prompt,
     cwd: state.projectDir,
     timeoutMs: config.devinTimeoutMs,
@@ -169,7 +170,8 @@ export async function repairPlanNode(state) {
   });
 
   const feed = textFeed();
-  const res = await runDevinPrompt({
+  const res = await runAgentPrompt({
+    agent: state.agent,
     prompt,
     cwd: state.projectDir,
     timeoutMs: config.devinTimeoutMs,

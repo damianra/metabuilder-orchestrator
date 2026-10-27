@@ -1,6 +1,6 @@
 import { config } from '../config.js';
 import { finalCheckCommands, stacksFor } from '../stacks/index.js';
-import { runDevinPrompt } from '../tools/devin.js';
+import { runAgentPrompt } from '../tools/acp.js';
 import { activity, log, loadPrompt, runLogPath, textFeed, writePlan } from './common.js';
 
 /**
@@ -34,7 +34,8 @@ export async function fixerNode(state) {
   });
 
   const feed = textFeed();
-  const res = await runDevinPrompt({
+  const res = await runAgentPrompt({
+    agent: state.agent,
     prompt,
     cwd: state.projectDir,
     timeoutMs: config.devinTimeoutMs,
@@ -53,8 +54,8 @@ export async function fixerNode(state) {
       log(
         'fix',
         res.ok
-          ? `reparación aplicada por Devin (intento ${attempt}/${config.maxStepRetries})`
-          : `Devin no respondió (intento ${attempt}/${config.maxStepRetries}): ${res.error}`,
+          ? `reparación aplicada por ${res.engine} (intento ${attempt}/${config.maxStepRetries})`
+          : `${res.engine ?? 'agente'} no respondió (intento ${attempt}/${config.maxStepRetries}): ${res.error}`,
       ),
     ],
   };
