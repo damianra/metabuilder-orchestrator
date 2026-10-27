@@ -162,6 +162,37 @@ describe('terminal Devin (WS + pty)', () => {
     ws.close();
   });
 
+  it("engine 'auto' configurado → la terminal cae a devin (resolveEngine)", async () => {
+    // Sin ?engine y con defaultEngineId real: 'auto' en settings no
+    // debe llegar verbatim (era el bug que marcó el validador). Acá se
+    // fuerza el path con un engineFor real + resolveEngine del registry.
+    const app2 = express();
+    const srv2 = createServer(app2);
+    const { getEngine, resolveEngine } = await import('../src/engines/index.js');
+    const { writeFileSync: wf } = await import('node:fs');
+    const settingsFile = join(dir, 'settings.json');
+    wf(settingsFile, JSON.stringify({ engine: 'auto' }));
+    attachTerminal(srv2, {
+      appsDir: dir,
+      acquireSlot: acquireFake,
+      spawnPty: spawnFake,
+      idleKillMs: 60_000,
+      engineFor: (id) => {
+        const e = getEngine(id);
+        return e ? { ...e, bin: e.id, tuiArgs: [] } : null;
+      },
+      defaultEngineId: () => resolveEngine('auto').id,
+    });
+    await new Promise((r) => srv2.listen(0, '127.0.0.1', r));
+    const p2 = srv2.address().port;
+    const ws = await connect(wsUrl(p2, 'demo-app'));
+    await nextMsg(ws);
+    await nextMsg(ws);
+    expect(lastPty.bin).toBe('devin');
+    ws.close();
+    srv2.close();
+  });
+
   it('engine desconocido → error al cliente, sin pty', async () => {
     const ws = await connect(wsUrl(port, 'demo-app', '?engine=nope'));
     const m = await nextMsg(ws);
@@ -250,6 +281,11 @@ describe('terminal Devin (WS + pty)', () => {
       acquireSlot: () => slotPromise,
       spawnPty: spawnFake,
       idleKillMs: 60_000,
+      engineFor: (id) =>
+        ['devin', 'opencode'].includes(id)
+          ? { id, label: id, bin: id, tuiArgs: [] }
+          : null,
+      defaultEngineId: () => 'devin',
     });
     await new Promise((r) => srv2.listen(0, '127.0.0.1', r));
     const p2 = srv2.address().port;

@@ -40,7 +40,9 @@ export default function TerminalPanel({ slug }) {
   }, [open, engines]);
 
   useEffect(() => {
-    if (!open || !engine || !boxRef.current) return;
+    // Espera el probe de engines (null = cargando); si falla o no hay
+    // engine resuelto conecta igual sin ?engine — el server defaultea.
+    if (!open || engines === null || !boxRef.current) return;
 
     const term = new Terminal({
       cursorBlink: true,
@@ -56,7 +58,7 @@ export default function TerminalPanel({ slug }) {
 
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     const ws = new WebSocket(
-      `${proto}://${location.host}/api/projects/${slug}/terminal?cols=${term.cols}&rows=${term.rows}&engine=${engine}`,
+      `${proto}://${location.host}/api/projects/${slug}/terminal?cols=${term.cols}&rows=${term.rows}${engine ? `&engine=${engine}` : ''}`,
     );
     wsRef.current = ws;
 
@@ -97,7 +99,7 @@ export default function TerminalPanel({ slug }) {
       term.dispose();
       wsRef.current = null;
     };
-  }, [open, slug, engine]);
+  }, [open, slug, engine, engines]);
 
   const cerrarSesion = () => {
     if (wsRef.current?.readyState === WebSocket.OPEN)

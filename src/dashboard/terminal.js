@@ -17,7 +17,7 @@ import { existsSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { config } from '../config.js';
-import { getEngine } from '../engines/index.js';
+import { getEngine, resolveEngine } from '../engines/index.js';
 import { readSettings } from '../tools/settings.js';
 import { acquireDevinSlot } from '../tools/devin-lock.js';
 
@@ -45,8 +45,17 @@ export function attachTerminal(
     // Inyectables para tests — el default resuelve del registry +
     // settings.json (misma fuente que el setup gate).
     engineFor = (id) => getEngine(id),
-    defaultEngineId = () =>
-      readSettings(config.settingsPath).engine || config.agentProvider || 'devin',
+    // resolveEngine mapea 'auto'/'' → 'devin' (la terminal no sonda —
+    // si el configurado es 'auto' el usuario elige en el picker).
+    defaultEngineId = () => {
+      try {
+        return resolveEngine(
+          readSettings(config.settingsPath).engine || config.agentProvider || '',
+        ).id;
+      } catch {
+        return 'devin';
+      }
+    },
   } = {},
 ) {
   const sessions = new Map(); // `${slug}:${engineId}` → { pty, clients, release, scroll, idleTimer }
