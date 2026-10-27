@@ -80,12 +80,16 @@ export async function finalVerifyNode(state) {
   // --verify-docker: build de la imagen como check extra. Sin daemon
   // se omite (es un flag opt-in, no debe fallar el run por ambiente).
   if (state.verifyDocker) {
-    const probe = await run('docker info', { cwd: state.projectDir, timeoutMs: 15_000 });
-    if (!probe.ok) {
-      history.push(log('finalVerify', 'docker no disponible — verify-docker omitido'));
+    // docker primero, podman como fallback — CLI-compatible, igual que
+    // el probe del dashboard (antes era docker-only).
+    let engine = null;
+    if ((await run('docker info', { cwd: state.projectDir, timeoutMs: 15_000 })).ok) engine = 'docker';
+    else if ((await run('podman info', { cwd: state.projectDir, timeoutMs: 15_000 })).ok) engine = 'podman';
+    if (!engine) {
+      history.push(log('finalVerify', 'sin engine de containers — verify-docker omitido'));
     } else {
       const tag = `${state.projectSlug || 'app'}:verify`;
-      const build = await run(`docker build -t ${tag} .`, {
+      const build = await run(`${engine} build -t ${tag} .`, {
         cwd: state.projectDir,
         timeoutMs: config.verifyTimeoutMs * 3,
       });
@@ -97,7 +101,7 @@ export async function finalVerifyNode(state) {
           history: [log('finalVerify', 'FAIL: docker build')],
         };
       }
-      history.push(log('finalVerify', `docker build OK (${tag})`));
+      history.push(log('finalVerify', `${engine} build OK (${tag})`));
     }
   }
 

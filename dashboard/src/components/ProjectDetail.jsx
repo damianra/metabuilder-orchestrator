@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
-import { ArrowLeft, CloudUpload, Container, Copy, ExternalLink, FileText, FlaskConical, GitBranch, Globe, LoaderCircle, Play, RotateCcw, Square, Trash2 } from 'lucide-react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, CircleCheckBig, CloudUpload, Container, Copy, ExternalLink, FileText, FlaskConical, GitBranch, Globe, LoaderCircle, Play, RotateCcw, Square, Trash2 } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import { api } from '../api.js';
 import { timeAgo } from '../util.js';
@@ -91,6 +91,21 @@ export default function ProjectDetail({ slug, onChanged }) {
     return () => clearInterval(t);
   }, [showDevLog, devLive, slug]);
 
+  // Publish es async: el POST solo confirma el inicio (202) — el
+  // resultado llega via project.publish en el poll de 5s. En la
+  // transición running→terminal se limpia el "en curso" del notice y
+  // se refetchea repoInfo (los links quedan renderizados abajo).
+  const prevPubStatus = useRef(undefined);
+  useEffect(() => {
+    const st = project?.publish?.status;
+    if (prevPubStatus.current === 'running' && st && st !== 'running') {
+      setNotice(null);
+      if (st === 'done') loadRepo();
+    }
+    prevPubStatus.current = st;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.publish?.status]);
+
   const act = async (body, okMsg) => {
     setBusy(body.action);
     setNotice(null);
@@ -134,16 +149,15 @@ export default function ProjectDetail({ slug, onChanged }) {
     }
   };
 
-  // Publicar: crea el repo si falta + push main (+ gh-pages si se pidió).
-  // Devuelve {repoUrl, pagesUrl} — actualiza repoInfo al toque.
+  // Publicar (async): crea el repo si falta + push main (+ gh-pages si
+  // se pidió). El server responde 202 al instante — repoUrl/pagesUrl
+  // llegan después via project.publish en el poll.
   const pub = async () => {
     setBusy('publish');
     setNotice(null);
     try {
-      const res = await api.action(slug, { action: 'publish', ghpages: withPages });
-      setRepoInfo({ repoUrl: res.repoUrl, pagesUrl: res.pagesUrl });
-      setPubOpen(false);
-      setNotice(res.pagesUrl ? `publicado: ${res.repoUrl} · ${res.pagesUrl}` : `publicado: ${res.repoUrl}`);
+      await api.action(slug, { action: 'publish', ghpages: withPages });
+      setNotice('publish en curso…');
       await load();
       onChanged?.();
     } catch (err) {
@@ -200,6 +214,10 @@ export default function ProjectDetail({ slug, onChanged }) {
   // detalle alcanza para renderizar el botón sin flash.
   const repoUrl = repoInfo?.repoUrl ?? project.repoUrl;
   const hasFrontend = project.scope !== 'backend';
+  // publish llega en el detalle (publish-run.json del server): running
+  // → spinner, done → anchors, failed → error.
+  const publish = project.publish;
+  const publishing = publish?.status === 'running';
 
   return (
     <div className="space-y-4">
@@ -328,14 +346,48 @@ export default function ProjectDetail({ slug, onChanged }) {
             )}
             <button
               className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-40"
-              disabled={busy === 'publish'}
+              disabled={busy === 'publish' || publishing}
               onClick={pub}
             >
-              {busy === 'publish' ? spin : <CloudUpload size={14} />} Subir
+              {busy === 'publish' || publishing ? spin : <CloudUpload size={14} />}
+              {publishing ? 'publicando…' : 'Subir'}
             </button>
           </div>
         )}
         {notice && <p className="mt-2 text-sm text-slate-600">{notice}</p>}
+        {publishing && !notice && (
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-600">{spin} publicando…</p>
+        )}
+        {publish?.status === 'done' && (publish.repoUrl || publish.pagesUrl) && (
+          <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-slate-600">
+            <CircleCheckBig size={14} className="text-emerald-600" /> publicado:
+            {publish.repoUrl && (
+              <a
+                href={publish.repoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sky-700 underline"
+              >
+                {publish.repoUrl}
+              </a>
+            )}
+            {publish.pagesUrl && (
+              <a
+                href={publish.pagesUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sky-700 underline"
+              >
+                {publish.pagesUrl}
+              </a>
+            )}
+          </p>
+        )}
+        {publish?.status === 'failed' && (
+          <p className="mt-2 text-sm text-red-700">
+            publish falló{publish.error ? `: ${publish.error}` : ''}
+          </p>
+        )}
         {build && (
           <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
             {building && spin} último docker build: <b>{build.status}</b>

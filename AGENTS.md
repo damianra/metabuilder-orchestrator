@@ -215,12 +215,15 @@ fina sobre la infra existente:
 - `POST /api/projects/:slug/actions` — `resume` (encola
   `--resume <slug> --yes` — sin flags de deploy: el CLI restaura
   `plan.deploy`, "lo ingresado previamente"; publicar es acción aparte),
-  `publish` (`publishRepo` de `src/tools/publish.js`: crea el repo via
-  REST si falta, commitea lo pendiente, pushea `main` y — solo con
-  `ghpages:true` y scope con frontend — corre el build [con
-  `pagesBaseEnv` si el stack lo exige], pushea `<buildDir>/` a
-  `gh-pages` y activa Pages → `{repoUrl, pagesUrl}`; 503 sin
-  GITHUB_TOKEN; `githubApi` inyectable en tests), `dockerize` (re-escribe Dockerfile según
+  `publish` (async — `publishRepo` de `src/tools/publish.js` en
+  background: crea el repo via REST si falta, commitea lo pendiente,
+  pushea `main` y — solo con `ghpages:true` y scope con frontend —
+  corre el build [con `pagesBaseEnv` si el stack lo exige], pushea
+  `<buildDir>/` a `gh-pages` y activa Pages. Estado en `publish.json`
+  dentro de la app — running/done/failed + repoUrl/pagesUrl, expuesto
+  como `publish` en el detalle; 202 al lanzar, 409 si hay uno en curso
+  con pid vivo — `running` con pid muerto es stale y no bloquea —, 503
+  sin GITHUB_TOKEN; `githubApi` inyectable en tests), `dockerize` (re-escribe Dockerfile según
   filesystem + `<engine> build` async si hay engine (docker o podman)
   → estado en docker-build.json, log en docker-build.log; sin engine →
   skipped),

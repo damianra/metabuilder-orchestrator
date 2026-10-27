@@ -20,6 +20,7 @@ export const api = {
   project: (slug) => req(`/api/projects/${slug}`),
   jobs: () => req('/api/jobs'),
   cancelJob: (id) => req(`/api/jobs/${id}/cancel`, { method: 'POST' }),
+  jobLog: (id, tail = 200) => req(`/api/jobs/${id}/log?tail=${tail}`),
   requeueJob: (id) => req(`/api/jobs/${id}/requeue`, { method: 'POST' }),
   clearJobs: () => req('/api/jobs/clear', { method: 'POST' }),
   repoInfo: (slug) => req(`/api/projects/${slug}/repo`),

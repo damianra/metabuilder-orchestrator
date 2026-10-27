@@ -272,11 +272,18 @@ describe('POST /api/projects/:slug/actions', () => {
     expect((await api('/api/projects/con-repo/repo')).body.pagesUrl).toBeNull();
   });
 
-  it('publish: crea repo + push main; gh-pages solo con ghpages:true', async () => {
+  it('publish async: 202 + publish.json done/failed; gh-pages solo con ghpages:true', async () => {
     const dir = seedApp('para-publicar');
     mkdirSync(join(dir, 'dist'), { recursive: true }); // el "build" fake no genera nada
     const prevToken = config.githubToken;
     config.githubToken = 'fake-token'; // hermético: sin depender del .env real
+    const readPub = () => JSON.parse(readFileSync(join(dir, 'publish.json'), 'utf8'));
+    const settle = async () => {
+      for (let i = 0; i < 50 && readPub().status === 'running'; i++) {
+        await new Promise((r) => setTimeout(r, 20));
+      }
+      return readPub();
+    };
     const ghCalls = [];
     const origFetch = globalThis.fetch;
     globalThis.fetch = async (u, opts) => {
@@ -290,8 +297,11 @@ describe('POST /api/projects/:slug/actions', () => {
     };
     try {
       const { status, body } = await post('/api/projects/para-publicar/actions', { action: 'publish' });
-      expect(status).toBe(200);
-      expect(body).toMatchObject({
+      expect(status).toBe(202);
+      expect(body.status).toBe('running');
+      const done = await settle();
+      expect(done).toMatchObject({
+        status: 'done',
         repoUrl: 'https://github.com/tester/para-publicar',
         pagesUrl: null,
       });
@@ -308,12 +318,21 @@ describe('POST /api/projects/:slug/actions', () => {
         action: 'publish',
         ghpages: true,
       });
-      expect(ok.status).toBe(200);
-      expect(ok.body.pagesUrl).toBe('https://tester.github.io/para-publicar/');
+      expect(ok.status).toBe(202);
+      expect((await settle()).pagesUrl).toBe('https://tester.github.io/para-publicar/');
       const cmds2 = runCmdCalls.map((c) => c);
       expect(cmds2.some((c) => c.includes('npm run build'))).toBe(true);
       expect(cmds2.some((c) => c.includes('push -f origin gh-pages'))).toBe(true);
       expect(ghCalls.some((c) => c.startsWith('POST /repos/tester/para-publicar/pages'))).toBe(true);
+
+      // publish en curso → 409: el primero queda colgado (runCmd no
+      // resuelve nunca) y el segundo pega en el guard de publish.json.
+      runCmdHandler = () => new Promise(() => {});
+      const first = await post('/api/projects/para-publicar/actions', { action: 'publish' });
+      expect(first.status).toBe(202);
+      const busy = await post('/api/projects/para-publicar/actions', { action: 'publish' });
+      expect(busy.status).toBe(409);
+      runCmdHandler = () => ({ ok: true, stdout: '', stderr: '' });
     } finally {
       globalThis.fetch = origFetch;
       config.githubToken = prevToken;

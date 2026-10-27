@@ -97,7 +97,7 @@ export async function plannerNode(state) {
       appType: vertical.name,
       status: 'planned',
       history: [
-        log('planner', `plan template "${vertical.name}": ${plan.steps.length} pasos (sin Devin)`),
+        log('planner', `plan template "${vertical.name}": ${plan.steps.length} pasos (sin agente)`),
       ],
     };
   }
@@ -128,7 +128,7 @@ export async function plannerNode(state) {
     return {
       status: 'failed',
       lastError: `planner falló: ${res.error}`,
-      history: [log('planner', `error Devin: ${res.error}`)],
+      history: [log('planner', `error ${res.engine ?? 'engine'}: ${res.error}`)],
     };
   }
 
@@ -217,7 +217,7 @@ export async function repairPlanNode(state) {
         'repairPlan',
         res.ok
           ? `plan reescrito (intento ${state.planRetries + 1}/${config.maxPlanRetries})`
-          : `Devin falló al reparar: ${res.error}`,
+          : `${res.engine ?? 'engine'} falló al reparar: ${res.error}`,
       ),
     ],
   };

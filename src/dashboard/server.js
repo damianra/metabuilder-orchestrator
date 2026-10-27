@@ -40,6 +40,15 @@ const readJson = (p) => {
   }
 };
 
+// Lectura de texto plano tolerante (config git no es JSON).
+const readJsonOr = (p) => {
+  try {
+    return readFileSync(p, 'utf8');
+  } catch {
+    return '';
+  }
+};
+
 const writeJson = (p, data) => writeFileSync(p, JSON.stringify(data, null, 2) + '\n');
 
 // ssh/scp-style → https, para que la UI pueda abrir el repo en el browser.
@@ -142,6 +151,17 @@ const pidAlive = (pid) => {
 const readTestRun = (dir) => {
   const s = readTestState(dir);
   if (s?.status === 'running' && !pidAlive(s.pid)) return { ...s, stale: true };
+  return s;
+};
+
+// Publish async: publish.json en la app (mismo patrón que test-run).
+// 'running' con pid muerto (dashboard caído a mitad) → stale, relanzable.
+const publishPath = (dir) => join(dir, 'publish.json');
+const readPublish = (dir) => {
+  const s = readJson(publishPath(dir));
+  if (s?.status === 'running' && s.pid !== process.pid && !pidAlive(s.pid)) {
+    return { ...s, stale: true };
+  }
   return s;
 };
 
@@ -282,6 +302,8 @@ function projectSummary(dir, slug) {
       failed: steps.filter((s) => s.status === 'failed').length,
     },
     hasDockerfile: existsSync(join(dir, 'Dockerfile')),
+    // Remote sin spawnar git: .git/config siempre declara origin si existe.
+    hasRemote: /\[remote "origin"\]/.test(readJsonOr(join(dir, '.git', 'config'))),
     updatedAt: status?.ts ?? statSync(dir).mtime.toISOString(),
   };
 }
@@ -355,8 +377,6 @@ export function createDashboardApp({
   };
   const app = express();
   app.use(express.json({ limit: '64kb' }));
-  // Slugs con un publish en vuelo — guard de concurrencia del action.
-  const publishing = new Set();
 
   const appDir = (slug) => join(appsDir, slug);
   const validSlug = (req, res, { requirePlan = true } = {}) => {
@@ -486,6 +506,8 @@ export function createDashboardApp({
   // Últimas `lines` de un log sin cargar el archivo entero: lee los
   // últimos `maxBytes` desde el final y devuelve líneas sueltas.
   const tailFile = (file, { lines = 200, maxBytes = 128 * 1024 } = {}) => {
+    // clamp: tail=0/-3/NaN rompería slice(-lines) o devolvería todo.
+    lines = Math.max(1, Math.trunc(lines) || 200);
     if (!existsSync(file)) return null;
     const size = statSync(file).size;
     const from = Math.max(0, size - maxBytes);
@@ -657,6 +679,7 @@ export function createDashboardApp({
       report: runId ? buildReport({ runId, runDir: join(runsDir, runId), projectDir: dir }) : null,
       dockerBuild: readBuildState(dir),
       testRun: readTestRun(dir),
+      publish: readPublish(dir),
       devRun: readDevRun(dir),
       devTargets: devTargets(dir),
       runtime: {
@@ -734,37 +757,54 @@ export function createDashboardApp({
       return res.status(201).json({ job: addJob(['--resume', slug, '--yes'], baseDir) });
     }
 
-    // Publicar en GitHub bajo demanda: crea el repo si falta, pushea
-    // main y — solo si viene ghpages:true y el proyecto tiene frontend —
-    // publica el build en gh-pages + activa Pages. Sincrónico: el UI
-    // muestra el botón ocupado hasta que vuelve. Guard en memoria: dos
-    // publish simultáneos sobre el mismo repo se pisan (index.lock).
+    // Publicar en GitHub bajo demanda (async): crea el repo si falta,
+    // pushea main y — solo con ghpages:true y frontend — publica el
+    // build en gh-pages + activa Pages. Estado en publish.json (la UI
+    // lo lee del detalle); 409 si hay uno en curso con pid vivo.
     if (action === 'publish') {
       if (!config.githubToken) {
         return res.status(503).json({ error: 'sin GITHUB_TOKEN en .env — no se puede publicar' });
       }
-      if (publishing.has(slug)) {
+      const cur = readPublish(dir);
+      if (cur?.status === 'running' && !cur.stale) {
         return res.status(409).json({ error: 'ya hay un publish en curso para este proyecto' });
       }
       const plan = readJson(join(dir, 'plan.json'));
       const { frontend } = resolveStacksSafe(plan?.scope ?? 'frontend', plan?.stacks ?? {});
-      publishing.add(slug);
-      try {
-        const out = await publishRepo({
-          dir,
-          slug,
-          ghpages: Boolean(req.body.ghpages) && Boolean(frontend),
-          buildDir: frontend?.buildDir ?? 'dist',
-          pagesBaseEnv: frontend?.pagesBaseEnv ?? null,
-          runCmd,
-          github: githubApi,
-        });
-        return res.json(out);
-      } catch (e) {
-        return res.status(502).json({ error: `publish falló: ${e.message}` });
-      } finally {
-        publishing.delete(slug);
-      }
+      const state = {
+        status: 'running',
+        pid: process.pid,
+        ghpages: Boolean(req.body.ghpages) && Boolean(frontend),
+        startedAt: new Date().toISOString(),
+      };
+      writeJson(publishPath(dir), state);
+      publishRepo({
+        dir,
+        slug,
+        ghpages: state.ghpages,
+        buildDir: frontend?.buildDir ?? 'dist',
+        pagesBaseEnv: frontend?.pagesBaseEnv ?? null,
+        runCmd,
+        github: githubApi,
+      })
+        .then((out) =>
+          writeJson(publishPath(dir), {
+            ...state,
+            status: 'done',
+            repoUrl: out.repoUrl,
+            pagesUrl: out.pagesUrl,
+            finishedAt: new Date().toISOString(),
+          }),
+        )
+        .catch((e) =>
+          writeJson(publishPath(dir), {
+            ...state,
+            status: 'failed',
+            error: e.message,
+            finishedAt: new Date().toISOString(),
+          }),
+        );
+      return res.status(202).json(state);
     }
 
     if (action === 'dockerize') {

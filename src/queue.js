@@ -131,6 +131,15 @@ export function clearJobs(baseDir = config.rootDir) {
     rmSync(jobPath(j.id, baseDir), { force: true });
     rmSync(jobPath(j.id, baseDir).replace(/\.json$/, '.log'), { force: true });
   }
+  // Barrido de huérfanos: <id>.log sin <id>.json (job borrado a mano,
+  // crash a mitad) y restos de writes atómicos (<id>.json.tmp-*).
+  // `.worker` (heartbeat) no matchea \d+ → queda afuera.
+  for (const f of existsSync(jobsDir(baseDir)) ? readdirSync(jobsDir(baseDir)) : []) {
+    const m = f.match(/^(\d+)\.(log|json\.tmp-.*)$/);
+    if (m && !existsSync(jobPath(Number(m[1]), baseDir))) {
+      rmSync(join(jobsDir(baseDir), f), { force: true });
+    }
+  }
   return finished.length;
 }
 
