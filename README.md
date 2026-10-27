@@ -10,6 +10,7 @@ MetaBuilder convierte una idea en texto libre en una aplicación funcionando (la
 
 - **Generación end-to-end** — idea en texto libre → plan → builder por pasos → verify real (build + vitest + e2e) → QA reviewer → app lista.
 - **Verticales determinísticos** — `landing`, `orders`, `blog` con plan instantáneo sin gastar sesiones de agente; `custom` con planner LLM.
+- **Multi-engine** — los nodos generativos hablan ACP: [Devin](https://devin.ai) (`devin acp`) u [OpenCode](https://opencode.ai) (`opencode acp`) — se elige por run (`--agent`), por proyecto (`plan.agent`) o global (dashboard/`AGENT_PROVIDER`/`auto`).
 - **Configurable** — scope (`frontend`/`backend`/`fullstack`), stack (`vite-react`/`nextjs`, `express-sqlite`) y arquitectura backend (`flat`/`mvc`/`layers`/`feature`).
 - **Dashboard completo** — encolar y supervisar runs, feed en vivo del agente, terminal Devin embebida en la app, correr en dev sin containers, docker/podman, tests, eliminar y clonar proyectos, notificaciones al terminar.
 - **Cola batch** — jobs con log propio, cancelación que mata el árbol, reintentar, progreso por pasos en vivo.
@@ -83,6 +84,17 @@ npm start -- --idea "Pizzería con pedidos a domicilio" -y
 npm start
 ```
 
+## Motores de agente
+
+MetaBuilder delega la escritura de código a un agente CLI via **ACP** (Agent Client Protocol, JSON-RPC sobre stdio) — el mismo canal que usan sus editores oficiales. El orquestador es engine-agnóstico (`src/engines/` los declara como datos):
+
+| Engine | Comando ACP | Instalación y auth |
+| --- | --- | --- |
+| **Devin** ([devin.ai](https://devin.ai)) | `devin acp` | Devin CLI + cuenta Windsurf: `~/.local/share/devin/credentials.toml` con `windsurf_api_key` (lo escribe Devin Desktop o `devin auth login`). **`devin -p`/`auth status` NO son la vía** — usan session_token que las cuentas Windsurf no producen. |
+| **OpenCode** ([opencode.ai](https://opencode.ai)) | `opencode acp` | `curl -fsSL https://opencode.ai/install \| bash` o `npm i -g opencode-ai`, luego `opencode auth login` para configurar el provider (modelo `provider/model` via `OPENCODE_MODEL` o su default). Requiere versión con soporte ACP (verificado en v2.1.4). |
+
+Cuál se usa, por precedencia: `--agent <id>` (por run) > `plan.agent` (resume) > `settings.json` (lo escribe el dashboard) > `AGENT_PROVIDER` > `auto` (sondea cada engine y gana el primero que autentique). El semáforo de sesiones es compartido entre engines.
+
 ## Cola de generaciones (batch)
 
 Para encolar varias ideas y procesarlas desatendido, una por vez:
@@ -126,13 +138,13 @@ npm run dashboard                  # API :4100 + UI :4173 + worker de la cola
 # modo watch (queue.js). Solo se usa para procesar la cola a mano.
 ```
 
-La UI (mismo stack que las apps generadas) sirve para lanzar generaciones y supervisar `generated-apps/`:
+La UI (mismo stack que las apps generadas) sirve para lanzar generaciones y supervisar `generated-apps/`. Al primer arranque muestra un **setup gate obligatorio** (elegir motor de agente Devin u OpenCode con estado de instalación/auth en vivo — se persiste en `settings.json`; chip "motor" en el header para cambiarlo):
 
 - **Nueva app** — formulario con nombre/idea + pickers de scope/vertical/arquitectura/stacks (alimentados de `GET /api/options`, que lee los registries — nada hardcodeado) + flags GitHub/Pages/verify-docker. Encola el job; el worker del dashboard lo procesa.
 - **Cola** — cada job muestra su estado con progreso en vivo (`running · paso X/Y · nodo` leído del `status.json` de la app). Si hay jobs `pending` y el worker no está vivo (heartbeat `jobs/.worker`), avisa "sin worker consumiendo la cola".
 - **Proyectos** — cards con status, pasos done/total con barra, scope/arch, badge docker; click → detalle.
 - **Detalle** (`#/p/<slug>`) — acciones **Resume** (opción con GitHub) / **Dockerize** (build async con docker o podman) / **Ejecutar tests** (`npm test` + opcional `test:e2e`, async → `test-run.json`/`test-run.log` en la app) / **Abrir repo**; acordeón del prompt original con los parámetros del plan, tabla de comandos del package.json, sección **Contenedor** (crear/detener/ver logs del container — detecta docker o podman, deshabilitado si no hay engine o si falta la imagen), sección **Dev local** (**Correr en dev** / **Detener** — levanta `npm run dev` (Vite :5173 / Next :3000) y/o `npm run api` (:4000) en background, sin containers, con links a las URLs reales que el server imprime y log en vivo), **Eliminar** (con confirmación — borra `generated-apps/<slug>` entero + container + imagen `<slug>:local`, frena el dev run y cierra la terminal Devin si están vivos; 409 si hay un job pending/running — hay que cancelarlo antes), log del run del pipeline, output del último test run y reporte del último run.
-- **Terminal Devin** — acordeón en el detalle que abre una sesión interactiva de `devin` (el CLI completo, TUI) con cwd en `generated-apps/<slug>/` — el usuario chatea con Devin directamente sobre el repo de la app para pedir cambios (xterm.js ↔ WebSocket ↔ PTY). La sesión adquiere un slot del semáforo Devin: si hay una generación corriendo espera ("slot ocupado"). Colapsar no mata la sesión (queda ~5 min para reattach con scrollback); **Cerrar sesión** la termina. Requiere `node-pty` (dep nativa — si no compila, el resto del dashboard funciona igual) y que `devin` esté autenticado (`devin auth login` — la primera vez se puede hacer desde la misma terminal embebida; el `windsurf_api_key` de credentials.toml solo alcanza para el modo ACP del orquestador, no para el TUI interactivo).
+- **Terminal de agente** — acordeón en el detalle que abre una sesión interactiva del TUI del engine elegido (`devin` u `opencode` — selector con los instalados) con cwd en `generated-apps/<slug>/` — el usuario chatea con Devin directamente sobre el repo de la app para pedir cambios (xterm.js ↔ WebSocket ↔ PTY). La sesión adquiere un slot del semáforo Devin: si hay una generación corriendo espera ("slot ocupado"). Colapsar no mata la sesión (queda ~5 min para reattach con scrollback); **Cerrar sesión** la termina. Requiere `node-pty` (dep nativa — si no compila, el resto del dashboard funciona igual) y que el engine esté autenticado (`devin auth login` / `opencode auth login` — la primera vez se puede hacer desde la misma terminal embebida; el `windsurf_api_key` de credentials.toml solo alcanza para el modo ACP del orquestador, no para el TUI interactivo).
 - **Cola** — jobs activos y recientes; indicador de API caída en el header; botón **cancelar** por job pending/running (running → mata el árbol del run; el detalle del proyecto también lo expone en "Log del run"); botón **reintentar** en jobs failed/cancelled (re-encola los mismos args — cubre "murió en preflight" donde no hay app que resumir).
 - **Avisos al terminar** — botón campana "avisar al terminar" en el header pide permiso `Notification` una vez; cuando un job pasa a done/failed/cancelled y la pestaña está en background salta una notificación del OS con el resumen del job (click → foco a la pestaña). Si la pestaña está visible no notifica — el chip del job ya cambia a la vista.
 - **Nueva app igual** — botón en el detalle que navega a `#/?clone=<slug>`: el formulario se pre-llena con scope/vertical/arch/stacks de ese proyecto (idea y nombre los escribís vos — se conserva lo que ya hubieras tipeado). Caso real: mismo setup, otro rubro.
@@ -160,6 +172,7 @@ La API solo encola, no ejecuta — el worker procesa los jobs como siempre.
 | `--arch <id>` | Patrón de arquitectura de los pasos backend: `flat` (default — toda la lógica en `server/routes/`), `mvc` (models + controllers), `layers` (controllers → services → repositories), `feature` (`server/modules/<entidad>/`). Solo aplica si el scope tiene backend; se declara en cada paso backend del plan y persiste en `plan.arch` (resume lo restaura). |
 | `--stack-frontend <id>` | Stack de UI: `vite-react` (default — Vite + React + Tailwind, build → `dist/`) o `nextjs` (Next.js 15 + React 19 + Tailwind, `output: 'export'` → `out/`). Persiste en `plan.stacks` (resume lo restaura). |
 | `--stack-backend <id>` | Stack de API: `express-sqlite` (único disponible). Idem `plan.stacks`. |
+| `--agent <id>` | Engine de agente: `devin` (default), `opencode` o `auto` (sondea y gana el primero que autentique). Persiste en `plan.agent` (resume lo restaura). |
 | `--resume <dir\|slug>` | **Reanuda un run** desde su `plan.json` (ruta o nombre en `generated-apps/`). No requiere `--idea` ni `--scope`/`--app-type` (los restaura del plan). Los pasos `done` se saltan, los que no terminaron vuelven a `pending` y el pipeline retoma en el primero pendiente — si están todos hechos, salta a `finalVerify` + QA + finalize. Los flags de deploy (`--github`/`--ghpages`/`--no-push`) aplican igual. |
 | `-y` / `--yes` | No pedir confirmación del plan ni preguntas interactivas. |
 | `--github` | Tras aprobación del QA: crea el repo en GitHub (REST, `GITHUB_TOKEN`) y pushea `main`. **No** publica Pages por sí solo. |
@@ -182,6 +195,8 @@ cp .env.example .env
 | `GITHUB_TOKEN` | PAT clásico scope `repo` (github.com/settings/tokens). Habilita `--github`. |
 | `GITHUB_REPO_URL` | Alternativa a `--github`: pushea a un repo **pre-creado** (SSH). Sin crear repo ni Pages. |
 | `GIT_USER_NAME` / `GIT_USER_EMAIL` | Identidad de los commits en las apps generadas. |
+| `AGENT_PROVIDER` | Engine de agente por defecto (`devin`/`opencode`/`auto`). Menor precedencia que settings.json y `--agent`. |
+| `OPENCODE_BIN` / `OPENCODE_MODEL` | Binario alternativo / modelo `provider/model` para OpenCode (vacío = default del provider). |
 | `DEVIN_MODEL` | Default `swe-2-high` (gratuito). |
 | `DEVIN_TIMEOUT_MS` | Timeout por sesión Devin (default 15 min). |
 | `MAX_STEP_RETRIES` / `MAX_PLAN_RETRIES` | Reintentos de fix por paso / de reparación de plan (3 / 2). |
@@ -192,7 +207,7 @@ cp .env.example .env
 ## Requisitos
 
 - Node.js >= 22, npm, git.
-- **Devin CLI** autenticado vía cuenta Windsurf: `~/.local/share/devin/credentials.toml` con `windsurf_api_key` (lo escribe Devin Desktop). El orquestador usa `devin acp` (mismo canal que Devin Desktop) — **`devin -p`/`auth status` reportan "Not logged in" con estas credenciales y NO son la vía**.
+- **Devin CLI u OpenCode CLI** autenticado (ver "Motores de agente"). Devin:: `~/.local/share/devin/credentials.toml` con `windsurf_api_key` (lo escribe Devin Desktop). El orquestador usa `devin acp` (mismo canal que Devin Desktop) — **`devin -p`/`auth status` reportan "Not logged in" con estas credenciales y NO son la vía**.
 - Playwright Chromium: se instala una vez en `~/.cache/ms-playwright` (compartido entre apps).
 
 ## Estructura
