@@ -1,0 +1,81 @@
+# MetaBuilder — Roadmap v3
+
+## Estado
+
+v1 y v2 completas y mergeadas: pipeline LangGraph end-to-end,
+verticales `landing`/`orders`/`blog`/`custom`, `api-skeleton` (Express 5
++ SQLite), registry de stacks (`vite-react`, `nextjs`, `express-sqlite`),
+patrones de arquitectura de backend (`flat`/`mvc`/`layers`/`feature`),
+Dockerfile por app, dashboard funcional (form + lista + detalle + cola),
+worker auto-consumidor en `npm run dashboard`, logs por job, runner de
+tests, runtime de containers docker/podman y feedback visual en acciones
+async. Registro histórico: `docs/archive/ROADMAP-v1.md` y
+`docs/archive/ROADMAP-v2.md`.
+
+## Visión v3
+
+De **"generar una vez"** a **"iterar y operar"**. La v2 entregó el
+scaffolding supervisado; la v3 convierte al dashboard en el lugar donde
+la app sigue viva después del run: una terminal Devin por proyecto para
+pedir cambios en lenguaje natural, visibilidad de lo que el agente hace
+en tiempo real, control sobre jobs (cancelar/reintentar), correr apps
+sin containers, y housekeeping (borrar proyectos, doctor de prereqs).
+
+## Backlog priorizado
+
+Ordenado por valor/dependencia: la terminal Devin es la flagship — todo
+lo demás es observabilidad, control o housekeeping alrededor del run.
+
+| # | Tarea | Descripción | Esfuerzo |
+| --- | --- | --- | --- |
+| ~~1~~ | ~~**Terminal Devin embebida en el dashboard**~~ ✅ | Implementado — `src/dashboard/terminal.js` (`attachTerminal` sobre el http.Server de la API): WS `/api/projects/:slug/terminal` ↔ `node-pty` corriendo `devin` TUI en `generated-apps/<slug>/`; slot del semáforo Devin con status "esperando slot"; una sesión por slug con reattach + scrollback (~200KB), idle-kill 5min, guardas slug/plan.json/Origin-localhost; UI xterm.js lazy-loaded (TerminalPanel) en el detalle. `node-pty` import lazy — la API funciona aunque el nativo falte. Ojo: el TUI interactivo necesita `devin auth login` propio (el `windsurf_api_key` de credentials.toml solo sirve para ACP). | L |
+| ~~2~~ | ~~**Feed en vivo de la actividad del agente**~~ ✅ | Implementado sin infra nueva — `textFeed()` en `agents/common.js` acumula los `agent_message_chunk` (onText de `runDevinPrompt`) y los emite a stderr colapsados por ventana/tamaño; el worker ya captura stderr → `jobs/<id>.log` → el acordeón "Log del run" lo muestra en vivo con su polling. Cableado en builder/fixer/reviewer/planner(+repair)/validate-pr. Respeta `--quiet`. | M |
+| ~~3~~ | ~~**Cancelar jobs**~~ ✅ | Implementado — `cancelJob(id)`: pending → `cancelled` al toque; running → flag `cancelRequested` y el watcher de `runJob` (500ms) mata el árbol con `kill(-pid)` (spawn `detached` → process group cubre node/npm/devin acp, SIGKILL de escalación a los 4s). `pid` persistido en el job. `POST /api/jobs/:id/cancel` + botón en QueuePanel y en "Log del run" del detalle + `npm run queue -- cancel <id>`. Bonus: `queue clear` ahora borra también los `.log`. | M |
+| ~~4~~ | ~~**Correr la app en dev sin containers**~~ ✅ | Implementado — `run-dev`/`stop-dev` + sección "Dev local" en el detalle: `startDevRun`/`stopDevRun` en `server.js` spawnean `npm run dev`/`npm run api` (childs `detached` → stop mata el process group con `kill(-pid)`, sin huérfanos). Estado `dev-run.json` (procs con pid+alive, detección stale por pid muerto) + output `dev-run.log`; endpoint `dev-log` devuelve tail + `urls` parseadas del output (vite/next imprimen su puerto real si el convencional está ocupado). Targets por scripts: `dev`→5173 Vite / 3000 Next (`next.config.*`), `api`→4000. Verificado E2E real con `meta-seguros`. | M |
+| ~~5~~ | ~~**Eliminar proyecto**~~ ✅ | Implementado — acción `delete` (botón rojo "Eliminar" con confirmación en el detalle): `rm -rf` del dir + `<engine> rm -f`/`rmi -f <slug>:local` si hay runtime + frena el dev run vigente + cierra la terminal Devin abierta (`attachTerminal` ahora devuelve `killBySlug`, cableado via `killTerminal` en la app). 409 si hay job pending/running del proyecto — el worker escribe dentro del dir. | S |
+| ~~6~~ | ~~**Reintentar job fallido**~~ ✅ | Implementado — `POST /api/jobs/:id/requeue` re-encola los args verbatim (`addJob` → nuevo id + log propio); 409 en pending/running. Botón "reintentar" (RotateCcw) en QueuePanel y en "Log del run" del detalle para jobs failed/cancelled. | S |
+| ~~7~~ | ~~**Request logging en api-skeleton**~~ ✅ | Implementado — `server/log.js` exporta `requestLogger` (línea `método url status ms` por request en `res.on('finish')`), montado en `app.js` tras `express.json`. Sin deps nuevas (nada de morgan). Test root contra Express real (`tests/request-logger.test.js`). | S |
+| ~~8~~ | ~~**Notificación al terminar un run**~~ ✅ | Implementado — `dashboard/src/notifications.js`: `diffFinished` compara el snapshot de jobs entre polls y `notifyFinished` dispara `Notification` del OS (title `Job #N terminó/falló/fue cancelado` + `jobSummary` de body, click → foco). Botón campana "avisar al terminar" en el header pide el permiso on-demand; solo dispara con la pestaña en background; el primer poll nunca notifica. | S |
+| ~~9~~ | ~~**Clonar configuración**~~ ✅ | Implementado — botón "Nueva app igual" en el detalle → `#/?clone=<slug>`; `NewAppForm` resuelve `api.project(slug)` y pre-llena scope/vertical/arch/stacks (idea/nombre intactos, badge "config de \<slug\>" en el título). | S |
+| ~~10~~ | ~~**`npm run doctor`**~~ ✅ | Implementado — `src/doctor.js`: bins `node`/`npm`/`git`/`devin` con versión + handshake ACP real (`checkDevinAuth`) → exit 1 si falta algo obligatorio. Warnings sin frenar: container engine (docker/podman), playwright chromium, `GITHUB_TOKEN`, `node-pty`. Probes inyectables → tests sin depender de la máquina. | S |
+
+## Pulido (cola de nits acumulados)
+
+- `queue clear` no borra los `.log` huérfanos de jobs eliminados.
+- `?tail` con valores negativos no se clampea (jodería offsets).
+- Algunos log streams sin handler `error` explícito.
+- **`--verify-docker` sigue siendo docker-only** — documentado así; la
+  paridad con podman (~probe `podman info` + mismo comando) es un fix
+  chico pendiente.
+- Lista de proyectos sin búsqueda/filtro — no duele hoy, agregar cuando
+  `generated-apps/` crezca.
+
+## Heredado de v2 (sigue fuera de scope)
+
+- **orders con delivery real**: costo por zona/mapa, persistir pedido en
+  Sheets, panel admin. Retomar cuando la ola de dashboard se asiente.
+
+## Evaluación futura (fuera del roadmap por ahora)
+
+- **Chat Devin nativo (ACP) en lugar de terminal embebida**: la terminal
+  del ítem 1 es la vía barata (reusa el TUI de `devin`). La alternativa
+  rica es un chat propio sobre ACP (`session/prompt` + chunks
+  estructurados, diffs, permisos visibles) — mucho más trabajo pero UI
+  nativa. Evaluar después de validar que la terminal cubre el caso.
+- **NestJS**: el patrón auto-mount de routes no aplica (Nest usa
+  módulos + decorators) — el paso backend generativo-lite habría que
+  repensarlo. Cambio a grandes rasgos.
+- **Expo (Android)**: cambia el modelo de verificación completo (no hay
+  `npm run build` web ni Playwright — verify sería `tsc`+vitest, E2E
+  requeriría Maestro, deploy real = EAS Build con credenciales).
+  Cambio a grandes rasgos.
+
+## Decisiones pendientes
+
+- ~~**node-pty vs alternativa sin dep nativa**~~ → resuelto: `node-pty`
+  1.1.0 trae prebuilds (verificado en Node 24 sin toolchain); el import
+  lazy hace que su ausencia degrade solo la terminal, no la API.
+- **Terminal Devin y semáforo**: implementado con slot compartido — la
+  sesión interactiva espera si una generación ocupa el slot. Abierto
+  aún: si conviene `MAX_CONCURRENT_DEVIN_SESSIONS=2` para chatear
+  mientras corre un job (depende de cuánto estrés aguante la cuenta).
