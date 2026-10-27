@@ -17,9 +17,14 @@ export const config = {
   promptsDir: join(ROOT, 'src', 'prompts'),
   templatesDir: join(ROOT, 'src', 'templates'),
 
-  // Engine de agente por defecto (src/engines/): '' → 'devin' salvo
-  // que un caller resuelva 'auto'. --agent/state.agent lo pisan por run.
+  // Engine de agente por defecto (src/engines/): '' → 'auto' (devin si
+  // autentica, sino opencode — la sonda vive en preflight). --agent,
+  // plan.agent y settings.json tienen precedencia sobre esta env.
   agentProvider: process.env.AGENT_PROVIDER || '',
+  // Config mutable en runtime (hoy: { engine }) — la escribe el
+  // dashboard via POST /api/settings y se relee en cada resolución.
+  settingsPath:
+    process.env.METABUILDER_SETTINGS_PATH ?? join(ROOT, 'settings.json'),
 
   // Credenciales del agente Devin (auth windsurf-api-key vía ACP)
   devinCredentialsPath:

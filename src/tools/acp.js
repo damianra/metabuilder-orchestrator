@@ -300,7 +300,9 @@ export async function runAgentPrompt({
     onWait: () => onActivity?.('esperando slot de sesión de agente (otro run en curso)…'),
   });
   try {
-    engine = resolveEngine(typeof agent === 'string' || !agent ? agent : agent.id);
+    // agent puede ser un engine resuelto, un id, o '' → la resolución
+    // cae a la cadena completa (settings.json > env > default devin).
+    engine = resolveEngine(typeof agent === 'object' && agent ? agent.id : { flag: agent });
     const started = await startSession(engine, { cwd, logPath, model, mode, onActivity });
     client = started.client;
     const sessionId = started.sessionId;

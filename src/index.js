@@ -164,8 +164,8 @@ for (const [flag, kind] of [
     process.exit(2);
   }
 }
-if (args.agent && !getEngine(args.agent)) {
-  console.error(`--agent desconocido "${args.agent}" (usá ${listEngines().join('|')})`);
+if (args.agent && args.agent !== 'auto' && !getEngine(args.agent)) {
+  console.error(`--agent desconocido "${args.agent}" (usá ${listEngines().join('|')}|auto)`);
   process.exit(2);
 }
 if (args.ghpages && !args.github) {

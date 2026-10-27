@@ -3,7 +3,7 @@ import { basename, join } from 'node:path';
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
 import { checkEngineAuth } from '../tools/acp.js';
-import { resolveEngine } from '../engines/index.js';
+import { getEngine, resolveEngineAuto, resolveEngineId } from '../engines/index.js';
 import { startInstall } from '../tools/install.js';
 import { ensureProjectDir } from '../tools/slug.js';
 import { writeDockerFiles, detectFrontend, detectStackId, detectOutDir } from '../tools/docker.js';
@@ -75,26 +75,45 @@ export async function preflightNode(state) {
   const history = [log('preflight', 'verificando binarios y autenticación')];
   const arch = resolveArch(state.arch);
 
-  // Engine de agente: --agent > AGENT_PROVIDER > 'devin'. Un id
+  // Engine de agente: --agent > plan.agent (resume) > settings.json >
+  // AGENT_PROVIDER > 'auto' (devin si autentica, sino opencode). Un id
   // desconocido es fail temprano — mejor acá que en el primer prompt.
+  const savedPlan = state.resumeDir ? readPlan(state.resumeDir) : null;
+  const engineId = resolveEngineId({ flag: state.agent, plan: savedPlan?.agent });
   let engine;
-  try {
-    engine = resolveEngine(state.agent);
-  } catch (err) {
-    return {
-      status: 'failed',
-      lastError: String(err.message ?? err),
-      history: [...history, log('preflight', `engine inválido: ${err.message}`)],
-    };
+  let auth;
+  if (engineId === 'auto') {
+    engine = await resolveEngineAuto((id) => checkEngineAuth(id, 15_000));
+    if (!engine) {
+      return {
+        status: 'failed',
+        lastError:
+          'ningún engine de agente autentica (probados: devin, opencode) — ' +
+          '`devin auth login` o `opencode auth login`',
+        history: [...history, log('preflight', 'auto: ningún engine autentica')],
+      };
+    }
+    auth = { ok: true }; // la sonda auto ya lo verificó
+    history.push(log('preflight', `motor de agente: ${engine.label} (auto)`));
+  } else {
+    engine = getEngine(engineId);
+    if (!engine) {
+      return {
+        status: 'failed',
+        lastError: `engine desconocido "${engineId}"`,
+        history: [...history, log('preflight', `engine inválido: ${engineId}`)],
+      };
+    }
+    history.push(log('preflight', `motor de agente: ${engine.label} (${engine.id})`));
   }
-  history.push(log('preflight', `motor de agente: ${engine.label} (${engine.id})`));
 
-  // Probes en paralelo: binarios requeridos + auth del engine (ACP).
+  // Probes: binarios requeridos (+ auth del engine si no vino del auto).
   const requiredBins = [...BASE_BINS, engine.bin];
-  const [bins, auth] = await Promise.all([
+  const [bins, authResult] = await Promise.all([
     Promise.all(requiredBins.map((bin) => run(`command -v ${bin}`))),
-    checkEngineAuth(engine.id),
+    auth ?? checkEngineAuth(engine.id),
   ]);
+  auth = authResult;
   const missing = requiredBins.filter((_, i) => !bins[i].ok);
   if (missing.length) {
     return {
