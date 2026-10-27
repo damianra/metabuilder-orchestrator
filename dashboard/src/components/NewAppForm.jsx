@@ -14,6 +14,7 @@ const EMPTY = {
   github: false,
   ghpages: false,
   verifyDocker: false,
+  agent: '', // '' = engine configurado del dashboard (settings.json)
 };
 
 // Form "Nueva app" — los pickers se alimentan de GET /api/options
@@ -43,6 +44,7 @@ export default function NewAppForm({ onEnqueued, cloneSlug }) {
           arch: p.arch ?? f.arch,
           stackFrontend: p.stacks?.frontend ?? f.stackFrontend,
           stackBackend: p.stacks?.backend ?? f.stackBackend,
+          agent: p.agent ?? f.agent,
         }));
         setClonedFrom(cloneSlug);
       })
@@ -70,6 +72,7 @@ export default function NewAppForm({ onEnqueued, cloneSlug }) {
       if (form.github) body.github = true;
       if (form.ghpages) body.ghpages = true;
       if (form.verifyDocker) body.verifyDocker = true;
+      if (form.agent) body.agent = form.agent;
       const { job } = await api.enqueueRun(body);
       setFeedback({ ok: true, text: `job #${job.id} encolado — corre \`npm run worker\` si no está corriendo` });
       setForm(EMPTY);
@@ -167,6 +170,13 @@ export default function NewAppForm({ onEnqueued, cloneSlug }) {
         <div>
           <label className={label} htmlFor="phone">WhatsApp</label>
           <input id="phone" className={input} placeholder="54911…" value={form.phone} onChange={(e) => set('phone', e.target.value)} />
+        </div>
+        <div>
+          <label className={label} htmlFor="agent">Motor</label>
+          <select id="agent" className={input} value={form.agent} onChange={(e) => set('agent', e.target.value)}>
+            <option value="">configurado{options?.engine ? ` (${options.engine})` : ''}</option>
+            {(options?.engines ?? []).map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
         </div>
       </div>
 

@@ -22,6 +22,9 @@ import { writeDockerFiles, detectFrontend, detectOutDir } from '../tools/docker.
 import { listArchs } from '../arch/index.js';
 import { getVertical, listVerticals } from '../verticals/index.js';
 import { getStack, listStacks } from '../stacks/index.js';
+import { getEngine as getAgentEngine, listEngines } from '../engines/index.js';
+import { checkEngineAuth } from '../tools/acp.js';
+import { readSettings, writeSettings } from '../tools/settings.js';
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,60}$/;
 const SCOPES = ['frontend', 'backend', 'fullstack'];
@@ -267,6 +270,7 @@ function projectSummary(dir, slug) {
     appType: plan?.appType ?? null,
     scope: plan?.scope ?? null,
     arch: plan?.arch ?? null,
+    agent: plan?.agent ?? null,
     status: status?.status ?? (plan ? 'unknown' : 'no-plan'),
     lastError: status?.lastError ?? null,
     steps: {
@@ -322,6 +326,17 @@ export function createDashboardApp({
   // desaparece), pero `null` re-probea pasado el TTL — docker puede
   // aparecer después (Docker Desktop arrancando). Tests: 0 = sin cache.
   engineTtlMs = 30_000,
+  // Probe de estado por engine de agente (para /api/engines y el setup
+  // gate): bin en PATH + handshake ACP real. Inyectable en tests.
+  agentProbe = async (engine) => {
+    const bin = await runCmd(`command -v ${engine.bin}`, { timeoutMs: 10_000 });
+    if (!bin.ok) return { installed: false, auth: 'missing' };
+    const auth = await checkEngineAuth(engine.id, 15_000);
+    return { installed: true, auth: auth.ok ? 'ok' : 'fail', detail: auth.error };
+  },
+  // settings.json — la escribe POST /api/settings; inyectable en tests
+  // para no tocar la config real del repo.
+  settingsPath = config.settingsPath,
 } = {}) {
   let engineCache = null;
   let engineProbedAt = -Infinity;
@@ -350,6 +365,46 @@ export function createDashboardApp({
 
   app.get('/api/health', (req, res) => res.json({ ok: true }));
 
+  // Engine de agente configurado: settings.json (lo escribe el setup
+  // gate) > env AGENT_PROVIDER > null (sin configurar → la UI muestra
+  // el gate obligatorio y /api/runs rechaza encolar).
+  const configuredEngine = () =>
+    readSettings(settingsPath).engine || config.agentProvider || null;
+
+  // Setup gate: estado de cada engine (bin + auth ACP) para que la UI
+  // muestre qué está instalado/listo antes de elegir el motor.
+  app.get('/api/engines', async (req, res) => {
+    const engines = await Promise.all(
+      listEngines().map(async (id) => {
+        const e = getAgentEngine(id);
+        const status = await agentProbe(e);
+        return {
+          id,
+          label: e.label,
+          bin: e.bin,
+          docsUrl: e.docsUrl,
+          installHint: e.installHint,
+          ...status,
+        };
+      }),
+    );
+    res.json({ engine: configuredEngine(), engines });
+  });
+
+  // Persiste la elección del motor (settings.json en raíz). 'auto' es
+  // válido (preflight sonda devin→opencode) aunque la UI solo ofrece
+  // los dos engines concretos.
+  app.post('/api/settings', async (req, res) => {
+    const { engine } = req.body ?? {};
+    if (engine !== 'auto' && !getAgentEngine(engine)) {
+      return res
+        .status(400)
+        .json({ error: `engine desconocido "${engine}" (${listEngines().join('|')}|auto)` });
+    }
+    writeSettings({ engine }, settingsPath);
+    res.json({ ok: true, engine });
+  });
+
   // Opciones para los pickers de la UI — leídas de los registries, no
   // hardcodeadas en el frontend (un stack/vertical/arch nuevo aparece
   // solo al registrarse).
@@ -362,6 +417,9 @@ export function createDashboardApp({
         frontend: listStacks('frontend').map((s) => s.id),
         backend: listStacks('backend').map((s) => s.id),
       },
+      engines: listEngines(),
+      // engine configurado (settings/env) — null = setup gate pendiente
+      engine: configuredEngine(),
     }),
   );
 
@@ -556,6 +614,7 @@ export function createDashboardApp({
       planSteps: plan?.steps ?? [],
       validated: plan?.validated ?? false,
       stacks: plan?.stacks ?? null,
+      agent: plan?.agent ?? null,
       scripts: Object.entries(pkg?.scripts ?? {}).map(([name, command]) => ({ name, command })),
       repoUrl: toWebUrl(remote || null),
       report: runId ? buildReport({ runId, runDir: join(runsDir, runId), projectDir: dir }) : null,
@@ -595,6 +654,16 @@ export function createDashboardApp({
     if (b.stackBackend && getStack(b.stackBackend)?.kind !== 'backend') {
       return res.status(400).json({ error: `stackBackend inválido (${listStacks('backend').map((s) => s.id).join('|')})` });
     }
+    if (b.agent && b.agent !== 'auto' && !getAgentEngine(b.agent)) {
+      return res.status(400).json({ error: `agent desconocido "${b.agent}" (${listEngines().join('|')}|auto)` });
+    }
+    // El gate es obligatorio: sin engine configurado (settings/env) ni
+    // override por run, encolar sería tirar el job al auto por defecto.
+    if (!b.agent && !configuredEngine()) {
+      return res.status(400).json({
+        error: 'no hay motor de agente configurado — elegí Devin u OpenCode en el setup inicial',
+      });
+    }
 
     const args = ['--idea', b.idea.trim(), '--yes'];
     if (b.scope) args.push('--scope', b.scope);
@@ -603,6 +672,7 @@ export function createDashboardApp({
     if (b.arch) args.push('--arch', b.arch);
     if (b.stackFrontend) args.push('--stack-frontend', b.stackFrontend);
     if (b.stackBackend) args.push('--stack-backend', b.stackBackend);
+    if (b.agent) args.push('--agent', b.agent);
     if (b.phone) args.push('--phone', String(b.phone));
     if (b.github) args.push('--github');
     if (b.ghpages) args.push('--ghpages');

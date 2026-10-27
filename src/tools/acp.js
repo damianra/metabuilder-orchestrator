@@ -276,7 +276,8 @@ async function startSession(engine, { cwd, logPath, model, mode, onActivity }) {
 /**
  * Ejecuta un prompt contra el engine resuelto en `cwd` y espera el fin
  * del turno. `agent` puede ser un id ('devin'|'opencode'), un engine
- * resuelto o vacío (resolveEngine: env AGENT_PROVIDER → 'devin').
+ * resuelto o vacío (resolveEngine: settings.json > AGENT_PROVIDER →
+ * 'devin'; el modo 'auto' con sonda lo resuelve preflight antes).
  * Devuelve { ok, text, stopReason, sessionId, engine, error? }.
  */
 export async function runAgentPrompt({

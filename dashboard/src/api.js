@@ -9,6 +9,27 @@ const req = async (path, opts) => {
 
 export const api = {
   options: () => req('/api/options'),
+  engines: () => req('/api/engines'),
+  saveSettings: (body) =>
+    req('/api/settings', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  engines: () => req('/api/engines'),
+  saveSettings: (body) =>
+    req('/api/settings', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  engines: () => req('/api/engines'),
+  saveSettings: (body) =>
+    req('/api/settings', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
   projects: () => req('/api/projects'),
   project: (slug) => req(`/api/projects/${slug}`),
   jobs: () => req('/api/jobs'),

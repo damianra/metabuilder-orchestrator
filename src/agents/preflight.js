@@ -78,7 +78,14 @@ export async function preflightNode(state) {
   // Engine de agente: --agent > plan.agent (resume) > settings.json >
   // AGENT_PROVIDER > 'auto' (devin si autentica, sino opencode). Un id
   // desconocido es fail temprano — mejor acá que en el primer prompt.
-  const savedPlan = state.resumeDir ? readPlan(state.resumeDir) : null;
+  let savedPlan = null;
+  if (state.resumeDir) {
+    try {
+      savedPlan = readPlan(state.resumeDir);
+    } catch {
+      /* plan.json ilegible → cae a flags/settings */
+    }
+  }
   const engineId = resolveEngineId({ flag: state.agent, plan: savedPlan?.agent });
   let engine;
   let auth;

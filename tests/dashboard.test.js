@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDashboardApp } from '../src/dashboard/server.js';
 
-let base, appsDir, runsDir, server, url, startTestCalls, startBuildCalls, startDevCalls, stopDevCalls, fakeEngine, runCmdCalls, runCmdHandler;
+let base, appsDir, runsDir, server, url, startTestCalls, startBuildCalls, startDevCalls, stopDevCalls, fakeEngine, runCmdCalls, runCmdHandler, settingsPath, agentStatus;
 
 const writeJson = (p, data) => writeFileSync(p, JSON.stringify(data));
 
@@ -47,6 +47,11 @@ beforeEach(async () => {
   runCmdHandler = () => ({ ok: true, stdout: '', stderr: '' });
   appsDir = join(base, 'generated-apps');
   runsDir = join(base, 'runs');
+  settingsPath = join(base, 'settings.json');
+  agentStatus = {}; // id → {installed, auth, detail?} para agentProbe
+  // Engine configurado por default — /api/runs lo exige desde el setup
+  // gate; los tests del gate lo borran explícitamente.
+  writeFileSync(settingsPath, JSON.stringify({ engine: 'devin' }));
   mkdirSync(appsDir, { recursive: true });
   const app = createDashboardApp({
     appsDir,
@@ -70,6 +75,9 @@ beforeEach(async () => {
     },
     engineProbe: async () => fakeEngine,
     engineTtlMs: 0, // sin cache negativo → fakeEngine se puede cambiar mid-test
+    settingsPath,
+    agentProbe: async (engine) =>
+      agentStatus[engine.id] ?? { installed: false, auth: 'missing' },
     runCmd: async (cmd) => {
       runCmdCalls.push(cmd);
       return runCmdHandler(cmd);
@@ -98,6 +106,57 @@ describe('GET /api/options', () => {
     expect(body.stacks.frontend).toContain('vite-react');
     expect(body.stacks.frontend).toContain('nextjs');
     expect(body.stacks.backend).toContain('express-sqlite');
+  });
+
+  it('expone engines + engine configurado (null sin settings)', async () => {
+    rmSync(settingsPath, { force: true });
+    const { body } = await api('/api/options');
+    expect(body.engines).toEqual(['devin', 'opencode']);
+    expect(body.engine).toBeNull();
+  });
+});
+
+describe('setup gate — /api/engines, /api/settings y guard de /api/runs', () => {
+  it('GET /api/engines devuelve probe por engine + configured null', async () => {
+    rmSync(settingsPath, { force: true });
+    agentStatus.devin = { installed: true, auth: 'ok' };
+    const { status, body } = await api('/api/engines');
+    expect(status).toBe(200);
+    expect(body.engine).toBeNull();
+    const devin = body.engines.find((e) => e.id === 'devin');
+    expect(devin).toMatchObject({ installed: true, auth: 'ok', bin: expect.any(String) });
+    const opencode = body.engines.find((e) => e.id === 'opencode');
+    expect(opencode.installed).toBe(false);
+    expect(opencode.installHint).toBeTruthy();
+    expect(opencode.docsUrl).toMatch(/^https:\/\//);
+  });
+
+  it('POST /api/settings valida el id y persiste en settings.json', async () => {
+    expect((await post('/api/settings', { engine: 'nope' })).status).toBe(400);
+    const { status, body } = await post('/api/settings', { engine: 'opencode' });
+    expect(status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(JSON.parse(readFileSync(settingsPath, 'utf8')).engine).toBe('opencode');
+    // /api/options ahora reporta el engine configurado
+    expect((await api('/api/options')).body.engine).toBe('opencode');
+  });
+
+  it('POST /api/runs 400 sin engine configurado; con agent explícito encola', async () => {
+    rmSync(settingsPath, { force: true });
+    const bad = await post('/api/runs', { idea: 'app de prueba' });
+    expect(bad.status).toBe(400);
+    expect(bad.body.error).toMatch(/motor de agente/);
+
+    const ok = await post('/api/runs', { idea: 'app de prueba', agent: 'opencode' });
+    expect(ok.status).toBe(201);
+    expect(ok.body.job.args).toContain('--agent');
+    expect(ok.body.job.args).toContain('opencode');
+  });
+
+  it('POST /api/runs funciona sin agent explícito una vez configurado', async () => {
+    writeFileSync(settingsPath, JSON.stringify({ engine: 'devin' }));
+    const { status } = await post('/api/runs', { idea: 'app de prueba' });
+    expect(status).toBe(201);
   });
 });
 
