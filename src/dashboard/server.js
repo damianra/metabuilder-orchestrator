@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
-import { addJob, cancelJob, jobsDir, readJobs, readWorker } from '../queue.js';
+import { addJob, cancelJob, clearJobs, jobsDir, readJobs, readWorker } from '../queue.js';
 import { slugify } from '../tools/slug.js';
 import { buildReport, resolveRunId } from '../report.js';
 import { writeDockerFiles, detectFrontend, detectOutDir } from '../tools/docker.js';
@@ -524,6 +524,12 @@ export function createDashboardApp({
       return res.status(409).json({ error: `el job ${job.id} sigue ${job.status} — no se duplica` });
     }
     res.status(201).json({ job: addJob(job.args, baseDir) });
+  });
+
+  // Limpiar historial: borra los jobs terminados (json + log) —
+  // equivalente a `npm run queue -- clear`. pending/running no se tocan.
+  app.post('/api/jobs/clear', (req, res) => {
+    res.json({ ok: true, removed: clearJobs(baseDir) });
   });
 
   // Log del pipeline del proyecto: el job más reciente cuyo slug matchea.

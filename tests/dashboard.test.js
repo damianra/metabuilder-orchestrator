@@ -440,6 +440,42 @@ describe('POST /api/jobs/:id/requeue', () => {
   });
 });
 
+describe('POST /api/jobs/clear', () => {
+  const seedJob = (id, status) => {
+    mkdirSync(join(base, 'jobs'), { recursive: true });
+    writeJson(join(base, 'jobs', `${id}.json`), {
+      id,
+      args: ['--idea', 'x'],
+      status,
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+  };
+
+  it('borra json+log de terminados y conserva pending/running', async () => {
+    seedJob(1, 'done');
+    seedJob(2, 'failed');
+    seedJob(3, 'cancelled');
+    seedJob(4, 'pending');
+    seedJob(5, 'running');
+    writeFileSync(join(base, 'jobs', '1.log'), 'log');
+    const { status, body } = await api('/api/jobs/clear', { method: 'POST' });
+    expect(status).toBe(200);
+    expect(body).toEqual({ ok: true, removed: 3 });
+    expect(existsSync(join(base, 'jobs', '1.json'))).toBe(false);
+    expect(existsSync(join(base, 'jobs', '1.log'))).toBe(false);
+    const { body: list } = await api('/api/jobs');
+    expect(list.jobs.map((j) => j.id)).toEqual([4, 5]);
+  });
+
+  it('todo activo → removed 0 y no toca nada', async () => {
+    seedJob(7, 'pending');
+    const { status, body } = await api('/api/jobs/clear', { method: 'POST' });
+    expect(status).toBe(200);
+    expect(body.removed).toBe(0);
+    expect(existsSync(join(base, 'jobs', '7.json'))).toBe(true);
+  });
+});
+
 describe('detalle enriquecido + acción test', () => {
   const seedPkg = (slug, scripts = { test: 'vitest run', 'test:e2e': 'playwright test' }) => {
     const dir = seedApp(slug);

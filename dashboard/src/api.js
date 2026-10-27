@@ -21,6 +21,7 @@ export const api = {
   jobs: () => req('/api/jobs'),
   cancelJob: (id) => req(`/api/jobs/${id}/cancel`, { method: 'POST' }),
   requeueJob: (id) => req(`/api/jobs/${id}/requeue`, { method: 'POST' }),
+  clearJobs: () => req('/api/jobs/clear', { method: 'POST' }),
   projectLog: (slug, tail = 200) => req(`/api/projects/${slug}/log?tail=${tail}`),
   projectTestLog: (slug, tail = 200) => req(`/api/projects/${slug}/test-log?tail=${tail}`),
   containerLog: (slug, tail = 200) => req(`/api/projects/${slug}/container-log?tail=${tail}`),

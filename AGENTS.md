@@ -260,6 +260,13 @@ fina sobre la infra existente:
   "reintentar" en failed/cancelled (QueuePanel y "Log del run" del
   detalle).
   El pid del child queda persistido en el job mientras corre.
+- `POST /api/jobs/clear` — `clearJobs(baseDir)` de queue.js: borra
+  `<id>.json` + `<id>.log` de los jobs terminados (done/failed/
+  cancelled) → `{ok, removed}`; pending/running nunca se tocan. Es el
+  equivalente al `npm run queue -- clear` del CLI (misma función). La
+  UI lo expone como "limpiar terminados" en el header de QueuePanel;
+  el panel muestra todos los activos + los últimos 5 terminados (si
+  hay más, "…y N más").
 - `WS /api/projects/:slug/terminal` (`src/dashboard/terminal.js`,
   `attachTerminal(server)` colgado en `main()`): spawnea el TUI del
   engine (`devin` / `opencode`, elegido con `?engine=<id>` o el engine

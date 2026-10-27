@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ListOrdered, LoaderCircle, RotateCcw, Square, TriangleAlert } from 'lucide-react';
+import { ListOrdered, LoaderCircle, RotateCcw, Square, Trash2, TriangleAlert } from 'lucide-react';
 import { api } from '../api.js';
 import { jobSummary } from '../util.js';
 
@@ -40,8 +40,12 @@ const progress = (j) => {
 export default function QueuePanel({ jobs, worker, onChanged }) {
   const [busy, setBusy] = useState(null);
   const [retryBusy, setRetryBusy] = useState(null);
-  const active = jobs.filter((j) => j.status === 'pending' || j.status === 'running');
-  const recent = jobs.filter((j) => !active.includes(j)).slice(-5).reverse();
+  const [clearBusy, setClearBusy] = useState(false);
+  const isActive = (j) => j.status === 'pending' || j.status === 'running';
+  const active = jobs.filter(isActive);
+  const finished = jobs.filter((j) => !isActive(j));
+  const recent = finished.slice(-5).reverse();
+  const hidden = finished.length - recent.length;
   const shown = [...active, ...recent];
   const stalled = active.some((j) => j.status === 'pending') && worker && !worker.alive;
   if (!shown.length) return null;
@@ -50,6 +54,29 @@ export default function QueuePanel({ jobs, worker, onChanged }) {
     <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200 shadow-sm">
       <h2 className="flex items-center gap-2 text-sm font-bold text-slate-800">
         <ListOrdered size={16} className="text-slate-500" /> Cola ({active.length} activos)
+        {finished.length > 0 && (
+          <button
+            title="Borra los jobs terminados (done/failed/cancelled) — los activos no se tocan"
+            disabled={clearBusy}
+            onClick={async () => {
+              setClearBusy(true);
+              try {
+                await api.clearJobs();
+              } finally {
+                setClearBusy(false);
+                onChanged?.();
+              }
+            }}
+            className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40"
+          >
+            {clearBusy ? (
+              <LoaderCircle size={12} className="animate-spin" />
+            ) : (
+              <Trash2 size={12} />
+            )}
+            limpiar terminados
+          </button>
+        )}
       </h2>
       {stalled && (
         <p className="mt-2 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
@@ -120,6 +147,9 @@ export default function QueuePanel({ jobs, worker, onChanged }) {
           </li>
         ))}
       </ul>
+      {hidden > 0 && (
+        <p className="mt-2 text-xs text-slate-400">…y {hidden} terminados más</p>
+      )}
     </section>
   );
 }

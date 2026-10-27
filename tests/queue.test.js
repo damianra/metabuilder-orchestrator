@@ -1,9 +1,9 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { addJob, cancelJob, readJobs, runJob, runQueue } from '../src/queue.js';
+import { addJob, cancelJob, clearJobs, readJobs, runJob, runQueue } from '../src/queue.js';
 
 // baseDir aislado por test; el hijo es un script fixture (no `-e`:
 // `node -e 's' --idea` parsearía --idea como flag de node, no como
@@ -110,6 +110,30 @@ describe('cola de jobs', () => {
     addJob(['--idea', 'bueno'], dir);
     expect(await runQueue({ baseDir: dir, cmd })).toBe(1);
     expect(readJobs(dir).map((j) => j.status)).toEqual(['failed', 'done']);
+  });
+});
+
+describe('clearJobs', () => {
+  it('borra json+log de terminados y conserva pending/running intactos', () => {
+    putJob({ id: 1, args: ['--idea', 'a'], status: 'done' });
+    putJob({ id: 2, args: ['--idea', 'b'], status: 'failed' });
+    putJob({ id: 3, args: ['--idea', 'c'], status: 'cancelled' });
+    putJob({ id: 4, args: ['--idea', 'd'], status: 'pending' });
+    putJob({ id: 5, args: ['--idea', 'e'], status: 'running' });
+    writeFileSync(join(dir, 'jobs', '1.log'), 'log viejo');
+    writeFileSync(join(dir, 'jobs', '4.log'), 'log de un pending');
+    expect(clearJobs(dir)).toBe(3);
+    expect(readJobs(dir).map((j) => j.id)).toEqual([4, 5]);
+    expect(existsSync(join(dir, 'jobs', '1.log'))).toBe(false);
+    // el .log de un activo no es problema del clear
+    expect(existsSync(join(dir, 'jobs', '4.log'))).toBe(true);
+  });
+
+  it('cola vacía o todo activo → removed 0', () => {
+    expect(clearJobs(dir)).toBe(0);
+    putJob({ id: 1, args: ['--idea', 'x'], status: 'pending' });
+    expect(clearJobs(dir)).toBe(0);
+    expect(readJobs(dir)).toHaveLength(1);
   });
 });
 
