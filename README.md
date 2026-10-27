@@ -90,8 +90,8 @@ MetaBuilder delega la escritura de código a un agente CLI via **ACP** (Agent Cl
 
 | Engine | Comando ACP | Instalación y auth |
 | --- | --- | --- |
-| **Devin** ([devin.ai](https://devin.ai)) | `devin acp` | Devin CLI + cuenta Windsurf: `~/.local/share/devin/credentials.toml` con `windsurf_api_key` (lo escribe Devin Desktop o `devin auth login`). **`devin -p`/`auth status` NO son la vía** — usan session_token que las cuentas Windsurf no producen. |
-| **OpenCode** ([opencode.ai](https://opencode.ai)) | `opencode acp` | `curl -fsSL https://opencode.ai/install \| bash` o `npm i -g opencode-ai`, luego `opencode auth login` para configurar el provider (modelo `provider/model` via `OPENCODE_MODEL` o su default). Requiere versión con soporte ACP (verificado en v2.1.4). |
+| **Devin** ([docs.devin.ai/cli](https://docs.devin.ai/cli)) | `devin acp` | `curl -fsSL https://cli.devin.ai/install.sh \| bash` (o `brew install --cask devin-cli` / Devin Desktop) + cuenta Windsurf: `~/.local/share/devin/credentials.toml` con `windsurf_api_key` (lo escribe `devin auth login`). **`devin -p`/`auth status` NO son la vía** — usan session_token que las cuentas Windsurf no producen. |
+| **OpenCode** ([opencode.ai/docs](https://opencode.ai/docs/)) | `opencode acp` | `curl -fsSL https://opencode.ai/v2/install \| bash` o `npm i -g @opencode/cli`, luego `opencode auth login` para configurar el provider (modelo `provider/model` via `OPENCODE_MODEL` o su default). Requiere **v2** con soporte ACP (verificado en v2.1.4 — ojo: `npm i -g opencode-ai` instala v1). |
 
 Cuál se usa, por precedencia: `--agent <id>` (por run) > `plan.agent` (resume) > `settings.json` (lo escribe el dashboard) > `AGENT_PROVIDER` > `auto` (sondea cada engine y gana el primero que autentique). El semáforo de sesiones es compartido entre engines.
 

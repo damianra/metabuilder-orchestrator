@@ -9,8 +9,10 @@ export default {
   id: 'opencode',
   label: 'OpenCode',
   bin: config.opencodeBin,
-  docsUrl: 'https://opencode.ai',
-  installHint: '`npm i -g opencode-ai` + `opencode auth login`',
+  docsUrl: 'https://opencode.ai/docs/',
+  // `opencode-ai` en npm instala v1 — el engine se verificó contra v2
+  // (package @opencode/cli / script /v2/install).
+  installHint: '`npm i -g @opencode/cli` + `opencode auth login`',
   acpArgs: ['acp'],
   tuiArgs: [],
   defaultMode: 'build',

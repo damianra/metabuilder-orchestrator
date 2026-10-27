@@ -430,6 +430,7 @@ export function createDashboardApp({
           bin: e.bin,
           docsUrl: e.docsUrl,
           installHint: e.installHint,
+          authHint: e.authHint ?? null,
           ...status,
         };
       }),
