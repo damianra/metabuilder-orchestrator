@@ -15,6 +15,20 @@ const STATUS = {
 
 const statusOf = (e) => (!e.installed ? STATUS.missing : e.auth === 'ok' ? STATUS.ok : STATUS.fail);
 
+// Link a la doc oficial del engine — stopPropagation para que el click
+// no seleccione la card (vive dentro del <button>).
+const DocsLink = ({ url }) => (
+  <a
+    href={url}
+    target="_blank"
+    rel="noreferrer"
+    className="inline-flex items-center gap-0.5 text-sky-700 underline"
+    onClick={(ev) => ev.stopPropagation()}
+  >
+    docs <ExternalLink size={10} />
+  </a>
+);
+
 export default function SetupGate({ current, onDone }) {
   const [data, setData] = useState(null);
   const [selected, setSelected] = useState(current ?? null);
@@ -89,21 +103,14 @@ export default function SetupGate({ current, onDone }) {
               )}
               {!e.installed && (
                 <p className="mt-2 text-xs text-slate-600">
-                  <code className="rounded bg-slate-100 px-1">{e.installHint}</code>{' '}
-                  <a
-                    href={e.docsUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-0.5 text-sky-700 underline"
-                    onClick={(ev) => ev.stopPropagation()}
-                  >
-                    docs <ExternalLink size={10} />
-                  </a>
+                  instalación: <code className="rounded bg-slate-100 px-1">{e.installHint}</code>{' '}
+                  <DocsLink url={e.docsUrl} />
                 </p>
               )}
-              {e.installed && e.auth === 'fail' && e.installHint && (
+              {e.installed && e.auth === 'fail' && (e.authHint || e.installHint) && (
                 <p className="mt-2 text-xs text-slate-600">
-                  auth: <code className="rounded bg-slate-100 px-1">{e.installHint}</code>
+                  auth: <code className="rounded bg-slate-100 px-1">{e.authHint ?? e.installHint}</code>{' '}
+                  <DocsLink url={e.docsUrl} />
                 </p>
               )}
             </button>

@@ -97,7 +97,7 @@ Express local (127.0.0.1:4100, `DASHBOARD_PORT`/`DASHBOARD_HOST`) en
   registries + `engines` (ids del registry de agentes) y `engine` (el
   configurado en settings.json/env, o null → setup gate en la UI).
 - `GET /api/engines` — probe por engine: `{id,label,bin,installed,
-  auth,detail,docsUrl,installHint}` + `engine` configurado. `installed`
+  auth,detail,docsUrl,installHint,authHint}` + `engine` configurado. `installed`
   via `command -v`; `auth` via `checkEngineAuth` (handshake ACP real)
   — `agentProbe` es inyectable para tests.
 - `POST /api/settings` — `{engine}` → persiste en `settings.json`
