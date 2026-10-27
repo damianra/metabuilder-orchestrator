@@ -66,7 +66,7 @@ const connect = (url, headers) =>
 const nextMsg = (ws) => ws.next();
 
 describe('terminal Devin (WS + pty)', () => {
-  let dir, server, port, lastPty, released;
+  let dir, server, port, lastPty, released, term;
   const spawnFake = async () => (bin, args, opts) => {
     lastPty = fakePty();
     lastPty.bin = bin;
@@ -94,11 +94,19 @@ describe('terminal Devin (WS + pty)', () => {
     const app = express();
     app.get('/api/health', (req, res) => res.json({ ok: true }));
     server = createServer(app);
-    attachTerminal(server, {
+    term = attachTerminal(server, {
       appsDir: dir,
       acquireSlot: acquireFake,
       spawnPty: spawnFake,
       idleKillMs: 60_000,
+      // En tests los bins reales apuntan al stub (DEVIN_BIN/OPENCODE_BIN)
+      // — engineFor devuelve descriptors con el bin literal del id para
+      // que las aserciones sobre bin sean legibles.
+      engineFor: (id) =>
+        ['devin', 'opencode'].includes(id)
+          ? { id, label: id === 'opencode' ? 'OpenCode' : 'Devin', bin: id, tuiArgs: [] }
+          : null,
+      defaultEngineId: () => 'devin',
     });
     await new Promise((r) => server.listen(0, '127.0.0.1', r));
     port = server.address().port;
@@ -143,6 +151,96 @@ describe('terminal Devin (WS + pty)', () => {
     const m = await nextMsg(ws);
     expect(m).toEqual({ t: 'out', d: 'respuesta del agente' });
     ws.close();
+  });
+
+  it('?engine=opencode spawnea el binario de ese engine', async () => {
+    const ws = await connect(wsUrl(port, 'demo-app', '?engine=opencode'));
+    await nextMsg(ws); // status slot
+    const ready = await nextMsg(ws);
+    expect(ready.msg).toMatch(/OpenCode/);
+    expect(lastPty.bin).toBe('opencode');
+    ws.close();
+  });
+
+  it("engine 'auto' se resuelve a devin — como param y como default", async () => {
+    // 'auto' es valor válido en settings/env; el server lo mapea a un
+    // engine concreto también cuando llega como ?engine=auto.
+    const app2 = express();
+    const srv2 = createServer(app2);
+    const { getEngine, resolveEngine } = await import('../src/engines/index.js');
+    const term2 = attachTerminal(srv2, {
+      appsDir: dir,
+      acquireSlot: acquireFake,
+      spawnPty: spawnFake,
+      idleKillMs: 60_000,
+      engineFor: (id) => {
+        const e = getEngine(id);
+        return e ? { ...e, bin: e.id, tuiArgs: [] } : null;
+      },
+      defaultEngineId: () => resolveEngine('auto').id,
+    });
+    await new Promise((r) => srv2.listen(0, '127.0.0.1', r));
+    const p2 = srv2.address().port;
+
+    // default path (sin param): engine configurado 'auto' → devin
+    const ws1 = await connect(wsUrl(p2, 'demo-app'));
+    await nextMsg(ws1);
+    await nextMsg(ws1);
+    expect(lastPty.bin).toBe('devin');
+    ws1.close();
+
+    // 'auto' mapea al mismo engine → el segundo connect reattacharía a
+    // la sesión viva; la mato para probar el spawn del path ?engine=.
+    term2.killBySlug('demo-app');
+    await new Promise((r) => setTimeout(r, 30));
+
+    // query param verbatim (el panel manda el configurado): idem
+    const ws2 = await connect(wsUrl(p2, 'demo-app', '?engine=auto'));
+    await nextMsg(ws2);
+    await nextMsg(ws2);
+    expect(lastPty.bin).toBe('devin');
+    ws1.close();
+    ws2.close();
+    srv2.close();
+  });
+
+  it('engine desconocido → error al cliente, sin pty', async () => {
+    const ws = await connect(wsUrl(port, 'demo-app', '?engine=nope'));
+    const m = await nextMsg(ws);
+    expect(m.t).toBe('error');
+    expect(m.msg).toMatch(/engine desconocido/);
+    expect(lastPty).toBeNull();
+    ws.close();
+  });
+
+  it('los dos engines conviven por slug (sesiones slug:engine)', async () => {
+    const ws1 = await connect(wsUrl(port, 'demo-app', '?engine=devin'));
+    await nextMsg(ws1);
+    await nextMsg(ws1);
+    const ptyDevin = lastPty;
+
+    const ws2 = await connect(wsUrl(port, 'demo-app', '?engine=opencode'));
+    await nextMsg(ws2);
+    await nextMsg(ws2);
+    expect(lastPty.bin).toBe('opencode');
+    expect(lastPty).not.toBe(ptyDevin);
+    expect(ptyDevin.killed).toBe(false); // la sesión devin sigue viva
+    ws1.close();
+    ws2.close();
+  });
+
+  it('killBySlug mata todas las sesiones del slug (cualquier engine)', async () => {
+    const ws1 = await connect(wsUrl(port, 'demo-app', '?engine=devin'));
+    await nextMsg(ws1);
+    await nextMsg(ws1);
+    const ws2 = await connect(wsUrl(port, 'demo-app', '?engine=opencode'));
+    await nextMsg(ws2);
+    await nextMsg(ws2);
+    expect(term.sessions.size).toBe(2);
+    term.killBySlug('demo-app', 'test');
+    expect(term.sessions.size).toBe(0);
+    ws1.close();
+    ws2.close();
   });
 
   it('aplica resize al pty', async () => {
@@ -194,6 +292,11 @@ describe('terminal Devin (WS + pty)', () => {
       acquireSlot: () => slotPromise,
       spawnPty: spawnFake,
       idleKillMs: 60_000,
+      engineFor: (id) =>
+        ['devin', 'opencode'].includes(id)
+          ? { id, label: id, bin: id, tuiArgs: [] }
+          : null,
+      defaultEngineId: () => 'devin',
     });
     await new Promise((r) => srv2.listen(0, '127.0.0.1', r));
     const p2 = srv2.address().port;
