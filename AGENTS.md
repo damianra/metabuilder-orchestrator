@@ -73,9 +73,13 @@ pasos deben contener las keywords que espera `validator.js` (vite,
 playwright, vitest, express, sqlite, "reglas de UI").
 
 - `landing`: frontend-only, página informativa (hero/features/menú/
-  contacto/footer). Contenido no provisto → lorem ipsum + placeholders.
+  footer; contacto con formulario + botón flotante WhatsApp SOLO si se
+  provisto `phone` — sin número, el plan no los incluye).
+  Contenido no provisto → lorem ipsum + placeholders.
 - `orders`: pedidos para casas de comida; soporta `fullstack`, `frontend`
-  (datos mock) y `backend`. Con backend usa el overlay
+  (datos mock) y `backend`. Envío por WhatsApp solo si hay `phone` — sin
+  número el pedido confirma via `POST /api/orders` (con API) o con
+  confirmación local. Con backend usa el overlay
   `src/verticals/orders/api/` (schema business/categories/products/
   orders/order_items + routes) sobre el api-skeleton; el paso backend
   es generativo-lite: Devin solo personaliza seed-data.js y endpoints

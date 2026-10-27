@@ -15,11 +15,15 @@ const infraFrontend = (skel) =>
     'npm run build',
   );
 
-const e2eOrders = (n) =>
+const e2eOrders = (n, phone) =>
   step(
     n,
     'e2e',
-    'Escribir specs Playwright en e2e/ (chromium; playwright.config.js ya configurado): la página carga sin errores de consola, el menú se ve, el carrito vacío muestra fallback informativo, el botón de pedido está deshabilitado hasta que el formulario es válido, y el link de pedido apunta a wa.me con el número configurado y el mensaje contiene items + total del carrito. Para aislar el e2e del backend, mockear las rutas /api/* con page.route (respuestas JSON fijas: business, categories, products). Instalar el browser con `npx playwright install chromium` si hace falta.',
+    `Escribir specs Playwright en e2e/ (chromium; playwright.config.js ya configurado): la página carga sin errores de consola, el menú se ve, el carrito vacío muestra fallback informativo, el botón de pedido está deshabilitado hasta que el formulario es válido${
+      phone
+        ? ', y el link de pedido apunta a wa.me con el número configurado y el mensaje contiene items + total del carrito'
+        : ''
+    }. Para aislar el e2e del backend, mockear las rutas /api/* con page.route (respuestas JSON fijas: business, categories, products). Instalar el browser con \`npx playwright install chromium\` si hace falta.`,
     'npm run test:e2e',
   );
 
@@ -43,8 +47,14 @@ function backendStep(n, idea) {
   );
 }
 
-const whatsappCartSpec = (phone) =>
-  ` Carrito de compras (agregar/quitar items con cantidades) + botón "Enviar pedido por WhatsApp" que abre https://wa.me/<numero>?text=<mensaje encodeURIComponent> — el mensaje arma una línea por item (nombre x cantidad — $precio), el total del carrito, y los datos del formulario de pedido (nombre, teléfono, notas). El número vive en una constante exportada (ej. src/data/config.js → WHATSAPP_NUMBER = '${phone || '5491100000000'}'). Si el número está vacío → NO renderizar el botón de WhatsApp. Botón disabled hasta que el carrito tenga items y el formulario sea válido.`;
+const whatsappCartSpec = (phone, withApi) =>
+  ` Carrito de compras (agregar/quitar items con cantidades)${
+    phone
+      ? ` + botón "Enviar pedido por WhatsApp" que abre https://wa.me/<numero>?text=<mensaje encodeURIComponent> — el mensaje arma una línea por item (nombre x cantidad — $precio), el total del carrito, y los datos del formulario de pedido (nombre, teléfono, notas). El número vive en una constante exportada (ej. src/data/config.js → WHATSAPP_NUMBER = '${phone}'). Si el número está vacío → NO renderizar el botón de WhatsApp.`
+      : withApi
+        ? ' + botón "Confirmar pedido" que persiste via POST /api/orders y muestra confirmación. Sin número de WhatsApp provisto: NO incluir botón de WhatsApp.'
+        : ' + botón "Confirmar pedido" que muestra un resumen/mensaje de confirmación local (sin integración externa). Sin número de WhatsApp provisto: NO incluir botón de WhatsApp.'
+  } Botón disabled hasta que el carrito tenga items y el formulario sea válido.`;
 
 function frontendStep(n, { withApi, idea, phone }) {
   return step(
@@ -52,11 +62,11 @@ function frontendStep(n, { withApi, idea, phone }) {
     'frontend',
     `Implementar la web de pedidos en React + Tailwind sobre el skeleton. Idea del usuario: "${idea}". ${
       withApi
-        ? 'Todo el contenido viene de la API: GET /api/business (nombre del local en navbar/hero/footer, horarios, dirección), GET /api/categories y GET /api/products (menú agrupable por categoría); además del envío por WhatsApp, el pedido puede persistirse via POST /api/orders. Fallback informativo si la API falla o devuelve vacío.'
+        ? `Todo el contenido viene de la API: GET /api/business (nombre del local en navbar/hero/footer, horarios, dirección), GET /api/categories y GET /api/products (menú agrupable por categoría); ${phone ? 'además del envío por WhatsApp, el pedido puede persistirse via POST /api/orders' : 'el pedido se confirma persistiendo via POST /api/orders'}. Fallback informativo si la API falla o devuelve vacío.`
         : 'El menú usa datos locales en src/data/products.js.'
     } ` +
       'Contenido no provisto → lorem ipsum / placeholders. Cumplir todas las reglas de UI de AGENTS.md: botón de pedido deshabilitado hasta tener items y datos válidos, fallback informativo si el menú viene vacío o la API falla, sin links con URL vacía.' +
-      whatsappCartSpec(phone),
+      whatsappCartSpec(phone, withApi),
     'npm run build',
   );
 }
@@ -84,7 +94,7 @@ export function buildPlan({ projectName, idea, scope = 'fullstack', phone, stack
       infraFrontend(skel),
       frontendStep(2, { withApi: false, idea, phone }),
       vitestStep(3),
-      e2eOrders(4),
+      e2eOrders(4, phone),
     );
   } else {
     steps.push(
@@ -92,7 +102,7 @@ export function buildPlan({ projectName, idea, scope = 'fullstack', phone, stack
       backendStep(2, idea),
       frontendStep(3, { withApi: true, idea, phone }),
       vitestStep(4, ' Incluir tests de la API Express (endpoints de products y orders).'),
-      e2eOrders(5),
+      e2eOrders(5, phone),
     );
   }
 

@@ -51,7 +51,9 @@ function createAsker() {
 
 // Modo interactivo: rellena lo que falten los flags.
 async function collectArgs(args) {
-  const interactive = Boolean(process.stdin.isTTY);
+  // --yes = cero preguntas: todo lo opcional toma su default (idea
+  // sigue siendo obligatoria — sin ella se sale con código 2).
+  const interactive = Boolean(process.stdin.isTTY) && !args.yes;
   const asker = createAsker();
   try {
     // --resume: idea/scope/appType/name/phone salen del plan.json —
@@ -107,7 +109,7 @@ async function collectArgs(args) {
       args.name = await asker.ask('Nombre del proyecto (slug, vacío = derivar de la idea): ');
     }
     if (!args.phone && interactive) {
-      args.phone = await asker.ask('WhatsApp del negocio (ej. 5491155500000, vacío = placeholder): ');
+      args.phone = await asker.ask('WhatsApp del negocio (ej. 5491155500000, vacío = sin WhatsApp/contacto): ');
     }
     if (!args.github && !args.noPush && interactive && !args.yes) {
       const g = await asker.ask('¿Crear repo en GitHub? [s/N] ');
