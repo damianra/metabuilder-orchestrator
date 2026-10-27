@@ -26,6 +26,8 @@ export default {
   id: 'devin',
   label: 'Devin',
   bin: config.devinBin,
+  docsUrl: 'https://devin.ai',
+  installHint: 'Devin CLI + `devin auth login` (o Devin Desktop)',
   acpArgs: ['acp'],
   tuiArgs: [],
   defaultMode: config.devinMode,

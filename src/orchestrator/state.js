@@ -50,7 +50,8 @@ export const OrchestratorState = Annotation.Root({
   stackFrontend: Annotation({ reducer: replace, default: () => null }),
   stackBackend: Annotation({ reducer: replace, default: () => null }),
   // --agent: engine ACP para los nodos generativos (src/engines/).
-  // '' → resolveEngine decide (env AGENT_PROVIDER → 'devin').
+  // '' → resolveEngineId decide: settings.json > AGENT_PROVIDER >
+  // 'auto' (preflight lo resuelve a un id concreto con sonda de auth).
   agent: Annotation({ reducer: replace, default: () => '' }),
 
   status: Annotation({ reducer: replace, default: () => 'pending' }),

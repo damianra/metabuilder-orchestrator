@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, BellOff, Boxes } from 'lucide-react';
+import { Bell, BellOff, Boxes, Cpu } from 'lucide-react';
 import { api } from './api.js';
 import { diffFinished, notifyFinished, snapshotStatuses } from './notifications.js';
 import NewAppForm from './components/NewAppForm.jsx';
 import ProjectList from './components/ProjectList.jsx';
 import ProjectDetail from './components/ProjectDetail.jsx';
 import QueuePanel from './components/QueuePanel.jsx';
+import SetupGate from './components/SetupGate.jsx';
 
 const parseHash = () => {
   const m = window.location.hash.match(/^#\/p\/([a-z0-9-]+)/);
@@ -20,6 +21,9 @@ export default function App() {
   const [jobs, setJobs] = useState([]);
   const [worker, setWorker] = useState(null);
   const [apiDown, setApiDown] = useState(false);
+  // undefined = cargando, null = sin motor configurado → setup gate
+  const [engine, setEngine] = useState(undefined);
+  const [gateOpen, setGateOpen] = useState(false);
   // null = aún no hubo poll de jobs → sin notificaciones en la 1ra carga
   const prevJobs = useRef(null);
   const [notifPerm, setNotifPerm] = useState(() =>
@@ -34,10 +38,11 @@ export default function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [p, j] = await Promise.all([api.projects(), api.jobs()]);
+      const [p, j, o] = await Promise.all([api.projects(), api.jobs(), api.options()]);
       setProjects(p);
       setJobs(j.jobs ?? []);
       setWorker(j.worker ?? null);
+      setEngine(o.engine ?? null);
       setApiDown(false);
     } catch {
       setApiDown(true);
@@ -88,6 +93,15 @@ export default function App() {
                 <BellOff size={13} />
               </span>
             )}
+            {engine && (
+              <button
+                title="Cambiar motor de agente"
+                onClick={() => setGateOpen(true)}
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50"
+              >
+                <Cpu size={13} /> motor: {engine}
+              </button>
+            )}
             {running > 0 && <span className="text-sky-700 font-semibold">{running} corriendo</span>}
             {queued > 0 && <span>{queued} en cola</span>}
             <span className={`inline-flex items-center gap-1.5 ${apiDown ? 'text-red-600' : 'text-emerald-700'}`}>
@@ -99,19 +113,31 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-5 px-6 py-6">
+        {!apiDown && (engine === null || gateOpen) && engine !== undefined && (
+          <SetupGate
+            current={engine}
+            onDone={(e) => {
+              setEngine(e);
+              setGateOpen(false);
+              refresh();
+            }}
+          />
+        )}
         {apiDown && (
           <p className="rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-800 ring-1 ring-amber-200">
             La API no responde — levantala con <code className="font-mono">npm run dashboard</code>.
           </p>
         )}
-        {route.view === 'detail' ? (
-          <ProjectDetail slug={route.slug} onChanged={refresh} />
-        ) : (
-          <>
-            <NewAppForm onEnqueued={refresh} cloneSlug={route.clone} />
-            <QueuePanel jobs={jobs} worker={worker} onChanged={refresh} />
-            <ProjectList projects={projects} />
-          </>
+        {engine !== null && !gateOpen && (
+          route.view === 'detail' ? (
+            <ProjectDetail slug={route.slug} onChanged={refresh} />
+          ) : (
+            <>
+              <NewAppForm onEnqueued={refresh} cloneSlug={route.clone} />
+              <QueuePanel jobs={jobs} worker={worker} onChanged={refresh} />
+              <ProjectList projects={projects} />
+            </>
+          )
         )}
       </main>
     </div>
