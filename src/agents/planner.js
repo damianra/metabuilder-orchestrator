@@ -43,6 +43,10 @@ export async function plannerNode(state) {
     // Engine: se sella el efectivo de este run (state.agent ya viene
     // resuelto por preflight — flag/--agent incluido, si lo hubo).
     existing.agent = state.agent || existing.agent;
+    // Deploy: lo efectivo de ESTE run manda — sin flags explícitos,
+    // index.js ya restauró plan.deploy a state (mismo valor); con
+    // --github/--no-push explícitos, el override queda persistido.
+    existing.deploy = { github: state.deployGithub, pages: state.deployPages };
     writePlan(state.projectDir, existing);
     const done = existing.steps.filter((s) => s.status === 'done').length;
     return {
@@ -85,6 +89,7 @@ export async function plannerNode(state) {
     plan.idea = state.idea;
     plan.stacks = { frontend: stacks.frontend?.id ?? null, backend: stacks.backend?.id ?? null };
     plan.agent = state.agent || null;
+    plan.deploy = { github: state.deployGithub, pages: state.deployPages };
     applyArch(plan, resolveArch(state.arch));
     writePlan(state.projectDir, plan);
     return {
@@ -148,6 +153,7 @@ export async function plannerNode(state) {
   plan.idea = state.idea;
   plan.stacks = { frontend: stacks.frontend?.id ?? null, backend: stacks.backend?.id ?? null };
   plan.agent = state.agent || null;
+  plan.deploy = { github: state.deployGithub, pages: state.deployPages };
   applyArch(plan, arch);
   writePlan(state.projectDir, plan);
 
@@ -199,6 +205,7 @@ export async function repairPlanNode(state) {
     applyArch(plan, resolveArch(state.arch));
     plan.stacks ??= state.plan?.stacks;
     plan.agent ??= state.plan?.agent ?? state.agent;
+    plan.deploy ??= state.plan?.deploy;
   }
 
   return {

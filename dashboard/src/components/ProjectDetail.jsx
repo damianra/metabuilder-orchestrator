@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { ArrowLeft, Container, Copy, ExternalLink, FileText, FlaskConical, LoaderCircle, Play, RotateCcw, Square, Trash2 } from 'lucide-react';
+import { ArrowLeft, CloudUpload, Container, Copy, ExternalLink, FileText, FlaskConical, GitBranch, Globe, LoaderCircle, Play, RotateCcw, Square, Trash2 } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import { api } from '../api.js';
 import { timeAgo } from '../util.js';
@@ -16,7 +16,11 @@ export default function ProjectDetail({ slug, onChanged }) {
   // qué acción está en vuelo ('resume'|'dockerize'|...) — el spinner va
   // en el botón correspondiente; el resto queda deshabilitado igual.
   const [busy, setBusy] = useState(null);
-  const [withGithub, setWithGithub] = useState(false);
+  // Remoto del proyecto: {repoUrl, pagesUrl} — va aparte del poll
+  // (ls-remote pega en la red). Se refetchea tras `publish`.
+  const [repoInfo, setRepoInfo] = useState(null);
+  const [pubOpen, setPubOpen] = useState(false);
+  const [withPages, setWithPages] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showLog, setShowLog] = useState(false);
   const [logData, setLogData] = useState(null);
@@ -34,8 +38,12 @@ export default function ProjectDetail({ slug, onChanged }) {
   const load = () =>
     api.project(slug).then(setProject).catch((e) => setError(e.message));
 
+  const loadRepo = () =>
+    api.repoInfo(slug).then(setRepoInfo).catch(() => setRepoInfo({ repoUrl: null, pagesUrl: null }));
+
   useEffect(() => {
     load();
+    loadRepo();
     const t = setInterval(load, 5000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -126,6 +134,25 @@ export default function ProjectDetail({ slug, onChanged }) {
     }
   };
 
+  // Publicar: crea el repo si falta + push main (+ gh-pages si se pidió).
+  // Devuelve {repoUrl, pagesUrl} — actualiza repoInfo al toque.
+  const pub = async () => {
+    setBusy('publish');
+    setNotice(null);
+    try {
+      const res = await api.action(slug, { action: 'publish', ghpages: withPages });
+      setRepoInfo({ repoUrl: res.repoUrl, pagesUrl: res.pagesUrl });
+      setPubOpen(false);
+      setNotice(res.pagesUrl ? `publicado: ${res.repoUrl} · ${res.pagesUrl}` : `publicado: ${res.repoUrl}`);
+      await load();
+      onChanged?.();
+    } catch (err) {
+      setNotice(`error: ${err.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const spin = <LoaderCircle size={15} className="animate-spin" />;
 
   // El detalle da 404 en dirs sin plan.json (run muerto en preflight) —
@@ -169,6 +196,10 @@ export default function ProjectDetail({ slug, onChanged }) {
   const devTargets = project.devTargets ?? [];
   const devRun = project.devRun;
   const devRunning = devRun?.status === 'running' && !devRun.stale;
+  // repoInfo llega async (ls-remote) — hasta entonces el repoUrl del
+  // detalle alcanza para renderizar el botón sin flash.
+  const repoUrl = repoInfo?.repoUrl ?? project.repoUrl;
+  const hasFrontend = project.scope !== 'backend';
 
   return (
     <div className="space-y-4">
@@ -198,19 +229,10 @@ export default function ProjectDetail({ slug, onChanged }) {
             className={btn}
             disabled={busy || !canResume}
             title={canResume ? 'Retoma el pipeline desde plan.json' : 'El proyecto ya terminó (o no tiene plan.json)'}
-            onClick={() => act({ action: 'resume', github: withGithub }, () => 'resume encolado')}
+            onClick={() => act({ action: 'resume' }, () => 'resume encolado')}
           >
             {busy === 'resume' ? spin : <Play size={15} />} Resume
           </button>
-          <label className="flex items-center gap-1.5 text-xs text-slate-600">
-            <input
-              type="checkbox"
-              checked={withGithub}
-              disabled={!canResume}
-              onChange={(e) => setWithGithub(e.target.checked)}
-            />
-            con GitHub
-          </label>
           <button
             className={btn}
             disabled={busy || building}
@@ -251,9 +273,28 @@ export default function ProjectDetail({ slug, onChanged }) {
             />
             + e2e
           </label>
-          {project.repoUrl && (
-            <button className={btn} onClick={openRepo}>
-              <ExternalLink size={15} /> Abrir repo
+          {repoUrl ? (
+            <>
+              <button className={btn} onClick={openRepo} title="Abrir el repo en una pestaña nueva">
+                <ExternalLink size={15} /> Abrir repo
+              </button>
+              {repoInfo?.pagesUrl && (
+                <button
+                  className={btn}
+                  title={repoInfo.pagesUrl}
+                  onClick={() => window.open(repoInfo.pagesUrl, '_blank', 'noopener')}
+                >
+                  <Globe size={15} /> Pages
+                </button>
+              )}
+            </>
+          ) : (
+            <button
+              className={btn}
+              title="Crear el repo en GitHub y pushear main"
+              onClick={() => setPubOpen((v) => !v)}
+            >
+              <GitBranch size={15} /> GitHub
             </button>
           )}
           <button
@@ -272,6 +313,28 @@ export default function ProjectDetail({ slug, onChanged }) {
             {busy === 'delete' ? spin : <Trash2 size={15} />} Eliminar
           </button>
         </div>
+        {pubOpen && !repoUrl && (
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg bg-slate-50 px-4 py-3 text-sm ring-1 ring-slate-200">
+            <p className="text-slate-700">¿Subir el proyecto a GitHub como repo público?</p>
+            {hasFrontend && (
+              <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={withPages}
+                  onChange={(e) => setWithPages(e.target.checked)}
+                />
+                + publicar el build en GitHub Pages
+              </label>
+            )}
+            <button
+              className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-40"
+              disabled={busy === 'publish'}
+              onClick={pub}
+            >
+              {busy === 'publish' ? spin : <CloudUpload size={14} />} Subir
+            </button>
+          </div>
+        )}
         {notice && <p className="mt-2 text-sm text-slate-600">{notice}</p>}
         {build && (
           <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">

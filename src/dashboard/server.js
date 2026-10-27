@@ -21,10 +21,13 @@ import { buildReport, resolveRunId } from '../report.js';
 import { writeDockerFiles, detectFrontend, detectOutDir } from '../tools/docker.js';
 import { listArchs } from '../arch/index.js';
 import { getVertical, listVerticals } from '../verticals/index.js';
-import { getStack, listStacks } from '../stacks/index.js';
+import { getStack, listStacks, resolveStacksSafe } from '../stacks/index.js';
 import { getEngine as getAgentEngine, listEngines } from '../engines/index.js';
 import { checkEngineAuth } from '../tools/acp.js';
 import { readSettings, writeSettings } from '../tools/settings.js';
+import { createRepo, getGitHubUser, getPages } from '../tools/github.js';
+import { enablePagesWithRetry } from '../agents/finalizer.js';
+import { publishRepo } from '../tools/publish.js';
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,60}$/;
 const SCOPES = ['frontend', 'backend', 'fullstack'];
@@ -337,6 +340,9 @@ export function createDashboardApp({
   // settings.json — la escribe POST /api/settings; inyectable en tests
   // para no tocar la config real del repo.
   settingsPath = config.settingsPath,
+  // REST de GitHub para el action `publish` — inyectable en tests (la
+  // parte git va por runCmd). Mismas funciones que usa finalize.
+  githubApi = { getUser: getGitHubUser, createRepo, enablePages: enablePagesWithRetry, getPages },
 } = {}) {
   let engineCache = null;
   let engineProbedAt = -Infinity;
@@ -349,6 +355,8 @@ export function createDashboardApp({
   };
   const app = express();
   app.use(express.json({ limit: '64kb' }));
+  // Slugs con un publish en vuelo — guard de concurrencia del action.
+  const publishing = new Set();
 
   const appDir = (slug) => join(appsDir, slug);
   const validSlug = (req, res, { requirePlan = true } = {}) => {
@@ -605,6 +613,29 @@ export function createDashboardApp({
     });
   });
 
+  // Info del remoto del proyecto (repo + Pages) — endpoint aparte del
+  // detalle porque `git ls-remote` pega en la red: la UI lo consulta
+  // on-demand al montar, no en cada poll de 5s.
+  app.get('/api/projects/:slug/repo', async (req, res) => {
+    const slug = validSlug(req, res);
+    if (!slug) return;
+    const dir = appDir(slug);
+    const remote = (await runCmd('git remote get-url origin', { cwd: dir, timeoutMs: 5000 })).stdout.trim();
+    const repoUrl = toWebUrl(remote || null);
+    let pagesUrl = null;
+    if (remote) {
+      const ls = await runCmd('git ls-remote --heads origin gh-pages', {
+        cwd: dir,
+        timeoutMs: 15_000,
+      });
+      const m = repoUrl?.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)$/);
+      if (ls.ok && ls.stdout.trim() && m) {
+        pagesUrl = `https://${m[1]}.github.io/${m[2]}/`;
+      }
+    }
+    res.json({ repoUrl, pagesUrl });
+  });
+
   app.get('/api/projects/:slug', async (req, res) => {
     const slug = validSlug(req, res);
     if (!slug) return;
@@ -698,10 +729,42 @@ export function createDashboardApp({
     const dir = appDir(slug);
 
     if (action === 'resume') {
-      const args = ['--resume', slug, '--yes'];
-      args.push(req.body.github ? '--github' : '--no-push');
-      if (req.body.github && req.body.ghpages) args.push('--ghpages');
-      return res.status(201).json({ job: addJob(args, baseDir) });
+      // Sin flags de deploy: el CLI restaura plan.deploy (lo que el run
+      // original ya tenía). Publicar se hace aparte, con `publish`.
+      return res.status(201).json({ job: addJob(['--resume', slug, '--yes'], baseDir) });
+    }
+
+    // Publicar en GitHub bajo demanda: crea el repo si falta, pushea
+    // main y — solo si viene ghpages:true y el proyecto tiene frontend —
+    // publica el build en gh-pages + activa Pages. Sincrónico: el UI
+    // muestra el botón ocupado hasta que vuelve. Guard en memoria: dos
+    // publish simultáneos sobre el mismo repo se pisan (index.lock).
+    if (action === 'publish') {
+      if (!config.githubToken) {
+        return res.status(503).json({ error: 'sin GITHUB_TOKEN en .env — no se puede publicar' });
+      }
+      if (publishing.has(slug)) {
+        return res.status(409).json({ error: 'ya hay un publish en curso para este proyecto' });
+      }
+      const plan = readJson(join(dir, 'plan.json'));
+      const { frontend } = resolveStacksSafe(plan?.scope ?? 'frontend', plan?.stacks ?? {});
+      publishing.add(slug);
+      try {
+        const out = await publishRepo({
+          dir,
+          slug,
+          ghpages: Boolean(req.body.ghpages) && Boolean(frontend),
+          buildDir: frontend?.buildDir ?? 'dist',
+          pagesBaseEnv: frontend?.pagesBaseEnv ?? null,
+          runCmd,
+          github: githubApi,
+        });
+        return res.json(out);
+      } catch (e) {
+        return res.status(502).json({ error: `publish falló: ${e.message}` });
+      } finally {
+        publishing.delete(slug);
+      }
     }
 
     if (action === 'dockerize') {
@@ -829,7 +892,7 @@ export function createDashboardApp({
       return res.json({ url });
     }
 
-    res.status(400).json({ error: 'action debe ser resume|dockerize|test|run-container|stop-container|run-dev|stop-dev|delete|open-repo' });
+    res.status(400).json({ error: 'action debe ser resume|publish|dockerize|test|run-container|stop-container|run-dev|stop-dev|delete|open-repo' });
   });
 
   return app;

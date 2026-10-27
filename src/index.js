@@ -9,7 +9,7 @@ import { getVertical, inferAppType, listVerticals } from './verticals/index.js';
 import { resolveResumeDir } from './tools/slug.js';
 import { getEngine, listEngines } from './engines/index.js';
 import { config } from './config.js';
-import { setQuiet } from './agents/common.js';
+import { readPlan, setQuiet } from './agents/common.js';
 
 function parseArgs(argv) {
   const args = { noPush: false, keepGoing: false, yes: false, github: false, ghpages: false, quiet: false, verbose: false, verifyDocker: false };
@@ -139,6 +139,24 @@ if (args.resume) {
         `(probado como ruta y como slug en ${config.generatedAppsDir})`,
     );
     process.exit(2);
+  }
+}
+
+// Deploy en resume: plan.deploy es "lo ingresado previamente" — manda
+// salvo flags explícitos (--github/--no-push, o lo que respondió el
+// usuario en las preguntas de collectArgs).
+if (resumeDir && !args.github && !args.noPush) {
+  let saved = null;
+  try {
+    saved = readPlan(resumeDir);
+  } catch (e) {
+    console.error(`--resume: plan.json inválido en ${resumeDir}: ${e.message}`);
+    process.exit(2);
+  }
+  if (saved?.deploy) {
+    args.github = Boolean(saved.deploy.github);
+    args.ghpages = args.ghpages || (Boolean(saved.deploy.pages) && args.github);
+    args.noPush = !args.github;
   }
 }
 

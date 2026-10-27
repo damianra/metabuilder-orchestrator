@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDashboardApp } from '../src/dashboard/server.js';
+import { config } from '../src/config.js';
 
 let base, appsDir, runsDir, server, url, startTestCalls, startBuildCalls, startDevCalls, stopDevCalls, fakeEngine, runCmdCalls, runCmdHandler, settingsPath, agentStatus;
 
@@ -232,11 +233,104 @@ describe('POST /api/runs', () => {
 });
 
 describe('POST /api/projects/:slug/actions', () => {
-  it('resume encola --resume <slug> --yes --no-push', async () => {
+  it('resume encola --resume <slug> --yes (sin flags de deploy: usa plan.deploy)', async () => {
     seedApp('app-uno');
-    const { status, body } = await post('/api/projects/app-uno/actions', { action: 'resume' });
+    const { status, body } = await post('/api/projects/app-uno/actions', {
+      action: 'resume',
+      github: true,
+      ghpages: true,
+    });
     expect(status).toBe(201);
-    expect(body.job.args).toEqual(['--resume', 'app-uno', '--yes', '--no-push']);
+    expect(body.job.args).toEqual(['--resume', 'app-uno', '--yes']);
+  });
+
+  it('GET /:slug/repo sin git → nulls; con remote + gh-pages → repoUrl + pagesUrl', async () => {
+    seedApp('sin-git');
+    expect(await api('/api/projects/sin-git/repo')).toEqual({
+      status: 200,
+      body: { repoUrl: null, pagesUrl: null },
+    });
+
+    seedApp('con-repo');
+    runCmdHandler = (cmd) => {
+      if (cmd.includes('ls-remote')) return { ok: true, stdout: 'abc123\trefs/heads/gh-pages\n' };
+      if (cmd.includes('remote get-url')) {
+        return { ok: true, stdout: 'git@github.com:tester/con-repo.git\n' };
+      }
+      return { ok: true, stdout: '', stderr: '' };
+    };
+    const { status, body } = await api('/api/projects/con-repo/repo');
+    expect(status).toBe(200);
+    expect(body.repoUrl).toBe('https://github.com/tester/con-repo');
+    expect(body.pagesUrl).toBe('https://tester.github.io/con-repo/');
+
+    // mismo remote pero sin branch gh-pages → pagesUrl null
+    runCmdHandler = (cmd) =>
+      cmd.includes('remote get-url')
+        ? { ok: true, stdout: 'https://github.com/tester/con-repo.git\n' }
+        : { ok: true, stdout: '', stderr: '' };
+    expect((await api('/api/projects/con-repo/repo')).body.pagesUrl).toBeNull();
+  });
+
+  it('publish: crea repo + push main; gh-pages solo con ghpages:true', async () => {
+    const dir = seedApp('para-publicar');
+    mkdirSync(join(dir, 'dist'), { recursive: true }); // el "build" fake no genera nada
+    const prevToken = config.githubToken;
+    config.githubToken = 'fake-token'; // hermético: sin depender del .env real
+    const ghCalls = [];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = async (u, opts) => {
+      const s = String(u);
+      if (s.includes('api.github.com')) {
+        ghCalls.push(`${opts?.method ?? 'GET'} ${s.split('api.github.com')[1]}`);
+        if (s.endsWith('/user')) return Response.json({ login: 'tester' });
+        return Response.json({}, { status: 201 });
+      }
+      return origFetch(u, opts);
+    };
+    try {
+      const { status, body } = await post('/api/projects/para-publicar/actions', { action: 'publish' });
+      expect(status).toBe(200);
+      expect(body).toMatchObject({
+        repoUrl: 'https://github.com/tester/para-publicar',
+        pagesUrl: null,
+      });
+      expect(ghCalls).toContain('POST /user/repos');
+      const cmds = runCmdCalls.map((c) => c);
+      expect(cmds.some((c) => c.includes('push -u origin main'))).toBe(true);
+      // sin ghpages: no hay build ni push de gh-pages
+      expect(cmds.some((c) => c.includes('gh-pages') || c.includes('npm run build'))).toBe(false);
+
+      // con ghpages → build + push -f gh-pages + POST /pages
+      runCmdCalls = [];
+      ghCalls.length = 0;
+      const ok = await post('/api/projects/para-publicar/actions', {
+        action: 'publish',
+        ghpages: true,
+      });
+      expect(ok.status).toBe(200);
+      expect(ok.body.pagesUrl).toBe('https://tester.github.io/para-publicar/');
+      const cmds2 = runCmdCalls.map((c) => c);
+      expect(cmds2.some((c) => c.includes('npm run build'))).toBe(true);
+      expect(cmds2.some((c) => c.includes('push -f origin gh-pages'))).toBe(true);
+      expect(ghCalls.some((c) => c.startsWith('POST /repos/tester/para-publicar/pages'))).toBe(true);
+    } finally {
+      globalThis.fetch = origFetch;
+      config.githubToken = prevToken;
+    }
+  });
+
+  it('publish sin GITHUB_TOKEN → 503', async () => {
+    seedApp('sin-token');
+    const prev = config.githubToken;
+    config.githubToken = '';
+    try {
+      const { status, body } = await post('/api/projects/sin-token/actions', { action: 'publish' });
+      expect(status).toBe(503);
+      expect(body.error).toContain('GITHUB_TOKEN');
+    } finally {
+      config.githubToken = prev;
+    }
   });
 
   it('dockerize escribe Dockerfile y reporta skipped sin engine; con engine buildea', async () => {

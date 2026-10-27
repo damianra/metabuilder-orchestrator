@@ -331,7 +331,14 @@ export async function finalizerNode(state) {
   return { status: 'done', history };
 }
 
-async function deployPages(git, distDir, remoteUrl, owner, repoName) {
+export async function deployPages(
+  git,
+  distDir,
+  remoteUrl,
+  owner,
+  repoName,
+  { token = config.githubToken, enable = enablePagesWithRetry, read = getPages } = {},
+) {
   const logs = [];
   for (const cmd of [
     'init -b gh-pages',
@@ -347,14 +354,14 @@ async function deployPages(git, distDir, remoteUrl, owner, repoName) {
       return logs;
     }
   }
-  const r = await git(`${ghAuthArgs()} push -f origin gh-pages`, distDir);
+  const r = await git(`${ghAuthArgs(token)} push -f origin gh-pages`, distDir);
   if (!r.ok) {
     logs.push(log('finalize', `push gh-pages falló: ${r.stderr.slice(-200)}`));
     return logs;
   }
   const pagesUrl = `https://${owner}.github.io/${repoName}/`;
   try {
-    const pages = await enablePagesWithRetry(config.githubToken, owner, repoName);
+    const pages = await enable(token, owner, repoName);
     logs.push(
       log(
         'finalize',
@@ -367,7 +374,7 @@ async function deployPages(git, distDir, remoteUrl, owner, repoName) {
     // 409 "already enabled" (el push suele auto-habilitarla) o un fallo
     // persistente — el GET confirma; la URL igual es válida.
     try {
-      const pages = await getPages(config.githubToken, owner, repoName);
+      const pages = await read(token, owner, repoName);
       logs.push(
         log(
           'finalize',
