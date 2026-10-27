@@ -13,6 +13,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { run } from './tools/shell.js';
 import { checkEngineAuth } from './tools/acp.js';
+import { getEngine, listEngines, resolveEngineId } from './engines/index.js';
 
 const ok = (name, detail = '') => ({ name, level: 'ok', detail });
 const warn = (name, detail = '') => ({ name, level: 'warn', detail });
@@ -27,28 +28,60 @@ const binVersion = async (runCmd, bin) => {
 
 export async function runDoctor({
   runCmd = run,
-  authProbe = (timeoutMs) => checkEngineAuth('devin', timeoutMs),
+  authProbe = (engineId, timeoutMs) => checkEngineAuth(engineId, timeoutMs),
   importFn = (m) => import(m),
   home = homedir(),
   env = process.env,
+  resolveId = () => resolveEngineId(),
+  agentEngine = (id) => getEngine(id), // descriptor del registry — tests lo fijan a bin literal
 } = {}) {
   const results = [];
 
   // Obligatorios — preflight frena el pipeline si falta cualquiera.
-  for (const bin of ['node', 'npm', 'git', 'devin']) {
+  for (const bin of ['node', 'npm', 'git']) {
     const v = await binVersion(runCmd, bin);
     results.push(v ? ok(bin, v) : fail(bin, 'no está en PATH'));
   }
 
-  // Auth Devin via ACP — el handshake real (initialize+authenticate,
-  // ~1s, sin consumir slot del semáforo). Si el binario `devin` no
-  // está, el spawn crashearía — se reporta directo sin probar.
-  const devinBin = results.find((r) => r.name === 'devin').level !== 'fail';
-  if (!devinBin) {
-    results.push(fail('devin auth (ACP)', 'no probada — el binario devin no está en PATH'));
-  } else {
-    const auth = await authProbe(15_000);
-    results.push(auth.ok ? ok('devin auth (ACP)') : fail('devin auth (ACP)', auth.error ?? 'falló'));
+  // Engines de agente (src/engines/): se reportan todos con su probe
+  // real (bin + handshake ACP), pero solo falla el engine EFECTIVO
+  // (resolveEngineId: --agent > plan > settings > env > 'auto'). En
+  // 'auto' basta con que uno autentique — si ninguno anda, fail global.
+  const effective = resolveId();
+  let anyEngineOk = false;
+  for (const id of listEngines()) {
+    const e = agentEngine(id);
+    const v = await binVersion(runCmd, e.bin);
+    const name = `${id} auth (ACP)`;
+    if (!v) {
+      results.push(
+        effective === id
+          ? fail(name, `${e.bin} no está en PATH`)
+          : warn(name, `${e.bin} no está en PATH`),
+      );
+      continue;
+    }
+    const auth = await authProbe(id, 15_000);
+    anyEngineOk ||= auth.ok;
+    results.push(
+      auth.ok
+        ? ok(name, effective === 'auto' ? 'autentica (elegible por auto)' : 'autentica')
+        : effective === id
+          ? fail(name, auth.error ?? 'falló')
+          : warn(name, auth.error ?? 'falló'),
+    );
+  }
+  if (effective === 'auto' && !anyEngineOk) {
+    results.push(
+      fail(
+        'motor de agente',
+        'ningún engine autentica — `devin auth login` u `opencode auth login`',
+      ),
+    );
+  } else if (effective !== 'auto' && !getEngine(effective)) {
+    results.push(
+      fail('motor de agente', `engine desconocido "${effective}" (${listEngines().join('|')})`),
+    );
   }
 
   // Opcionales de acá en adelante — warnings, no frenan la generación.

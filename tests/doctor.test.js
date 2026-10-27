@@ -24,6 +24,8 @@ const base = (over = {}) => ({
   importFn: async () => ({}),
   home: (dir = mkdtempSync(join(tmpdir(), 'mb-doctor-'))),
   env: { GITHUB_TOKEN: 'x' },
+  resolveId: () => 'devin', // engine efectivo — los tests fijan cuál es
+  agentEngine: (id) => ({ id, label: id, bin: id }),
   ...over,
 });
 
@@ -31,7 +33,7 @@ const byName = (rs) => Object.fromEntries(rs.map((r) => [r.name, r]));
 
 describe('runDoctor', () => {
   it('máquina completa → todo ok', async () => {
-    const o = base({ runCmd: fakeRun({ node: 1, npm: 1, git: 1, devin: 1 }, { podman: true }) });
+    const o = base({ runCmd: fakeRun({ node: 1, npm: 1, git: 1, devin: 1, opencode: 1 }, { podman: true }) });
     mkdirSync(join(o.home, '.cache', 'ms-playwright', 'chromium-1234'), { recursive: true });
     const rs = await runDoctor(o);
     expect(rs.every((r) => r.level === 'ok')).toBe(true);
@@ -50,8 +52,7 @@ describe('runDoctor', () => {
         },
       }),
     );
-    expect(probed).toBe(false);
-    expect(byName(rs)['devin'].level).toBe('fail');
+    expect(probed).toBe(false); // ni devin ni opencode: sin bin no hay probe
     expect(byName(rs)['devin auth (ACP)'].level).toBe('fail');
     expect(byName(rs)['devin auth (ACP)'].detail).toContain('no está en PATH');
     expect(exitCode(rs)).toBe(1);
@@ -75,5 +76,29 @@ describe('runDoctor', () => {
     expect(byName(rs)['GITHUB_TOKEN'].level).toBe('warn');
     expect(byName(rs)['node-pty'].level).toBe('warn');
     expect(exitCode(rs)).toBe(0);
+  });
+
+  it('auto: solo opencode usable → devin warn, exit 0', async () => {
+    const rs = await runDoctor(
+      base({
+        runCmd: fakeRun({ node: 1, npm: 1, git: 1, opencode: 1 }),
+        authProbe: async (id) => ({ ok: id === 'opencode' }),
+        resolveId: () => 'auto',
+      }),
+    );
+    expect(byName(rs)['devin auth (ACP)'].level).toBe('warn');
+    expect(byName(rs)['opencode auth (ACP)'].level).toBe('ok');
+    expect(exitCode(rs)).toBe(0);
+  });
+
+  it('auto: ningún engine autentica → fail global', async () => {
+    const rs = await runDoctor(
+      base({
+        authProbe: async () => ({ ok: false, error: 'x' }),
+        resolveId: () => 'auto',
+      }),
+    );
+    expect(byName(rs)['motor de agente'].level).toBe('fail');
+    expect(exitCode(rs)).toBe(1);
   });
 });
