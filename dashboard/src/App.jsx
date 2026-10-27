@@ -123,7 +123,7 @@ export default function App() {
             }}
           />
         )}
-        {engine !== null && !gateOpen && apiDown && (
+        {apiDown && (
           <p className="rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-800 ring-1 ring-amber-200">
             La API no responde — levantala con <code className="font-mono">npm run dashboard</code>.
           </p>
