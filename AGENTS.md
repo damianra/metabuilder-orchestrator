@@ -230,7 +230,7 @@ fina sobre la infra existente:
   proc → cubre npm + vite/next + descendientes; marca stopped) y
   `delete` (borra `generated-apps/<slug>` recursivo + `<engine> rm -f`
   y `rmi -f <slug>:local` si hay engine + frena el dev run vigente +
-  cierra la sesión de terminal Devin via `attachTerminal().killBySlug`;
+  cierra las sesiones de terminal del slug via `attachTerminal().killBySlug`;
   **no exige plan.json** — cubre dirs huérfanos de runs muertos en
   preflight, única acción con `requirePlan:false`; 409 si hay job
   pending/running del slug — el worker escribe dentro del dir, con
@@ -249,12 +249,14 @@ fina sobre la infra existente:
   detalle).
   El pid del child queda persistido en el job mientras corre.
 - `WS /api/projects/:slug/terminal` (`src/dashboard/terminal.js`,
-  `attachTerminal(server)` colgado en `main()`): spawnea `devin` TUI
-  via `node-pty` con cwd en la app. La sesión adquiere un slot de
-  `acquireDevinSlot` (espera si hay generación en curso — el cliente
-  ve "esperando slot"). Protocolo JSON: in `in`/`resize`/`close`, out
-  `out`/`status`/`exit`/`error`. Una sesión por slug — clientes extra
-  se adjuntan al mismo pty (mirror + replay de scrollback ~200KB); se
+  `attachTerminal(server)` colgado en `main()`): spawnea el TUI del
+  engine (`devin` / `opencode`, elegido con `?engine=<id>` o el engine
+  configurado en settings.json) via `node-pty` con cwd en la app. La
+  sesión adquiere un slot de `acquireDevinSlot` (espera si hay
+  generación en curso — el cliente ve "esperando slot"). Protocolo
+  JSON: in `in`/`resize`/`close`, out `out`/`status`/`exit`/`error`.
+  Una sesión por `slug:engine` (los dos engines conviven) — clientes
+  extra se adjuntan al mismo pty (mirror + replay de scrollback ~200KB); se
   mata con `close` explícito, exit del pty, o 5 min sin clientes
   (IDLE_KILL_MS). Guardas: slug regex + dir con plan.json bajo
   appsDir, Origin solo localhost (anti-CSWSH), upgrade bajo /api/ que

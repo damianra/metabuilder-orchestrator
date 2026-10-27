@@ -3,24 +3,44 @@ import { Square, Terminal as TerminalIcon } from 'lucide-react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
+import { api } from '../api.js';
 
-// Terminal Devin embebida: abre una sesión `devin` (PTY) en el dir de
-// la app via WS /api/projects/:slug/terminal. Colapsar NO mata la
-// sesión — el server la mantiene viva ~5min sin clientes y el
-// scrollback se reenvía al reabrir (reattach). "Cerrar sesión" sí la
-// mata explícitamente.
+// Terminal de agente embebida: abre una sesión del TUI del engine
+// (`devin` / `opencode`) en el dir de la app via WS
+// /api/projects/:slug/terminal?engine=<id>. Colapsar NO mata la sesión
+// — el server la mantiene viva ~5min sin clientes y el scrollback se
+// reenvía al reabrir (reattach). "Cerrar sesión" sí la mata.
+// El selector usa GET /api/engines (probe real de instalación) —
+// default = engine configurado del dashboard.
 
 const btn =
   'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ring-1 ring-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed';
+const select =
+  'rounded-lg bg-white px-2 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 outline-none';
 
 export default function TerminalPanel({ slug }) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState(null);
+  const [engines, setEngines] = useState(null);
+  const [engine, setEngine] = useState(null);
   const boxRef = useRef(null);
   const wsRef = useRef(null);
 
+  // Probe de engines (una vez por apertura del panel): define el
+  // default (engine configurado) y cuáles están instalados.
   useEffect(() => {
-    if (!open || !boxRef.current) return;
+    if (!open || engines) return;
+    api
+      .engines()
+      .then((d) => {
+        setEngines(d.engines ?? []);
+        setEngine((e) => e ?? d.engine ?? d.engines?.[0]?.id ?? null);
+      })
+      .catch(() => setEngines([]));
+  }, [open, engines]);
+
+  useEffect(() => {
+    if (!open || !engine || !boxRef.current) return;
 
     const term = new Terminal({
       cursorBlink: true,
@@ -36,7 +56,7 @@ export default function TerminalPanel({ slug }) {
 
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     const ws = new WebSocket(
-      `${proto}://${location.host}/api/projects/${slug}/terminal?cols=${term.cols}&rows=${term.rows}`,
+      `${proto}://${location.host}/api/projects/${slug}/terminal?cols=${term.cols}&rows=${term.rows}&engine=${engine}`,
     );
     wsRef.current = ws;
 
@@ -77,7 +97,7 @@ export default function TerminalPanel({ slug }) {
       term.dispose();
       wsRef.current = null;
     };
-  }, [open, slug]);
+  }, [open, slug, engine]);
 
   const cerrarSesion = () => {
     if (wsRef.current?.readyState === WebSocket.OPEN)
@@ -85,20 +105,38 @@ export default function TerminalPanel({ slug }) {
     setOpen(false);
   };
 
+  const engineLabel = engines?.find((e) => e.id === engine)?.label ?? engine ?? 'agente';
+
   return (
     <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-2 text-left font-bold tracking-tight text-slate-900"
       >
-        <TerminalIcon size={16} /> Terminal Devin {open ? '▾' : '▸'}
+        <TerminalIcon size={16} /> Terminal {open ? '▾' : '▸'}
       </button>
       {open && (
         <div className="mt-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-slate-500">
-              sesión <code className="rounded bg-slate-100 px-1">devin</code> en el directorio de
-              la app{status ? ` · ${status}` : ''}
+            <p className="flex items-center gap-2 text-xs text-slate-500">
+              sesión{' '}
+              {engines?.length ? (
+                <select
+                  className={select}
+                  value={engine ?? ''}
+                  onChange={(e) => setEngine(e.target.value)}
+                >
+                  {engines.map((en) => (
+                    <option key={en.id} value={en.id} disabled={!en.installed}>
+                      {en.label}
+                      {!en.installed ? ' (no instalado)' : ''}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <code className="rounded bg-slate-100 px-1">{engineLabel}</code>
+              )}{' '}
+              en el directorio de la app{status ? ` · ${status}` : ''}
             </p>
             <button onClick={cerrarSesion} className={btn}>
               <Square size={14} /> Cerrar sesión
