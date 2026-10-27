@@ -39,7 +39,9 @@ const shutdown = (code = 0) => {
   );
   const killAll = () => {
     for (const p of procs) {
-      if (p.exitCode === null && !p.killed) {
+      // killed = "señal enviada", no "proceso muerto" — un hijo que
+      // ignore SIGTERM sigue con exitCode/signalCode en null.
+      if (p.exitCode === null && p.signalCode === null) {
         try {
           p.kill('SIGKILL');
         } catch {

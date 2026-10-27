@@ -214,7 +214,7 @@ export default function ProjectDetail({ slug, onChanged }) {
   // detalle alcanza para renderizar el botón sin flash.
   const repoUrl = repoInfo?.repoUrl ?? project.repoUrl;
   const hasFrontend = project.scope !== 'backend';
-  // publish llega en el detalle (publish-run.json del server): running
+  // publish llega en el detalle (publish.json del server): running
   // → spinner, done → anchors, failed → error.
   const publish = project.publish;
   const publishing = publish?.status === 'running';
