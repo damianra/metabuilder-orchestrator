@@ -338,9 +338,14 @@ Los nodos generativos hablan con un **engine ACP** via `runAgentPrompt({agent, .
 para todos. El engine se declara como datos en `src/engines/<id>.js`
 (bin, `acpArgs`, `authParams`, `defaultMode`/`defaultModel`, `tuiArgs`,
 `strictConfig`) + entrada en el `Map` de `src/engines/index.js` —
-`resolveEngine(state.agent)` decide: `--agent` > `AGENT_PROVIDER` >
-`'devin'`. Pool de procesos keyed por engine id; el semáforo
-(`devin-lock.js`) es compartido entre engines.
+`resolveEngineId` decide: `--agent` (state.agent) > `plan.agent`
+(resume) > `settings.json` `engine` (`src/tools/settings.js` — el
+dashboard lo escribe, gitignored) > `AGENT_PROVIDER` > `'auto'` —
+auto sonda cada engine con `checkEngineAuth` y gana el primero que
+autentica (preflight; en callers sin sonda `resolveEngine` mapea
+auto/'' → devin). `plan.agent` se sella al crear/resumir el plan
+(mismo patrón que `plan.stacks`). Pool de procesos keyed por engine
+id; el semáforo (`devin-lock.js`) es compartido entre engines.
 
 - `devin` (`devin acp`): authenticate `windsurf-api-key`, mode `bypass`.
 - `opencode` (`opencode acp`, verificado v2.1.4): **sin authenticate**
@@ -412,6 +417,7 @@ Notas ACP:
   "idea": "...",   // restaurada por --resume (planner la persiste al crear el plan)
   "arch": "flat",  // patrón backend (--arch); resume lo restaura
   "stacks": { "frontend": "vite-react", "backend": "express-sqlite" }, // idem
+  "agent": "devin",  // engine ACP que lo generó (--agent); resume lo restaura
   "validated": false,
   "steps": [
     { "id": 1, "description": "...", "type": "frontend|backend|test|e2e|infra",

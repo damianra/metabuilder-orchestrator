@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { readSettings } from '../tools/settings.js';
 import devin from './devin.js';
 import opencode from './opencode.js';
 
@@ -12,17 +13,43 @@ export const listEngines = () => [...ENGINES.keys()];
 export const getEngine = (id) => ENGINES.get(id) ?? null;
 
 /**
- * Resuelve el engine efectivo. Precedencia:
- *   explícito (--agent / state.agent / plan.agent) > AGENT_PROVIDER
- *   env > 'devin'.
- * Lanza si el id no es un engine conocido — el caller decide si lo
- * convierte en fail del pipeline (preflight) o en error del CLI.
+ * Id del engine elegido, SIN sonda de auth. Precedencia:
+ *   flag (--agent / state.agent) > plan.agent (resume) >
+ *   settings.json `engine` (dashboard) > env AGENT_PROVIDER > 'auto'.
+ * `sources.flag` puede ser '' (default del state) — se ignora.
+ * 'auto' lo resuelve con probe el caller que pueda (preflight);
+ * resolveEngine() lo mapea a 'devin' para callers síncronos.
  */
-export function resolveEngine(explicit) {
-  const id = explicit || config.agentProvider || 'devin';
+export function resolveEngineId({ flag, plan, settings } = {}) {
+  const configured = settings !== undefined ? settings : readSettings().engine;
+  return flag || plan || configured || config.agentProvider || 'auto';
+}
+
+/**
+ * Resuelve a un engine concreto. Acepta un id string, un objeto de
+ * sources ({flag, plan, settings}) o nada. 'auto'/'' sin probe →
+ * 'devin' (default histórico; el auto real con fallback a opencode
+ * vive en preflight via resolveEngineAuto).
+ */
+export function resolveEngine(sources) {
+  let id = typeof sources === 'string' ? sources : resolveEngineId(sources);
+  if (!id || id === 'auto') id = 'devin';
   const engine = ENGINES.get(id);
   if (!engine) {
-    throw new Error(`engine desconocido "${id}" (usá ${listEngines().join('|')})`);
+    throw new Error(`engine desconocido "${id}" (usá ${listEngines().join('|')}|auto)`);
   }
   return engine;
+}
+
+/**
+ * Resolución 'auto' con sonda real: el primer engine del registry que
+ * autentica gana (devin primero por default histórico). `probe` es
+ * inyectable (preflight pasa checkEngineAuth). null si ninguno anda —
+ * el caller convierte eso en fail con mensaje accionable.
+ */
+export async function resolveEngineAuto(probe) {
+  for (const id of listEngines()) {
+    if ((await probe(id)).ok) return getEngine(id);
+  }
+  return null;
 }

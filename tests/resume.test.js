@@ -74,6 +74,15 @@ describe('plannerNode — camino resume (plan.json existente)', () => {
     expect(onDisk.steps[1].status).toBe('pending');
   });
 
+  it('sella plan.agent con el engine efectivo del run (state.agent)', async () => {
+    const dir = tmp('plan-');
+    writePlanJson(dir, samplePlan(['done']));
+    const out = await plannerNode(state(dir, { agent: 'opencode' }));
+    const onDisk = JSON.parse(readFileSync(join(dir, 'plan.json'), 'utf8'));
+    expect(onDisk.agent).toBe('opencode');
+    expect(out.plan.agent).toBe('opencode');
+  });
+
   it('restaura scope/appType/idea del plan (no del CLI)', async () => {
     const dir = tmp('plan-');
     writePlanJson(dir, samplePlan(['done', 'pending']));

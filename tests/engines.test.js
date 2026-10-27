@@ -2,7 +2,13 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { getEngine, listEngines, resolveEngine } from '../src/engines/index.js';
+import {
+  getEngine,
+  listEngines,
+  resolveEngine,
+  resolveEngineAuto,
+  resolveEngineId,
+} from '../src/engines/index.js';
 import { runAgentPrompt } from '../src/tools/acp.js';
 
 // OPENCODE_BIN apunta al mismo stub que DEVIN_BIN (vitest.config.js).
@@ -33,10 +39,30 @@ describe('registry de engines', () => {
     expect(getEngine('nope')).toBeNull();
   });
 
-  it('resolveEngine: explícito > env > devin default', () => {
+  it('resolveEngineId: flag > plan > settings > env > auto', () => {
+    // Precedencia completa (sin tocar settings.json ni env reales:
+    // sources inyectables; METABUILDER_SETTINGS_PATH apunta a tmp).
+    expect(resolveEngineId({ flag: 'opencode', plan: 'devin', settings: 'devin' }))
+      .toBe('opencode');
+    expect(resolveEngineId({ flag: '', plan: 'opencode', settings: 'devin' }))
+      .toBe('opencode');
+    expect(resolveEngineId({ flag: '', plan: '', settings: 'opencode' }))
+      .toBe('opencode');
+    // Sin fuentes → 'auto' (la sonda la hace preflight)
+    expect(resolveEngineId({})).toBe('auto');
+  });
+
+  it('resolveEngine: sin probe, auto o vacío cae a devin', () => {
     expect(resolveEngine('opencode').id).toBe('opencode');
     expect(resolveEngine('').id).toBe('devin');
+    expect(resolveEngine('auto').id).toBe('devin');
     expect(() => resolveEngine('nope')).toThrow(/engine desconocido/);
+  });
+
+  it('resolveEngineAuto: gana el primero que autentica', async () => {
+    const probe = (id) => Promise.resolve({ ok: id === 'opencode' });
+    expect((await resolveEngineAuto(probe)).id).toBe('opencode');
+    expect(await resolveEngineAuto(() => Promise.resolve({ ok: false }))).toBeNull();
   });
 });
 

@@ -22,6 +22,9 @@ export default defineConfig({
       // compiten por el slot real ~/.metabuilder/devin-slots — se
       // bloquean durante un validate:pr o un npm start concurrente.
       DEVIN_SLOTS_DIR: join(tmpdir(), 'mb-test-devin-slots'),
+      // settings.json aislado: un settings real del repo no debe
+      // contaminar resolveEngineId en los tests.
+      METABUILDER_SETTINGS_PATH: join(tmpdir(), 'mb-test-settings.json'),
     },
   },
 });

@@ -40,6 +40,9 @@ export async function plannerNode(state) {
         backend: state.stackBackend ?? undefined,
       });
     }
+    // Engine: se sella el efectivo de este run (state.agent ya viene
+    // resuelto por preflight — flag/--agent incluido, si lo hubo).
+    existing.agent = state.agent || existing.agent;
     writePlan(state.projectDir, existing);
     const done = existing.steps.filter((s) => s.status === 'done').length;
     return {
@@ -81,6 +84,7 @@ export async function plannerNode(state) {
     plan.projectName = state.projectSlug;
     plan.idea = state.idea;
     plan.stacks = { frontend: stacks.frontend?.id ?? null, backend: stacks.backend?.id ?? null };
+    plan.agent = state.agent || null;
     applyArch(plan, resolveArch(state.arch));
     writePlan(state.projectDir, plan);
     return {
@@ -143,6 +147,7 @@ export async function plannerNode(state) {
   plan.projectName = state.projectSlug;
   plan.idea = state.idea;
   plan.stacks = { frontend: stacks.frontend?.id ?? null, backend: stacks.backend?.id ?? null };
+  plan.agent = state.agent || null;
   applyArch(plan, arch);
   writePlan(state.projectDir, plan);
 
@@ -188,11 +193,12 @@ export async function repairPlanNode(state) {
     /* queda null */
   }
 
-  // Devin reescribió plan.json — si perdió `arch`/`stacks` o las
-  // menciones en los pasos backend, se re-aplica lo del run.
+  // Devin reescribió plan.json — si perdió `arch`/`stacks`/`agent` o
+  // las menciones en los pasos backend, se re-aplica lo del run.
   if (plan) {
     applyArch(plan, resolveArch(state.arch));
     plan.stacks ??= state.plan?.stacks;
+    plan.agent ??= state.plan?.agent ?? state.agent;
   }
 
   return {

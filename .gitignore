@@ -23,6 +23,9 @@ coverage/
 # Config local de Devin
 .devin/
 
+# Config mutable del dashboard (engine elegido, etc.)
+settings.json
+
 # OS / editor
 .DS_Store
 *.swp
