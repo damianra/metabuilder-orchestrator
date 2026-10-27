@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { ListOrdered, LoaderCircle, RotateCcw, Square, TriangleAlert } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ChevronDown, ChevronRight, ListOrdered, LoaderCircle, RotateCcw, Square, Trash2, TriangleAlert } from 'lucide-react';
 import { api } from '../api.js';
-import { jobSummary } from '../util.js';
+import { jobSummary, timeAgo } from '../util.js';
 
 const chip = (j) =>
   j.cancelRequested
@@ -37,11 +37,130 @@ const progress = (j) => {
   return '';
 };
 
+// Duración createdAt→finishedAt de un job terminado: "5m 12s".
+// null si falta alguna punta, no parsea o viene invertida.
+const duration = (j) => {
+  const a = Date.parse(j.createdAt);
+  const b = Date.parse(j.finishedAt);
+  if (Number.isNaN(a) || Number.isNaN(b) || b < a) return null;
+  const s = Math.floor((b - a) / 1000);
+  const m = Math.floor(s / 60);
+  return m ? `${m}m ${s % 60}s` : `${s}s`;
+};
+
+function JobRow({ j, onChanged }) {
+  const [open, setOpen] = useState(false);
+  const [log, setLog] = useState(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [retryBusy, setRetryBusy] = useState(false);
+  const running = j.status === 'running';
+
+  // Log del job: fetch on-demand al abrir el acordeón; refresh cada 4s
+  // solo mientras siga corriendo (terminado → una sola lectura).
+  useEffect(() => {
+    if (!open) return;
+    const load = () => api.jobLog(j.id, 15).then(setLog).catch(() => {});
+    load();
+    if (!running) return;
+    const t = setInterval(load, 4000);
+    return () => clearInterval(t);
+  }, [open, running, j.id]);
+
+  const lines = log?.log?.lines?.slice(-15) ?? null;
+  const dur = j.finishedAt ? duration(j) : null;
+
+  return (
+    <li>
+      <div className="flex items-center gap-3">
+        <button
+          title={open ? 'Ocultar log del job' : 'Ver log del job'}
+          onClick={() => setOpen((v) => !v)}
+          className="shrink-0 text-slate-400 hover:text-slate-600"
+        >
+          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </button>
+        <span className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${chip(j)}`}>
+          {j.cancelRequested ? 'cancelando' : j.status}
+        </span>
+        <span className="truncate text-slate-600">
+          #{j.id} {jobSummary(j.args)}
+          <span className="inline-flex items-center gap-1 text-slate-400">
+            {j.status === 'running' && <LoaderCircle size={13} className="animate-spin" />}
+            {progress(j)}
+          </span>
+        </span>
+        <span className="ml-auto shrink-0 whitespace-nowrap text-xs text-slate-400">
+          {timeAgo(j.createdAt)}
+          {dur ? ` (${dur})` : ''}
+        </span>
+        {canCancel(j) && (
+          <button
+            title="Cancelar job"
+            disabled={cancelBusy}
+            onClick={async () => {
+              setCancelBusy(true);
+              try {
+                await api.cancelJob(j.id);
+              } finally {
+                setCancelBusy(false);
+                onChanged?.();
+              }
+            }}
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50 disabled:opacity-40"
+          >
+            {cancelBusy ? (
+              <LoaderCircle size={12} className="animate-spin" />
+            ) : (
+              <Square size={11} />
+            )}
+            cancelar
+          </button>
+        )}
+        {canRetry(j) && (
+          <button
+            title="Re-encola los mismos args"
+            disabled={retryBusy}
+            onClick={async () => {
+              setRetryBusy(true);
+              try {
+                await api.requeueJob(j.id);
+              } finally {
+                setRetryBusy(false);
+                onChanged?.();
+              }
+            }}
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40"
+          >
+            {retryBusy ? (
+              <LoaderCircle size={12} className="animate-spin" />
+            ) : (
+              <RotateCcw size={11} />
+            )}
+            reintentar
+          </button>
+        )}
+      </div>
+      {open &&
+        (lines?.length ? (
+          <pre className="mt-1 max-h-48 overflow-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-200 font-mono">
+            {lines.join('\n')}
+          </pre>
+        ) : (
+          <p className="mt-1 text-xs text-slate-400">
+            sin log todavía — aparece cuando el worker escribe jobs/{j.id}.log
+          </p>
+        ))}
+    </li>
+  );
+}
+
 export default function QueuePanel({ jobs, worker, onChanged }) {
-  const [busy, setBusy] = useState(null);
-  const [retryBusy, setRetryBusy] = useState(null);
-  const active = jobs.filter((j) => j.status === 'pending' || j.status === 'running');
-  const recent = jobs.filter((j) => !active.includes(j)).slice(-5).reverse();
+  const [clearBusy, setClearBusy] = useState(false);
+  const isActive = (j) => j.status === 'pending' || j.status === 'running';
+  const active = jobs.filter(isActive);
+  const finished = jobs.filter((j) => !isActive(j));
+  const recent = finished.slice(-5).reverse();
+  const hidden = finished.length - recent.length;
   const shown = [...active, ...recent];
   const stalled = active.some((j) => j.status === 'pending') && worker && !worker.alive;
   if (!shown.length) return null;
@@ -50,6 +169,29 @@ export default function QueuePanel({ jobs, worker, onChanged }) {
     <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200 shadow-sm">
       <h2 className="flex items-center gap-2 text-sm font-bold text-slate-800">
         <ListOrdered size={16} className="text-slate-500" /> Cola ({active.length} activos)
+        {finished.length > 0 && (
+          <button
+            title="Borra los jobs terminados (done/failed/cancelled) — los activos no se tocan"
+            disabled={clearBusy}
+            onClick={async () => {
+              setClearBusy(true);
+              try {
+                await api.clearJobs();
+              } finally {
+                setClearBusy(false);
+                onChanged?.();
+              }
+            }}
+            className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40"
+          >
+            {clearBusy ? (
+              <LoaderCircle size={12} className="animate-spin" />
+            ) : (
+              <Trash2 size={12} />
+            )}
+            limpiar terminados
+          </button>
+        )}
       </h2>
       {stalled && (
         <p className="mt-2 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
@@ -60,66 +202,12 @@ export default function QueuePanel({ jobs, worker, onChanged }) {
       )}
       <ul className="mt-3 space-y-1.5 text-sm">
         {shown.map((j) => (
-          <li key={j.id} className="flex items-center gap-3">
-            <span className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${chip(j)}`}>
-              {j.cancelRequested ? 'cancelando' : j.status}
-            </span>
-            <span className="truncate text-slate-600">
-              #{j.id} {jobSummary(j.args)}
-              <span className="inline-flex items-center gap-1 text-slate-400">
-                {j.status === 'running' && <LoaderCircle size={13} className="animate-spin" />}
-                {progress(j)}
-              </span>
-            </span>
-            {canCancel(j) && (
-              <button
-                title="Cancelar job"
-                disabled={busy === j.id}
-                onClick={async () => {
-                  setBusy(j.id);
-                  try {
-                    await api.cancelJob(j.id);
-                  } finally {
-                    setBusy(null);
-                    onChanged?.();
-                  }
-                }}
-                className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50 disabled:opacity-40"
-              >
-                {busy === j.id ? (
-                  <LoaderCircle size={12} className="animate-spin" />
-                ) : (
-                  <Square size={11} />
-                )}
-                cancelar
-              </button>
-            )}
-            {canRetry(j) && (
-              <button
-                title="Re-encola los mismos args"
-                disabled={retryBusy === j.id}
-                onClick={async () => {
-                  setRetryBusy(j.id);
-                  try {
-                    await api.requeueJob(j.id);
-                  } finally {
-                    setRetryBusy(null);
-                    onChanged?.();
-                  }
-                }}
-                className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40"
-              >
-                {retryBusy === j.id ? (
-                  <LoaderCircle size={12} className="animate-spin" />
-                ) : (
-                  <RotateCcw size={11} />
-                )}
-                reintentar
-              </button>
-            )}
-          </li>
+          <JobRow key={j.id} j={j} onChanged={onChanged} />
         ))}
       </ul>
+      {hidden > 0 && (
+        <p className="mt-2 text-xs text-slate-400">…y {hidden} terminados más</p>
+      )}
     </section>
   );
 }

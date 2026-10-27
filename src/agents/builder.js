@@ -36,7 +36,7 @@ export async function builderNode(state) {
       plan,
       status: 'failed',
       lastError: `npm install falló: ${install.stderr.slice(-500)}`,
-      history: [log('build', `paso ${step.id}: npm install falló — no se consume Devin`)],
+      history: [log('build', `paso ${step.id}: npm install falló — no se consume agente`)],
     };
   }
 

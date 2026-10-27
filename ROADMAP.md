@@ -35,6 +35,24 @@ Decisión clave: se usa **ACP, no `opencode run --format json`** — el
 | 5 ✅ | **Doctor multi-engine** | `runDoctor` reporta ambos engines (bin + probe de auth por engine); fail solo si el engine efectivo no funciona o ninguno resuelve. | S |
 | 6 ✅ | **Docs + tests de la integración** | README: sección "Motores de agente" (links devin.ai/opencode.ai + instalación: `devin auth login`/credentials.toml vs `opencode auth login`), flag `--agent`, vars `.env`, gate del dashboard. AGENTS.md con la arquitectura nueva. Tests: adapter opencode (spawn stubeado — verifica sin `authenticate`, mode `build`, parseo de updates), `resolveEngine` (precedencia), settings read/write. E2E manual `npm start -- --agent opencode`. | M |
 
+## Backlog v5 — propuestas de pulido (en curso)
+
+| # | Tarea | Tipo | Esfuerzo |
+| --- | --- | --- | --- |
+| 1 | **Shutdown robusto de `npm run dashboard`** — dev.js SIGTERMs y sale sin esperar; esperar `close` (~3s) y escalar `SIGKILL` a los grupos. | fix | S |
+| 2 | **Clamp de `?tail`** en `tailFile` — `Math.max(1, …)` en los endpoints que lo usan. | fix | S |
+| 3 | **`clearJobs` barre huérfanos** — `<id>.log` sin `<id>.json` y `*.tmp-*` en `jobs/`. | fix | S |
+| 4 | **`publish` async con estado en disco** — publish.json/publish.log en la app (patrón dockerize/test), 202 inmediato, 409 con pid vivo, stale-aware. | mejora | M |
+| 5 | **Paridad podman en `--verify-docker`** — reusar probe docker→podman en vez de docker-only. | mejora | S |
+| 6 | **"sesión Devin" → label del engine** en mensajes de history/activity donde el engine ya está resuelto. | mejora | S |
+| 7 | **Tests de componentes del dashboard** — QueuePanel, SetupGate, panel publish (Testing Library). | mejora | M |
+| 8 | **Log expandible por job en QueuePanel** — tail de `GET /api/jobs/:id/log` inline + createdAt ("hace N min") y duración en terminados. | UI | M |
+| 9 | **Links clickeables en notices + chip `repo` en ProjectList** — URLs del publish como `<a>`; `hasRemote` en `GET /api/projects`. | UI | S/M |
+| 10 | **Filtro en ProjectList** — por slug y status. | UI | S |
+
+**Mención aparte (futuro):** splittear `AGENTS.md` (>16KB, se trunca al
+inyectarse como regla) en `docs/` por dominio con índice chico.
+
 ## Pulido (cola de nits acumulados)
 
 - `queue clear` no borra los `.log` huérfanos de jobs eliminados.

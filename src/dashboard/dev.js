@@ -32,7 +32,31 @@ const shutdown = (code = 0) => {
   if (stopping) return;
   stopping = true;
   for (const p of procs) p.kill('SIGTERM');
-  process.exit(code);
+  // Esperar el close real (máx 3s) y escalar a SIGKILL a los que
+  // queden — salir antes dejaba hijos vivos colgados del tty.
+  const closed = Promise.all(
+    procs.map((p) => new Promise((r) => p.once('close', r))),
+  );
+  const killAll = () => {
+    for (const p of procs) {
+      if (p.exitCode === null && !p.killed) {
+        try {
+          p.kill('SIGKILL');
+        } catch {
+          /* ya murió */
+        }
+      }
+    }
+  };
+  const grace = setTimeout(() => {
+    killAll();
+    process.exit(code);
+  }, 3000);
+  grace.unref();
+  closed.then(() => {
+    clearTimeout(grace);
+    process.exit(code);
+  });
 };
 
 process.on('SIGINT', () => shutdown());

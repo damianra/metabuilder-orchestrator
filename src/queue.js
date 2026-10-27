@@ -117,6 +117,32 @@ export function addJob(args, baseDir = config.rootDir) {
   }
 }
 
+// Limpieza de historial: borra <id>.json + <id>.log de los jobs
+// terminados (done/failed/cancelled). pending/running nunca se tocan —
+// el .json de un running lo re-escribe el worker al cerrar, y un
+// pending borrado se saltea (readJob → null → 'cancelled'), pero
+// eliminarlos desde la UI rompería la cancelación explícita.
+// Devuelve cuántos jobs se borraron.
+export function clearJobs(baseDir = config.rootDir) {
+  const finished = readJobs(baseDir).filter(
+    (j) => j.status !== 'pending' && j.status !== 'running',
+  );
+  for (const j of finished) {
+    rmSync(jobPath(j.id, baseDir), { force: true });
+    rmSync(jobPath(j.id, baseDir).replace(/\.json$/, '.log'), { force: true });
+  }
+  // Barrido de huérfanos: <id>.log sin <id>.json (job borrado a mano,
+  // crash a mitad) y restos de writes atómicos (<id>.json.tmp-*).
+  // `.worker` (heartbeat) no matchea \d+ → queda afuera.
+  for (const f of existsSync(jobsDir(baseDir)) ? readdirSync(jobsDir(baseDir)) : []) {
+    const m = f.match(/^(\d+)\.(log|json\.tmp-.*)$/);
+    if (m && !existsSync(jobPath(Number(m[1]), baseDir))) {
+      rmSync(join(jobsDir(baseDir), f), { force: true });
+    }
+  }
+  return finished.length;
+}
+
 // Corre un job: spawn del pipeline como subproceso. `cmd` es
 // parametrizable para tests (default: el CLI real).
 export async function runJob(
@@ -310,13 +336,7 @@ const main = async () => {
       break;
     }
     case 'clear': {
-      const jobs = readJobs();
-      const keep = jobs.filter((j) => j.status === 'pending' || j.status === 'running');
-      for (const j of jobs.filter((j) => !keep.includes(j))) {
-        rmSync(jobPath(j.id), { force: true });
-        rmSync(jobPath(j.id).replace(/\.json$/, '.log'), { force: true });
-      }
-      console.log(`✔ ${jobs.length - keep.length} jobs terminados borrados`);
+      console.log(`✔ ${clearJobs()} jobs terminados borrados`);
       break;
     }
     case 'run': {

@@ -99,6 +99,31 @@ describe('plannerNode — camino resume (plan.json existente)', () => {
     expect(out.idea).toBe('idea nueva');
   });
 
+  it('plan nuevo (vertical): persiste plan.deploy con los flags del run', async () => {
+    const dir = tmp('plan-');
+    await plannerNode(
+      state(dir, {
+        appType: 'landing',
+        scope: 'frontend',
+        deployGithub: true,
+        deployPages: true,
+      }),
+    );
+    const onDisk = JSON.parse(readFileSync(join(dir, 'plan.json'), 'utf8'));
+    expect(onDisk.deploy).toEqual({ github: true, pages: true });
+  });
+
+  it('resume: state restaurado por index.js vuelve a persistir el mismo deploy', async () => {
+    const dir = tmp('plan-');
+    const plan = samplePlan(['done']);
+    plan.deploy = { github: true, pages: false };
+    writePlanJson(dir, plan);
+    // state.deployGithub ya viene restaurado de plan.deploy por index.js
+    await plannerNode(state(dir, { deployGithub: true, deployPages: false }));
+    const onDisk = JSON.parse(readFileSync(join(dir, 'plan.json'), 'utf8'));
+    expect(onDisk.deploy).toEqual({ github: true, pages: false });
+  });
+
   it('todo done → currentStepIndex = length (salta a finalVerify)', async () => {
     const dir = tmp('plan-');
     writePlanJson(dir, samplePlan(['done', 'done']));

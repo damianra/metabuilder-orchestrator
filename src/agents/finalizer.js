@@ -80,12 +80,16 @@ export async function finalVerifyNode(state) {
   // --verify-docker: build de la imagen como check extra. Sin daemon
   // se omite (es un flag opt-in, no debe fallar el run por ambiente).
   if (state.verifyDocker) {
-    const probe = await run('docker info', { cwd: state.projectDir, timeoutMs: 15_000 });
-    if (!probe.ok) {
-      history.push(log('finalVerify', 'docker no disponible — verify-docker omitido'));
+    // docker primero, podman como fallback — CLI-compatible, igual que
+    // el probe del dashboard (antes era docker-only).
+    let engine = null;
+    if ((await run('docker info', { cwd: state.projectDir, timeoutMs: 15_000 })).ok) engine = 'docker';
+    else if ((await run('podman info', { cwd: state.projectDir, timeoutMs: 15_000 })).ok) engine = 'podman';
+    if (!engine) {
+      history.push(log('finalVerify', 'sin engine de containers — verify-docker omitido'));
     } else {
       const tag = `${state.projectSlug || 'app'}:verify`;
-      const build = await run(`docker build -t ${tag} .`, {
+      const build = await run(`${engine} build -t ${tag} .`, {
         cwd: state.projectDir,
         timeoutMs: config.verifyTimeoutMs * 3,
       });
@@ -97,7 +101,7 @@ export async function finalVerifyNode(state) {
           history: [log('finalVerify', 'FAIL: docker build')],
         };
       }
-      history.push(log('finalVerify', `docker build OK (${tag})`));
+      history.push(log('finalVerify', `${engine} build OK (${tag})`));
     }
   }
 
@@ -331,7 +335,14 @@ export async function finalizerNode(state) {
   return { status: 'done', history };
 }
 
-async function deployPages(git, distDir, remoteUrl, owner, repoName) {
+export async function deployPages(
+  git,
+  distDir,
+  remoteUrl,
+  owner,
+  repoName,
+  { token = config.githubToken, enable = enablePagesWithRetry, read = getPages } = {},
+) {
   const logs = [];
   for (const cmd of [
     'init -b gh-pages',
@@ -347,14 +358,14 @@ async function deployPages(git, distDir, remoteUrl, owner, repoName) {
       return logs;
     }
   }
-  const r = await git(`${ghAuthArgs()} push -f origin gh-pages`, distDir);
+  const r = await git(`${ghAuthArgs(token)} push -f origin gh-pages`, distDir);
   if (!r.ok) {
     logs.push(log('finalize', `push gh-pages falló: ${r.stderr.slice(-200)}`));
     return logs;
   }
   const pagesUrl = `https://${owner}.github.io/${repoName}/`;
   try {
-    const pages = await enablePagesWithRetry(config.githubToken, owner, repoName);
+    const pages = await enable(token, owner, repoName);
     logs.push(
       log(
         'finalize',
@@ -367,7 +378,7 @@ async function deployPages(git, distDir, remoteUrl, owner, repoName) {
     // 409 "already enabled" (el push suele auto-habilitarla) o un fallo
     // persistente — el GET confirma; la URL igual es válida.
     try {
-      const pages = await getPages(config.githubToken, owner, repoName);
+      const pages = await read(token, owner, repoName);
       logs.push(
         log(
           'finalize',

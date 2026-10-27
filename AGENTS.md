@@ -127,7 +127,9 @@ Agregar un stack = nuevo archivo + entrada en el `Map` de `index.js`.
 **Selección**: flags `--stack-frontend <id>` / `--stack-backend <id>`
 (o pregunta interactiva) → `state.stackFrontend/stackBackend` →
 `plan.stacks` (persistido por planner; resume lo restaura igual que
-`plan.arch`). `stacksFor(state)` resuelve el stack efectivo en cada
+`plan.arch` — ídem `plan.deploy` con `--github`/`--ghpages`: un resume
+sin flags de deploy reusa lo que el run original eligió; un
+`--github`/`--no-push` explícito lo overridea). `stacksFor(state)` resuelve el stack efectivo en cada
 nodo: plan.stacks > flags > defaults. Frontends: `vite-react`
 (default), `nextjs`. Backend: `express-sqlite`.
 
@@ -211,7 +213,17 @@ fina sobre la infra existente:
   hereda el TTY y los prompts de deploy lo colgarían — por eso `--yes`
   también salta las preguntas github/ghpages en collectArgs).
 - `POST /api/projects/:slug/actions` — `resume` (encola
-  `--resume <slug> --yes`), `dockerize` (re-escribe Dockerfile según
+  `--resume <slug> --yes` — sin flags de deploy: el CLI restaura
+  `plan.deploy`, "lo ingresado previamente"; publicar es acción aparte),
+  `publish` (async — `publishRepo` de `src/tools/publish.js` en
+  background: crea el repo via REST si falta, commitea lo pendiente,
+  pushea `main` y — solo con `ghpages:true` y scope con frontend —
+  corre el build [con `pagesBaseEnv` si el stack lo exige], pushea
+  `<buildDir>/` a `gh-pages` y activa Pages. Estado en `publish.json`
+  dentro de la app — running/done/failed + repoUrl/pagesUrl, expuesto
+  como `publish` en el detalle; 202 al lanzar, 409 si hay uno en curso
+  con pid vivo — `running` con pid muerto es stale y no bloquea —, 503
+  sin GITHUB_TOKEN; `githubApi` inyectable en tests), `dockerize` (re-escribe Dockerfile según
   filesystem + `<engine> build` async si hay engine (docker o podman)
   → estado en docker-build.json, log en docker-build.log; sin engine →
   skipped),
@@ -239,6 +251,11 @@ fina sobre la infra existente:
   preflight, única acción con `requirePlan:false`; 409 si hay job
   pending/running del slug — el worker escribe dentro del dir, con
   re-check justo antes del rmSync por TOCTOU).
+- `GET /api/projects/:slug/repo` — `{repoUrl, pagesUrl}` del remoto
+  git: `toWebUrl(remote)` + `pagesUrl` (`<owner>.github.io/<repo>/`)
+  derivada solo si existe el branch `gh-pages` en `git ls-remote`.
+  Endpoint aparte del detalle porque ls-remote pega en la red — la UI
+  lo consulta on-demand al montar, no en cada poll de 5s.
 - `GET /api/options` — scopes/verticales/archs/stacks leídos de los
   registries + `engines` (ids del registry de agentes) y `engine` (el
   configurado en settings.json/env, o null → setup gate en la UI).
@@ -260,6 +277,13 @@ fina sobre la infra existente:
   "reintentar" en failed/cancelled (QueuePanel y "Log del run" del
   detalle).
   El pid del child queda persistido en el job mientras corre.
+- `POST /api/jobs/clear` — `clearJobs(baseDir)` de queue.js: borra
+  `<id>.json` + `<id>.log` de los jobs terminados (done/failed/
+  cancelled) → `{ok, removed}`; pending/running nunca se tocan. Es el
+  equivalente al `npm run queue -- clear` del CLI (misma función). La
+  UI lo expone como "limpiar terminados" en el header de QueuePanel;
+  el panel muestra todos los activos + los últimos 5 terminados (si
+  hay más, "…y N más").
 - `WS /api/projects/:slug/terminal` (`src/dashboard/terminal.js`,
   `attachTerminal(server)` colgado en `main()`): spawnea el TUI del
   engine (`devin` / `opencode`, elegido con `?engine=<id>` o el engine
@@ -432,6 +456,7 @@ Notas ACP:
   "arch": "flat",  // patrón backend (--arch); resume lo restaura
   "stacks": { "frontend": "vite-react", "backend": "express-sqlite" }, // idem
   "agent": "devin",  // engine ACP que lo generó (--agent); resume lo restaura
+  "deploy": { "github": true, "pages": true },  // --github/--ghpages del run; resume lo restaura
   "validated": false,
   "steps": [
     { "id": 1, "description": "...", "type": "frontend|backend|test|e2e|infra",

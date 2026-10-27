@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Cpu, ExternalLink, RefreshCw, Wrench } from 'lucide-react';
+import { CircleCheckBig, Cpu, ExternalLink, RefreshCw, Wrench } from 'lucide-react';
 import { api } from '../api.js';
 
 // Setup gate obligatorio: sin engine elegido la app no genera nada —
@@ -46,7 +46,7 @@ export default function SetupGate({ current, onDone }) {
 
   const card =
     'cursor-pointer rounded-2xl bg-white p-5 ring-1 ring-slate-200 shadow-sm text-left transition ' +
-    'hover:ring-sky-400 focus:outline-none';
+    'focus:outline-none';
 
   return (
     <div className="mx-auto max-w-2xl py-10">
@@ -70,14 +70,16 @@ export default function SetupGate({ current, onDone }) {
               key={e.id}
               type="button"
               onClick={() => setSelected(e.id)}
-              className={`${card} ${active ? 'ring-2 ring-sky-600' : ''}`}
+              className={`${card} ${active ? 'bg-sky-50 ring-2 ring-sky-600 shadow-md' : 'hover:ring-sky-400'}`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900">{e.label}</span>
+                <span className="flex items-center gap-1.5 font-bold text-slate-900">
+                  {e.label}
+                  {active && <CircleCheckBig size={16} className="text-sky-600" />}
+                </span>
                 <span
                   className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold ring-1 ${st.cls}`}
                 >
-                  {active && <Check size={12} />}
                   {st.text}
                 </span>
               </div>
