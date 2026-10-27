@@ -62,7 +62,7 @@ function frontendStep(n, { withApi, idea, phone }) {
     'frontend',
     `Implementar la web de pedidos en React + Tailwind sobre el skeleton. Idea del usuario: "${idea}". ${
       withApi
-        ? 'Todo el contenido viene de la API: GET /api/business (nombre del local en navbar/hero/footer, horarios, dirección), GET /api/categories y GET /api/products (menú agrupable por categoría); además del envío por WhatsApp, el pedido puede persistirse via POST /api/orders. Fallback informativo si la API falla o devuelve vacío.'
+        ? `Todo el contenido viene de la API: GET /api/business (nombre del local en navbar/hero/footer, horarios, dirección), GET /api/categories y GET /api/products (menú agrupable por categoría); ${phone ? 'además del envío por WhatsApp, el pedido puede persistirse via POST /api/orders' : 'el pedido se confirma persistiendo via POST /api/orders'}. Fallback informativo si la API falla o devuelve vacío.`
         : 'El menú usa datos locales en src/data/products.js.'
     } ` +
       'Contenido no provisto → lorem ipsum / placeholders. Cumplir todas las reglas de UI de AGENTS.md: botón de pedido deshabilitado hasta tener items y datos válidos, fallback informativo si el menú viene vacío o la API falla, sin links con URL vacía.' +
