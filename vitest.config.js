@@ -15,6 +15,9 @@ export default defineConfig({
       DEVIN_CREDENTIALS_PATH: fileURLToPath(
         new URL('./tests/fixtures/credentials.toml', import.meta.url),
       ),
+      // El engine opencode usa el mismo stub: es JSON-RPC canned,
+      // engine-agnóstico (ver FAKE_ACP_LOG en el fixture).
+      OPENCODE_BIN: fileURLToPath(new URL('./tests/fixtures/fake-devin.mjs', import.meta.url)),
       // Semáforo aislado: sin esto los tests que llaman runDevinPrompt
       // compiten por el slot real ~/.metabuilder/devin-slots — se
       // bloquean durante un validate:pr o un npm start concurrente.

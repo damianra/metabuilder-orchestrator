@@ -7,6 +7,7 @@ import { listArchs } from './arch/index.js';
 import { getStack, listStacks } from './stacks/index.js';
 import { getVertical, inferAppType, listVerticals } from './verticals/index.js';
 import { resolveResumeDir } from './tools/slug.js';
+import { getEngine, listEngines } from './engines/index.js';
 import { config } from './config.js';
 import { setQuiet } from './agents/common.js';
 
@@ -163,6 +164,10 @@ for (const [flag, kind] of [
     process.exit(2);
   }
 }
+if (args.agent && !getEngine(args.agent)) {
+  console.error(`--agent desconocido "${args.agent}" (usá ${listEngines().join('|')})`);
+  process.exit(2);
+}
 if (args.ghpages && !args.github) {
   console.error('--ghpages requiere --github (crea el repo antes de publicar Pages)');
   process.exit(2);
@@ -187,6 +192,7 @@ const initial = {
   verifyDocker: Boolean(args.verifyDocker),
   stackFrontend: args.stackFrontend ?? null,
   stackBackend: args.stackBackend ?? null,
+  agent: args.agent ?? '',
 };
 
 // Etiqueta legible por nodo (rol del agente que está corriendo).

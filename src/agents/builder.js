@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { config } from '../config.js';
-import { runDevinPrompt } from '../tools/devin.js';
+import { runAgentPrompt } from '../tools/acp.js';
 import { awaitInstall, isInstalling } from '../tools/install.js';
 import { activity, log, loadPrompt, runLogPath, textFeed, writePlan } from './common.js';
 
@@ -51,7 +51,8 @@ export async function builderNode(state) {
   });
 
   const feed = textFeed();
-  const res = await runDevinPrompt({
+  const res = await runAgentPrompt({
+    agent: state.agent,
     prompt,
     cwd: state.projectDir,
     timeoutMs: config.devinTimeoutMs,
@@ -66,13 +67,13 @@ export async function builderNode(state) {
       plan,
       status: 'failed',
       lastError: `builder paso ${step.id}: ${res.error}`,
-      history: [log('build', `paso ${step.id}: Devin falló — ${res.error}`)],
+      history: [log('build', `paso ${step.id}: ${res.engine ?? 'agente'} falló — ${res.error}`)],
     };
   }
 
   return {
     plan,
     status: 'building',
-    history: [log('build', `paso ${step.id}: implementado por Devin (stop=${res.stopReason})`)],
+    history: [log('build', `paso ${step.id}: implementado por ${res.engine ?? 'agente'} (stop=${res.stopReason})`)],
   };
 }

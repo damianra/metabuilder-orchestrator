@@ -6,6 +6,24 @@
 // - 'session/prompt' → antes del result emite una notificación
 //   session/update (para probar routing de updates)
 import { createInterface } from 'node:readline';
+import { appendFileSync } from 'node:fs';
+
+// FAKE_ACP_LOG (opcional): appendea una línea por request recibido —
+// `metodo` y para set_config_option `metodo:configId=value`. Lo usan
+// los tests de engines para verificar qué handshake hizo cada uno
+// (p.ej. opencode no debe llamar authenticate).
+const logCall = (msg) => {
+  if (!process.env.FAKE_ACP_LOG) return;
+  const extra =
+    msg.method === 'session/set_config_option'
+      ? `:${msg.params?.configId}=${msg.params?.value}`
+      : '';
+  try {
+    appendFileSync(process.env.FAKE_ACP_LOG, msg.method + extra + '\n');
+  } catch {
+    /* el log del stub nunca rompe el test */
+  }
+};
 
 const rl = createInterface({ input: process.stdin });
 rl.on('line', (line) => {
@@ -16,6 +34,7 @@ rl.on('line', (line) => {
     return;
   }
   if (msg.id === undefined) return;
+  logCall(msg);
 
   if (msg.method === 'session/prompt') {
     process.stdout.write(

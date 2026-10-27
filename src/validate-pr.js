@@ -18,7 +18,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import { run } from './tools/shell.js';
-import { runDevinPrompt } from './tools/devin.js';
+import { runAgentPrompt } from './tools/acp.js';
 import { commentOnPR, getPR, getPRComments, listOpenPRs } from './tools/github.js';
 import { activity, loadPrompt, textFeed } from './agents/common.js';
 
@@ -80,9 +80,9 @@ async function validateOnePR({ prNumber, owner, repo }) {
       diff,
     });
 
-    console.log('   sub-agente Devin validando…\n');
+    console.log('   sub-agente validando…\n');
     const feed = textFeed();
-    const res = await runDevinPrompt({
+    const res = await runAgentPrompt({
       prompt,
       cwd: worktree,
       timeoutMs: config.devinTimeoutMs,

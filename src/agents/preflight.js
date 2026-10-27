@@ -2,7 +2,8 @@ import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node
 import { basename, join } from 'node:path';
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
-import { checkDevinAuth } from '../tools/devin.js';
+import { checkEngineAuth } from '../tools/acp.js';
+import { resolveEngine } from '../engines/index.js';
 import { startInstall } from '../tools/install.js';
 import { ensureProjectDir } from '../tools/slug.js';
 import { writeDockerFiles, detectFrontend, detectStackId, detectOutDir } from '../tools/docker.js';
@@ -11,7 +12,7 @@ import { resolveStacks, resolveStacksSafe } from '../stacks/index.js';
 import { getVertical } from '../verticals/index.js';
 import { activity, log, readPlan } from './common.js';
 
-const REQUIRED_BINS = ['devin', 'node', 'npm', 'git'];
+const BASE_BINS = ['node', 'npm', 'git'];
 
 /**
  * Copia src/templates/<skeletonDir>/ sobre el proyecto:
@@ -74,12 +75,27 @@ export async function preflightNode(state) {
   const history = [log('preflight', 'verificando binarios y autenticación')];
   const arch = resolveArch(state.arch);
 
-  // Probes en paralelo: binarios requeridos + auth Devin (ACP).
+  // Engine de agente: --agent > AGENT_PROVIDER > 'devin'. Un id
+  // desconocido es fail temprano — mejor acá que en el primer prompt.
+  let engine;
+  try {
+    engine = resolveEngine(state.agent);
+  } catch (err) {
+    return {
+      status: 'failed',
+      lastError: String(err.message ?? err),
+      history: [...history, log('preflight', `engine inválido: ${err.message}`)],
+    };
+  }
+  history.push(log('preflight', `motor de agente: ${engine.label} (${engine.id})`));
+
+  // Probes en paralelo: binarios requeridos + auth del engine (ACP).
+  const requiredBins = [...BASE_BINS, engine.bin];
   const [bins, auth] = await Promise.all([
-    Promise.all(REQUIRED_BINS.map((bin) => run(`command -v ${bin}`))),
-    checkDevinAuth(),
+    Promise.all(requiredBins.map((bin) => run(`command -v ${bin}`))),
+    checkEngineAuth(engine.id),
   ]);
-  const missing = REQUIRED_BINS.filter((_, i) => !bins[i].ok);
+  const missing = requiredBins.filter((_, i) => !bins[i].ok);
   if (missing.length) {
     return {
       status: 'failed',
@@ -90,7 +106,7 @@ export async function preflightNode(state) {
   if (!auth.ok) {
     return {
       status: 'failed',
-      lastError: `Devin no autentica vía ACP: ${auth.error}`,
+      lastError: `${engine.label} no autentica vía ACP: ${auth.error}`,
       history: [...history, log('preflight', `auth falló: ${auth.error}`)],
     };
   }
@@ -144,6 +160,7 @@ export async function preflightNode(state) {
       projectSlug: slug,
       projectDir: dir,
       runDir,
+      agent: engine.id,
       status: 'preflighted',
       history: [...history, log('preflight', `reanudando proyecto: ${dir}`)],
     };
@@ -230,6 +247,7 @@ export async function preflightNode(state) {
     projectSlug: slug,
     projectDir: dir,
     runDir,
+    agent: engine.id,
     status: 'preflighted',
     history: [...history, log('preflight', `proyecto: ${dir}`)],
   };

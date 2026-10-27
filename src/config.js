@@ -17,6 +17,10 @@ export const config = {
   promptsDir: join(ROOT, 'src', 'prompts'),
   templatesDir: join(ROOT, 'src', 'templates'),
 
+  // Engine de agente por defecto (src/engines/): '' → 'devin' salvo
+  // que un caller resuelva 'auto'. --agent/state.agent lo pisan por run.
+  agentProvider: process.env.AGENT_PROVIDER || '',
+
   // Credenciales del agente Devin (auth windsurf-api-key vía ACP)
   devinCredentialsPath:
     process.env.DEVIN_CREDENTIALS_PATH ??
@@ -25,6 +29,12 @@ export const config = {
   devinModel: process.env.DEVIN_MODEL || 'swe-2-high',
   devinMode: process.env.DEVIN_MODE || 'bypass',
   devinTimeoutMs: int('DEVIN_TIMEOUT_MS', 15 * 60 * 1000),
+
+  // Engine OpenCode (`opencode acp`): sin authenticate — usa los
+  // providers de `opencode auth login`. Model vacío = default del
+  // provider (formato `provider/model`, ej. anthropic/claude-sonnet-4).
+  opencodeBin: process.env.OPENCODE_BIN ?? 'opencode',
+  opencodeModel: process.env.OPENCODE_MODEL || '',
   // Semáforo global de sesiones Devin entre procesos (slots en
   // ~/.metabuilder/devin-slots/). 1 = nunca más de una sesión a la vez
   // en toda la máquina, aunque haya varios `npm start` corriendo.

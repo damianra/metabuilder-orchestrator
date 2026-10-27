@@ -41,7 +41,7 @@ Verificación rápida de tools sin tocar el grafo:
 
 ```bash
 npm test   # suite Vitest del orquestador (tests/)
-node -e "import('./src/tools/devin.js').then(m=>m.checkDevinAuth().then(console.log))"
+node -e "import('./src/tools/acp.js').then(m=>m.checkEngineAuth('devin').then(console.log))"
 node -e "import('./src/tools/shell.js').then(m=>m.run('echo ok',{cwd:'/tmp'}).then(console.log))"
 ```
 
@@ -198,7 +198,7 @@ fina sobre la infra existente:
 - `GET /api/jobs/:id/log?tail=N` — tail (default 200 líneas) del log que
   el worker captura en `jobs/<id>.log` (stdout+stderr del `npm start` del
   job — incluye el feed del agente: `onActivity` (tool calls) y `onText`
-  (texto del agente) de `runDevinPrompt` caen a stderr via `activity`/
+  (texto del agente) de `runAgentPrompt` caen a stderr via `activity`/
   `textFeed` de agents/common.js). `GET /api/projects/:slug/log` — idem
   resolviendo el job más reciente cuyo `projectSlug` coincide con el slug.
 - `POST /api/runs` — encola una generación: whitelist de campos
@@ -297,12 +297,12 @@ overlap con planner + confirmación humana. `builder`, `verifier` y
 frontend también se pre-calienta `npx playwright install chromium` en
 background (nunca se awaita; el paso e2e lo reintenta si hace falta).
 
-**Semáforo de sesiones Devin** (`src/tools/devin-lock.js`): `runDevinPrompt`
+**Semáforo de sesiones de agente** (`src/tools/devin-lock.js`): `runAgentPrompt`
 adquiere un slot de `~/.metabuilder/devin-slots/slot-N/` antes del spawn
 (mkdir atómico + pid file; slots de procesos muertos se reciclan). Con
 `MAX_CONCURRENT_DEVIN_SESSIONS=1` (default) nunca hay más de una sesión
-`devin acp` a la vez en toda la máquina, aunque corran varios `npm start`
-— se serializan solos. `checkDevinAuth` no consume slot (handshake de ~1s
+`<engine> acp` a la vez en toda la máquina (mezclando engines), aunque corran varios `npm start`
+— se serializan solos. `checkEngineAuth` no consume slot (handshake de ~1s
 sin trabajo de agente).
 
 ## Confirmación de plan
@@ -322,7 +322,7 @@ Rechazar → `fail` sin ejecutar builds.
   final (`'final'`) — `fix` vuelve a `verify` o a `finalVerify` según eso.
 - Todo fallo terminal va al nodo `fail` (setea `status: 'failed'`), nunca
   directo a END sin marcar estado.
-- Tools: `src/tools/` (`devin.js` cliente ACP, `shell.js` execa, `slug.js`,
+- Tools: `src/tools/` (`acp.js` cliente ACP compartido, `shell.js` execa, `slug.js`,
   `install.js` npm install lazy, `github.js` REST).
 - Prompts versionables: `src/prompts/*.md`.
 - `src/templates/AGENTS.md` se **copia a cada app generada** con las reglas
@@ -332,21 +332,39 @@ Rechazar → `fail` sin ejecutar builds.
   `npm run report -- <runId|slug>` los resume en `report.md` (pasos,
   intentos, duración por sesión); sin args lista runs recientes.
 
-## ⚠️ Integración con Devin CLI — crítico
+## ⚠️ Integración con engines de agente (ACP) — crítico
+
+Los nodos generativos hablan con un **engine ACP** via `runAgentPrompt({agent, ...})` de `src/tools/acp.js` — el mismo cliente
+para todos. El engine se declara como datos en `src/engines/<id>.js`
+(bin, `acpArgs`, `authParams`, `defaultMode`/`defaultModel`, `tuiArgs`,
+`strictConfig`) + entrada en el `Map` de `src/engines/index.js` —
+`resolveEngine(state.agent)` decide: `--agent` > `AGENT_PROVIDER` >
+`'devin'`. Pool de procesos keyed por engine id; el semáforo
+(`devin-lock.js`) es compartido entre engines.
+
+- `devin` (`devin acp`): authenticate `windsurf-api-key`, mode `bypass`.
+- `opencode` (`opencode acp`, verificado v2.1.4): **sin authenticate**
+  (usa providers de `opencode auth login`; `auth_required` → hint),
+  mode `build`, model = default del provider salvo `OPENCODE_MODEL`.
+
+### Devin CLI
 
 **No usar `devin -p` / `--print`.** Ese modo exige `session_token` de
 cuenta Devin (`app.devin.ai`) que las cuentas Windsurf no producen:
 falla con "Not logged in" aunque `credentials.toml` exista y sea válido.
 
-La vía soportada es **`devin acp`** (JSON-RPC sobre stdio), igual que
-Devin Desktop. Secuencia (`src/tools/devin.js`):
+La vía soportada es **`<engine> acp`** (JSON-RPC sobre stdio), igual que
+Devin Desktop. Secuencia (`src/tools/acp.js`):
+
 
 1. `initialize` (protocolVersion 1, `clientCapabilities: {}`)
-2. `authenticate` `{ methodId: "windsurf-api-key", _meta: { api_key, api_server_url } }`
-   — leídos de `~/.local/share/devin/credentials.toml`
-3. `session/new` `{ cwd, mcpServers: [] }`
-4. `session/set_config_option` `mode: "bypass"` (auto-aprueba todo) y
-   `model: "swe-2-high"`
+2. `authenticate` — solo si el engine declara `authParams` (Devin:
+   `{ methodId: "windsurf-api-key", _meta: { api_key, api_server_url } }`
+   leídos de `~/.local/share/devin/credentials.toml`; OpenCode lo salta).
+3. `session/new` `{ cwd, mcpServers: [] }` (`cwd` absoluto — opencode
+   rechaza relativos)
+4. `session/set_config_option` mode/model con los defaults del engine
+   (Devin: `bypass`/`swe-2-high`; OpenCode: `build`/default del provider)
 5. `session/prompt` con `{ prompt: [{ type: "text", text }] }`
 6. Respuesta = concatenar `session/update` con
    `sessionUpdate === "agent_message_chunk"`; fin = resultado con `stopReason`.
@@ -374,7 +392,7 @@ Notas ACP:
   el skeleton lo resolvió; `verify` valida igual.
 - Cada paso abre una sesión ACP nueva (`session/new`), pero el proceso
   `devin acp` se **reusa entre pasos del mismo run**: pool a nivel módulo
-  en `tools/devin.js` (`warmClient`) — initialize+authenticate una sola
+  en `tools/acp.js` (`warmClient`, keyed por engine) — initialize+authenticate una sola
   vez, `setLog` rota el run log por paso. Si el proceso muere (crash o
   kill por timeout) se descarta y el próximo paso respawnea solo. La
   memoria entre pasos es el filesystem + `plan.json` + el AGENTS.md
@@ -382,7 +400,7 @@ Notas ACP:
   idle — un proceso tibio sin sesión no bloquea a otros runs.
 - `devin auth status` y `devin models list` reportan "Not logged in" con
   credenciales Windsurf — es un chequeo de session_token, **no usar como
-  probe**. El probe real es `checkDevinAuth()` (initialize+authenticate).
+  probe**. El probe real es `checkEngineAuth()` (initialize+authenticate).
 
 ## plan.json (checkpoint dentro de cada app generada)
 

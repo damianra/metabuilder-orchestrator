@@ -1,5 +1,5 @@
 import { config } from '../config.js';
-import { runDevinPrompt } from '../tools/devin.js';
+import { runAgentPrompt } from '../tools/acp.js';
 import { activity, log, loadPrompt, runLogPath, textFeed } from './common.js';
 
 /**
@@ -14,7 +14,8 @@ export async function reviewerNode(state) {
   });
 
   const feed = textFeed();
-  const res = await runDevinPrompt({
+  const res = await runAgentPrompt({
+    agent: state.agent,
     prompt,
     cwd: state.projectDir,
     timeoutMs: config.devinTimeoutMs,
@@ -28,7 +29,7 @@ export async function reviewerNode(state) {
     return {
       status: 'failed',
       lastError: `reviewer falló: ${res.error}`,
-      history: [log('review', `Devin falló: ${res.error}`)],
+      history: [log('review', `${res.engine ?? 'agente'} falló: ${res.error}`)],
     };
   }
 

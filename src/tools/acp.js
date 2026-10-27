@@ -1,40 +1,26 @@
 import { spawn } from 'node:child_process';
-import { createWriteStream, existsSync, readFileSync } from 'node:fs';
+import { createWriteStream } from 'node:fs';
 import { config } from '../config.js';
+import { resolveEngine } from '../engines/index.js';
 import { acquireDevinSlot } from './devin-lock.js';
 
 /**
- * Cliente ACP mínimo para Devin CLI.
+ * Cliente ACP mínimo compartido por los engines (src/engines/).
  *
- * `devin -p` requiere un session_token de cuenta Devin que las cuentas
- * Windsurf no producen. La vía soportada para esas credenciales es
- * `devin acp` (Agent Client Protocol, JSON-RPC delimitado por líneas
- * sobre stdio) — el mismo canal que usa Devin Desktop.
+ * Devin (`devin acp`) y OpenCode (`opencode acp`) hablan el mismo
+ * Agent Client Protocol — JSON-RPC delimitado por líneas sobre stdio —
+ * así que el transporte, el pool y el parser de updates son comunes;
+ * lo que cambia por engine es: binario/args, si hay `authenticate`
+ * (Devin: windsurf-api-key de credentials.toml; OpenCode: skip — usa
+ * los providers de `opencode auth login`) y los valores de
+ * session/set_config_option (mode `bypass` vs `build`, model).
  *
- * Secuencia: initialize → authenticate (windsurf-api-key) una sola vez
- * por proceso (pool, ver warmClient); luego por llamada: session/new →
- * session/set_config_option (mode/model) → session/prompt → acumular
- * session/update hasta que el prompt responde.
+ * Secuencia: initialize → authenticate (si el engine lo declara) una
+ * sola vez por proceso (pool, ver warmClient); luego por llamada:
+ * session/new → session/set_config_option (mode/model) →
+ * session/prompt → acumular session/update hasta que el prompt
+ * responde.
  */
-
-export function loadCredentials(credentialsPath = config.devinCredentialsPath) {
-  if (!existsSync(credentialsPath)) {
-    throw new Error(
-      `No se encontró ${credentialsPath}. Autenticá Devin Desktop o ejecutá \`devin auth login\`.`,
-    );
-  }
-  const toml = readFileSync(credentialsPath, 'utf8');
-  const get = (k) => toml.match(new RegExp(`${k}\\s*=\\s*"([^"]+)"`))?.[1];
-  const apiKey = get('windsurf_api_key');
-  const apiServerUrl = get('api_server_url');
-  if (!apiKey || !apiServerUrl) {
-    throw new Error(
-      `${credentialsPath} no contiene windsurf_api_key/api_server_url. Re-autenticá con \`devin auth login\`.`,
-    );
-  }
-  return { apiKey, apiServerUrl };
-}
-
 export class AcpClient {
   #proc;
   #buffer = '';
@@ -44,15 +30,15 @@ export class AcpClient {
   #alive = true;
   onUpdate;
 
-  constructor(cwd, logPath) {
-    this.#proc = spawn(config.devinBin, ['acp'], {
+  constructor(engine, cwd, logPath) {
+    this.#proc = spawn(engine.bin, engine.acpArgs, {
       cwd,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     this.setLog(logPath);
     this.#proc.stdout.on('data', (chunk) => this.#onData(chunk));
     this.#proc.stderr.on('data', (chunk) => this.#writeLog(`[stderr] ${chunk}`));
-    // spawn ENOENT (binario devin ausente): sin handler 'error' el
+    // spawn ENOENT (binario ausente): sin handler 'error' el
     // evento es uncaught y tumba el proceso entero antes de que el
     // caller vea nada — doctor/preflight necesitan el error limpio.
     this.#proc.on('error', (err) => {
@@ -60,7 +46,7 @@ export class AcpClient {
       const pending = [...this.#pending.values()];
       this.#pending.clear();
       for (const settle of pending) {
-        settle({ error: { message: `devin acp no arrancó: ${err.message}` } });
+        settle({ error: { message: `${engine.bin} ${engine.acpArgs.join(' ')} no arrancó: ${err.message}` } });
       }
     });
     // Si el proceso muere, las calls pendientes no pueden quedar
@@ -70,7 +56,7 @@ export class AcpClient {
       const pending = [...this.#pending.values()];
       this.#pending.clear();
       for (const settle of pending) {
-        settle({ error: { message: 'proceso devin acp terminó' } });
+        settle({ error: { message: `proceso ${engine.id} acp terminó` } });
       }
     });
   }
@@ -193,65 +179,69 @@ export class AcpClient {
   }
 }
 
-// ---- Pool del proceso `devin acp` ----
+// ---- Pool de procesos `<engine> acp` (keyed por engine id) ----
 // Spawn + initialize + authenticate cuestan segundos por llamada y el
-// resultado es el mismo para todos los pasos de un run → se mantiene un
-// proceso tibio a nivel módulo y cada prompt abre una sesión ACP nueva
-// (session/new): el aislamiento entre pasos no cambia, lo que se ahorra
-// es el handshake. Si el proceso muere (crash, kill por timeout) se
-// descarta y el próximo prompt respawnea. El semáforo sigue por prompt
-// — limita sesiones activas, no procesos idle.
-const acpPool = { client: null };
+// resultado es el mismo para todos los pasos de un run → se mantiene
+// un proceso tibio por engine a nivel módulo y cada prompt abre una
+// sesión ACP nueva (session/new): el aislamiento entre pasos no
+// cambia, lo que se ahorra es el handshake. Si el proceso muere
+// (crash, kill por timeout) se descarta y el próximo prompt
+// respawnea. El semáforo sigue por prompt — limita sesiones activas,
+// no procesos idle.
+const acpPool = new Map(); // engineId → client
 let exitHookInstalled = false;
 
 function dropPooledClient(client) {
-  if (acpPool.client === client) acpPool.client = null;
+  for (const [id, c] of acpPool) if (c === client) acpPool.delete(id);
   client.dispose();
 }
 
-export function acpPoolStats() {
+export function acpPoolStats(engineId = 'devin') {
+  const client = acpPool.get(engineId);
   return {
-    warm: Boolean(acpPool.client?.isAlive),
-    pid: acpPool.client?.isAlive ? acpPool.client.pid : null,
+    warm: Boolean(client?.isAlive),
+    pid: client?.isAlive ? client.pid : null,
   };
 }
 
-async function warmClient(cwd, logPath) {
-  if (acpPool.client?.isAlive) {
-    acpPool.client.setLog(logPath);
-    acpPool.client.ref();
-    return { client: acpPool.client, reused: true };
+async function warmClient(engine, cwd, logPath) {
+  const pooled = acpPool.get(engine.id);
+  if (pooled?.isAlive) {
+    pooled.setLog(logPath);
+    pooled.ref();
+    return { client: pooled, reused: true };
   }
-  if (acpPool.client) dropPooledClient(acpPool.client);
-  const client = new AcpClient(cwd, logPath);
+  if (pooled) dropPooledClient(pooled);
+  const client = new AcpClient(engine, cwd, logPath);
   try {
     // Sin fs/terminal capabilities: el agente usa sus tools nativos
-    // (local_exec/local_write/...) que corren server-side en `cwd`.
-    // Si las anunciamos, el agente delega cada fs op al cliente y se
-    // bloquearía esperando respuestas que nunca llegan.
+    // que corren server-side en `cwd`. Si las anunciamos, el agente
+    // delega cada fs op al cliente y se bloquearía esperando
+    // respuestas que nunca llegan.
     await client.call('initialize', {
       protocolVersion: 1,
       clientCapabilities: {},
       clientInfo: { name: 'metabuilder-orchestrator', version: '0.1.0' },
     });
-    const { apiKey, apiServerUrl } = loadCredentials();
-    await client.call('authenticate', {
-      methodId: 'windsurf-api-key',
-      _meta: { api_key: apiKey, api_server_url: apiServerUrl },
-    });
+    // authenticate solo si el engine lo declara (Devin:
+    // windsurf-api-key; OpenCode: null — usa `opencode auth login`).
+    const authParams = engine.authParams?.();
+    if (authParams) await client.call('authenticate', authParams);
   } catch (err) {
     client.dispose();
     throw err;
   }
-  acpPool.client = client;
+  acpPool.set(engine.id, client);
   if (!exitHookInstalled) {
     exitHookInstalled = true;
-    // Sin esto un Ctrl+C/exit del CLI dejaría el `devin acp` huérfano.
+    // Sin esto un Ctrl+C/exit del CLI dejaría los `* acp` huérfanos.
     process.on('exit', () => {
-      try {
-        acpPool.client?.kill();
-      } catch {
-        /* ya muerto */
+      for (const c of acpPool.values()) {
+        try {
+          c.kill();
+        } catch {
+          /* ya muerto */
+        }
       }
     });
   }
@@ -259,52 +249,63 @@ async function warmClient(cwd, logPath) {
   return { client, reused: false };
 }
 
-async function startSession({ cwd, logPath, model, mode }) {
-  const { client, reused } = await warmClient(cwd, logPath);
+async function startSession(engine, { cwd, logPath, model, mode, onActivity }) {
+  const { client, reused } = await warmClient(engine, cwd, logPath);
   const session = await client.call('session/new', { cwd, mcpServers: [] });
-  await client.call('session/set_config_option', {
-    sessionId: session.sessionId,
-    configId: 'mode',
-    value: mode,
-  });
-  if (model) {
-    await client.call('session/set_config_option', {
-      sessionId: session.sessionId,
-      configId: 'model',
-      value: model,
-    });
-  }
+  const setOpt = async (configId, value) => {
+    if (!value) return;
+    try {
+      await client.call('session/set_config_option', {
+        sessionId: session.sessionId,
+        configId,
+        value,
+      });
+    } catch (err) {
+      // strictConfig (Devin): el modo bypass es parte del contrato —
+      // un fallo acá es error real. No-strict (OpenCode): el default
+      // ya es usable, se sigue con un warning.
+      if (engine.strictConfig) throw err;
+      onActivity?.(`${engine.label}: config '${configId}' ignorada (${err.message})`);
+    }
+  };
+  await setOpt('mode', mode ?? engine.defaultMode);
+  await setOpt('model', model ?? engine.defaultModel);
   return { client, sessionId: session.sessionId, reused };
 }
 
 /**
- * Ejecuta un prompt contra Devin en `cwd` y espera el fin del turno.
- * Devuelve { ok, text, stopReason, sessionId, error? }.
+ * Ejecuta un prompt contra el engine resuelto en `cwd` y espera el fin
+ * del turno. `agent` puede ser un id ('devin'|'opencode'), un engine
+ * resuelto o vacío (resolveEngine: env AGENT_PROVIDER → 'devin').
+ * Devuelve { ok, text, stopReason, sessionId, engine, error? }.
  */
-export async function runDevinPrompt({
+export async function runAgentPrompt({
+  agent,
   prompt,
   cwd,
   timeoutMs = config.devinTimeoutMs,
-  model = config.devinModel,
-  mode = config.devinMode,
+  model,
+  mode,
   logPath,
   onText,
   onActivity,
 }) {
   let client;
+  let engine;
   const textParts = [];
-  // Semáforo global: nunca más de `maxDevinSessions` sesiones `devin
-  // acp` a la vez en toda la máquina (default 1). Aplica entre procesos
-  // — dos `npm start` concurrentes se serializan acá.
+  // Semáforo global: nunca más de `maxDevinSessions` sesiones ACP a la
+  // vez en toda la máquina (default 1), mezclando engines — dos
+  // `npm start` concurrentes se serializan acá igual.
   const releaseSlot = await acquireDevinSlot({
-    onWait: () => onActivity?.('esperando slot de sesión Devin (otro run en curso)…'),
+    onWait: () => onActivity?.('esperando slot de sesión de agente (otro run en curso)…'),
   });
   try {
-    const started = await startSession({ cwd, logPath, model, mode });
+    engine = resolveEngine(typeof agent === 'string' || !agent ? agent : agent.id);
+    const started = await startSession(engine, { cwd, logPath, model, mode, onActivity });
     client = started.client;
     const sessionId = started.sessionId;
     if (started.reused) {
-      onActivity?.('proceso devin acp reutilizado (handshake omitido)');
+      onActivity?.(`proceso ${engine.id} acp reutilizado (handshake omitido)`);
     }
 
     // Dedup + throttle de actividad: los tool_call pueden llegar en ráfagas.
@@ -348,14 +349,22 @@ export async function runDevinPrompt({
       stopReason: result?.stopReason ?? 'end_turn',
       sessionId,
       reused: started.reused,
+      engine: engine.id,
     };
   } catch (err) {
+    let error = String(err?.message ?? err);
+    // auth_required / similar: el engine declara cómo arreglarlo
+    // (opencode → `opencode auth login`).
+    if (engine?.authHint && /auth|login|permission/i.test(error)) {
+      error += ` — ${engine.authHint}`;
+    }
     return {
       ok: false,
       text: textParts.join(''),
       stopReason: null,
       sessionId: null,
-      error: String(err?.message ?? err),
+      engine: engine?.id,
+      error,
     };
   } finally {
     // El cliente NO se cierra: queda tibio en el pool para el próximo
@@ -364,25 +373,27 @@ export async function runDevinPrompt({
       client.onUpdate = null;
       if (client.isAlive) client.unref();
       else dropPooledClient(client);
-    } else if (acpPool.client?.isAlive) {
+    } else if (engine && acpPool.get(engine.id)?.isAlive) {
       // startSession lanzó tras pool-ear el cliente (session/new o
       // set_config falló): quedó ref()'d sin dueño — hay que
       // descartarlo o retiene el event loop para siempre.
-      dropPooledClient(acpPool.client);
+      dropPooledClient(acpPool.get(engine.id));
     }
     releaseSlot();
   }
 }
 
 /**
- * Probe de autenticación para preflight: initialize + authenticate.
- * No consume slot del semáforo: es un handshake de ~1s sin trabajo
- * de agente (no llega a session/new).
+ * Probe de autenticación para preflight: initialize + authenticate
+ * (si el engine lo declara). No consume slot del semáforo: es un
+ * handshake de ~1s sin trabajo de agente (no llega a session/new).
  */
-export async function checkDevinAuth(timeoutMs = 30_000) {
+export async function checkEngineAuth(engineId, timeoutMs = 30_000) {
+  let engine;
   let client;
   try {
-    client = new AcpClient(config.rootDir, null);
+    engine = resolveEngine(engineId);
+    client = new AcpClient(engine, config.rootDir, null);
     await withTimeout(
       (async () => {
         await client.call('initialize', {
@@ -390,11 +401,8 @@ export async function checkDevinAuth(timeoutMs = 30_000) {
           clientCapabilities: {},
           clientInfo: { name: 'metabuilder-orchestrator', version: '0.1.0' },
         });
-        const { apiKey, apiServerUrl } = loadCredentials();
-        await client.call('authenticate', {
-          methodId: 'windsurf-api-key',
-          _meta: { api_key: apiKey, api_server_url: apiServerUrl },
-        });
+        const authParams = engine.authParams?.();
+        if (authParams) await client.call('authenticate', authParams);
       })(),
       timeoutMs,
       () => client.kill(),
