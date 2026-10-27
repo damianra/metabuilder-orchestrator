@@ -2,8 +2,8 @@
 
 {{idea}}
 
-> App generada automáticamente por [MetaBuilder Orchestrator](https://github.com/damianra/metabuilder-orchestrator)
-
+> App generada automáticamente por [MetaBuilder Orchestrator](https://github.com/damianra/metabuilder-orchestrator) usando {{engine}} (via ACP).
+{{screenshot}}
 ## Stack
 
 {{stack}}
