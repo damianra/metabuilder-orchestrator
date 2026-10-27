@@ -51,7 +51,9 @@ function createAsker() {
 
 // Modo interactivo: rellena lo que falten los flags.
 async function collectArgs(args) {
-  const interactive = Boolean(process.stdin.isTTY);
+  // --yes = cero preguntas: todo lo opcional toma su default (idea
+  // sigue siendo obligatoria — sin ella se sale con código 2).
+  const interactive = Boolean(process.stdin.isTTY) && !args.yes;
   const asker = createAsker();
   try {
     // --resume: idea/scope/appType/name/phone salen del plan.json —
