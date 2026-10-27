@@ -5,6 +5,8 @@ import { run } from '../tools/shell.js';
 import { awaitInstall, isInstalling } from '../tools/install.js';
 import { finalCheckCommands, stacksFor } from '../stacks/index.js';
 import { getGitHubUser, createRepo, enablePages, getPages } from '../tools/github.js';
+import { captureScreenshot } from '../tools/screenshot.js';
+import { getEngine } from '../engines/index.js';
 import { activity, log, loadTemplate } from './common.js';
 
 // Nunca loguear el token: sanitiza cualquier salida que pueda contenerlo.
@@ -118,7 +120,7 @@ export async function finalVerifyNode(state) {
  * crédito a MetaBuilder). Se escribe justo antes del commit para que
  * refleje el scope final, sin depender del agente.
  */
-function writeReadme(state) {
+export function writeReadme(state, { screenshot = null } = {}) {
   const { frontend, backend } = stacksFor(state);
 
   const stack = [
@@ -134,12 +136,25 @@ function writeReadme(state) {
     ...(frontend?.readme.tests ?? []),
   ].join('\n');
 
+  // Crédito del engine real usado (state.agent lo resolvió preflight a
+  // un id concreto; 'auto'/vacío no debería llegar acá — fallback
+  // genérico por las dudas).
+  let engine = 'un motor ACP';
+  try {
+    const e = state.agent && state.agent !== 'auto' ? getEngine(state.agent) : null;
+    if (e) engine = e.label;
+  } catch {
+    /* id desconocido → crédito genérico */
+  }
+
   const md = loadTemplate('README.md', {
     name: state.projectSlug,
     idea: state.idea,
     stack,
     devCommands,
     testCommands,
+    engine,
+    screenshot: screenshot ? `## Captura\n\n![Captura de la app](${screenshot})\n` : '',
   });
   writeFileSync(join(state.projectDir, 'README.md'), md);
 }
@@ -148,7 +163,32 @@ export async function finalizerNode(state) {
   const dir = state.projectDir;
   const history = [];
 
-  writeReadme(state);
+  const hasFrontend = state.scope !== 'backend';
+  const frontendStack = stacksFor(state).frontend;
+  // buildDir del stack: 'dist' (Vite) / 'out' (Next export).
+  const outDir = join(dir, frontendStack?.buildDir ?? 'dist');
+
+  // Screenshot del build para el README — solo cuando el run publica
+  // el repo en GitHub (la imagen queda commiteada con el proyecto).
+  // Warn-only: sin playwright/chromium el README sale sin imagen.
+  let screenshot = null;
+  if (state.deployGithub && hasFrontend && existsSync(outDir)) {
+    const shot = await captureScreenshot({
+      dir: outDir,
+      cwd: dir,
+      outFile: join(dir, 'screenshot.png'),
+    });
+    if (shot.ok && existsSync(join(dir, 'screenshot.png'))) {
+      screenshot = 'screenshot.png';
+      history.push(log('finalize', 'screenshot.png capturado'));
+    } else {
+      history.push(
+        log('finalize', `screenshot omitido: ${(shot.stderr || 'falló').slice(-160)}`),
+      );
+    }
+  }
+
+  writeReadme(state, { screenshot });
   history.push(log('finalize', 'README.md generado'));
 
   const git = (args, cwd = dir) =>
@@ -260,10 +300,6 @@ export async function finalizerNode(state) {
   history.push(log('finalize', `push a ${remoteUrl} (main)`));
 
   // --- GitHub Pages (solo con --github + --ghpages + token + frontend) ---
-  const hasFrontend = state.scope !== 'backend';
-  const frontendStack = stacksFor(state).frontend;
-  // buildDir del stack: 'dist' (Vite) / 'out' (Next export).
-  const outDir = join(dir, frontendStack?.buildDir ?? 'dist');
   if (
     state.deployGithub &&
     state.deployPages &&
