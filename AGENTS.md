@@ -236,7 +236,15 @@ fina sobre la infra existente:
   pending/running del slug — el worker escribe dentro del dir, con
   re-check justo antes del rmSync por TOCTOU).
 - `GET /api/options` — scopes/verticales/archs/stacks leídos de los
-  registries; la UI alimenta sus pickers de acá (nada hardcodeado).
+  registries + `engines` (ids del registry de agentes) y `engine` (el
+  configurado en settings.json/env, o null → setup gate en la UI).
+- `GET /api/engines` — probe por engine: `{id,label,bin,installed,
+  auth,detail,docsUrl,installHint}` + `engine` configurado. `installed`
+  via `command -v`; `auth` via `checkEngineAuth` (handshake ACP real)
+  — `agentProbe` es inyectable para tests.
+- `POST /api/settings` — `{engine}` → persiste en `settings.json`
+  (write atómico); 400 si el id no está en el registry. Es lo que
+  escribe el setup gate del dashboard.
 - `POST /api/jobs/:id/cancel` — `cancelJob(id)` de queue.js: pending →
   `cancelled` (el worker solo consume pending → nunca arranca); running
   → `cancelRequested` en el JSON y el watcher de `runJob` (500ms) hace
