@@ -51,6 +51,18 @@ const readJsonOr = (p) => {
 
 const writeJson = (p, data) => writeFileSync(p, JSON.stringify(data, null, 2) + '\n');
 
+// Para los writes de estado que corren en callbacks async (close del
+// child, .then/.catch): si la app fue borrada a mitad de la operación
+// el writeFileSync tira ENOENT — ahí es uncaught/unhandledRejection y
+// tumba la API. El estado final es best-effort: se traga.
+const tryWriteJson = (p, data) => {
+  try {
+    writeJson(p, data);
+  } catch {
+    /* dir borrada */
+  }
+};
+
 // ssh/scp-style → https, para que la UI pueda abrir el repo en el browser.
 const toWebUrl = (remote) => {
   if (!remote) return null;
@@ -71,6 +83,9 @@ export function startDockerBuild(dir, slug, engine = 'docker') {
   const state = { status: 'running', tag, engine, startedAt: new Date().toISOString() };
   writeBuildState(dir, state);
   const log = createWriteStream(join(dir, 'docker-build.log'), { flags: 'a' });
+  // si el archivo desaparece (app borrada a mitad de build) no queremos
+  // un uncaught que tumbe toda la API.
+  log.on('error', () => {});
   const child = spawn(engine, ['build', '-t', tag, '.'], { cwd: dir });
   // end:false — si stdout cierra antes que stderr, el pipe default
   // haría end() y un chunk tardío de stderr sería write-after-end.
@@ -78,7 +93,7 @@ export function startDockerBuild(dir, slug, engine = 'docker') {
   child.stderr.pipe(log, { end: false });
   child.on('close', (exitCode) => {
     log.end();
-    writeBuildState(dir, {
+    tryWriteJson(buildStatePath(dir), {
       ...state,
       status: exitCode === 0 ? 'done' : 'failed',
       exitCode: exitCode ?? 1,
@@ -101,6 +116,9 @@ export function startTestRun(dir, commands, label) {
   const state = { status: 'running', command: label, pid: null, startedAt: new Date().toISOString() };
   writeTestState(dir, state);
   const log = createWriteStream(join(dir, 'test-run.log'), { flags: 'a' });
+  // idem: app borrada a mitad de run → sin este handler el 'error' del
+  // stream es un uncaught que tumba la API.
+  log.on('error', () => {});
   log.write(`\n━━ test run · ${label} · ${state.startedAt}\n`);
   let finished = false;
   const finish = (status, exitCode) => {
@@ -109,7 +127,7 @@ export function startTestRun(dir, commands, label) {
     // El estado final se escribe cuando el log ya flusheó — así quien
     // lee status 'done'/'failed' tiene el output completo en disco.
     log.end(() =>
-      writeTestState(dir, { ...state, status, exitCode, finishedAt: new Date().toISOString() }),
+      tryWriteJson(testStatePath(dir), { ...state, status, exitCode, finishedAt: new Date().toISOString() }),
     );
   };
   const runNext = (i) => {
@@ -118,7 +136,7 @@ export function startTestRun(dir, commands, label) {
     log.write(`\n$ ${[cmd, ...args].join(' ')}\n`);
     const child = spawn(cmd, args, { cwd: dir });
     state.pid = child.pid;
-    writeTestState(dir, state);
+    tryWriteJson(testStatePath(dir), state);
     // end:false — el stream lo cierra finish() explícitamente; con el
     // default, el primer stdout que termina haría end() y los writes
     // siguientes (stderr o el próximo comando) serían write-after-end.
@@ -222,7 +240,7 @@ export function startDevRun(dir, { spawnFn = spawn } = {}) {
       proc.alive = false;
       proc.exitCode = code ?? 1;
       const current = stillCurrent();
-      if (current) writeDevState(dir, state);
+      if (current) tryWriteJson(devRunPath(dir), state);
       // Al morir el último proc: cerrar el stream SIEMPRE (sino cada
       // stop-dev/re-run deja un fd de dev-run.log abierto), pero el
       // estado final solo se escribe si esta sigue siendo la sesión
@@ -230,7 +248,7 @@ export function startDevRun(dir, { spawnFn = spawn } = {}) {
       if (state.procs.every((p) => !p.alive)) {
         log.end(() => {
           if (current)
-            writeDevState(dir, { ...state, status: 'exited', finishedAt: new Date().toISOString() });
+            tryWriteJson(devRunPath(dir), { ...state, status: 'exited', finishedAt: new Date().toISOString() });
         });
       }
     });
@@ -788,7 +806,7 @@ export function createDashboardApp({
         github: githubApi,
       })
         .then((out) =>
-          writeJson(publishPath(dir), {
+          tryWriteJson(publishPath(dir), {
             ...state,
             status: 'done',
             repoUrl: out.repoUrl,
@@ -797,7 +815,7 @@ export function createDashboardApp({
           }),
         )
         .catch((e) =>
-          writeJson(publishPath(dir), {
+          tryWriteJson(publishPath(dir), {
             ...state,
             status: 'failed',
             error: e.message,

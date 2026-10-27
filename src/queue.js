@@ -161,6 +161,9 @@ export async function runJob(
     jobPath(job.id, baseDir).replace(/\.json$/, '.log'),
     { flags: 'a' },
   );
+  // si el archivo desaparece (jobs/ borrado, disco lleno) no queremos
+  // un uncaught que tumbe el worker a mitad del run.
+  logStream.on('error', () => {});
   logStream.write(`\n━━ job #${job.id} · ${startedAt} · ${job.args.join(' ')}\n`);
 
   let childPid = null;
