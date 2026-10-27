@@ -182,8 +182,17 @@ export function attachTerminal(
 
       // Engine del TUI: ?engine=<id> o el configurado. Un id desconocido
       // se reporta al cliente en vez de destruir el socket — así la UI
-      // puede mostrar el motivo.
-      const engineId = q.get('engine') || defaultEngineId();
+      // puede mostrar el motivo. 'auto' (valor válido en settings/env)
+      // se resuelve a un engine concreto también como query param: la
+      // UI manda el configurado verbatim.
+      let engineId = q.get('engine') || defaultEngineId();
+      if (engineId === 'auto') {
+        try {
+          engineId = resolveEngine('auto').id;
+        } catch {
+          engineId = 'devin';
+        }
+      }
       const engine = engineFor(engineId);
       if (!engine) {
         send(ws, { t: 'error', msg: `engine desconocido "${engineId}"` });

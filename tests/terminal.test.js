@@ -162,17 +162,13 @@ describe('terminal Devin (WS + pty)', () => {
     ws.close();
   });
 
-  it("engine 'auto' configurado → la terminal cae a devin (resolveEngine)", async () => {
-    // Sin ?engine y con defaultEngineId real: 'auto' en settings no
-    // debe llegar verbatim (era el bug que marcó el validador). Acá se
-    // fuerza el path con un engineFor real + resolveEngine del registry.
+  it("engine 'auto' se resuelve a devin — como param y como default", async () => {
+    // 'auto' es valor válido en settings/env; el server lo mapea a un
+    // engine concreto también cuando llega como ?engine=auto.
     const app2 = express();
     const srv2 = createServer(app2);
     const { getEngine, resolveEngine } = await import('../src/engines/index.js');
-    const { writeFileSync: wf } = await import('node:fs');
-    const settingsFile = join(dir, 'settings.json');
-    wf(settingsFile, JSON.stringify({ engine: 'auto' }));
-    attachTerminal(srv2, {
+    const term2 = attachTerminal(srv2, {
       appsDir: dir,
       acquireSlot: acquireFake,
       spawnPty: spawnFake,
@@ -185,11 +181,26 @@ describe('terminal Devin (WS + pty)', () => {
     });
     await new Promise((r) => srv2.listen(0, '127.0.0.1', r));
     const p2 = srv2.address().port;
-    const ws = await connect(wsUrl(p2, 'demo-app'));
-    await nextMsg(ws);
-    await nextMsg(ws);
+
+    // default path (sin param): engine configurado 'auto' → devin
+    const ws1 = await connect(wsUrl(p2, 'demo-app'));
+    await nextMsg(ws1);
+    await nextMsg(ws1);
     expect(lastPty.bin).toBe('devin');
-    ws.close();
+    ws1.close();
+
+    // 'auto' mapea al mismo engine → el segundo connect reattacharía a
+    // la sesión viva; la mato para probar el spawn del path ?engine=.
+    term2.killBySlug('demo-app');
+    await new Promise((r) => setTimeout(r, 30));
+
+    // query param verbatim (el panel manda el configurado): idem
+    const ws2 = await connect(wsUrl(p2, 'demo-app', '?engine=auto'));
+    await nextMsg(ws2);
+    await nextMsg(ws2);
+    expect(lastPty.bin).toBe('devin');
+    ws1.close();
+    ws2.close();
     srv2.close();
   });
 

@@ -34,7 +34,16 @@ export default function TerminalPanel({ slug }) {
       .engines()
       .then((d) => {
         setEngines(d.engines ?? []);
-        setEngine((e) => e ?? d.engine ?? d.engines?.[0]?.id ?? null);
+        // El configurado puede ser 'auto' (no está en la lista) — caer
+        // al primer instalado para el default del selector.
+        setEngine(
+          (e) =>
+            e ??
+            d.engines?.find((en) => en.id === d.engine)?.id ??
+            d.engines?.find((en) => en.installed)?.id ??
+            d.engines?.[0]?.id ??
+            null,
+        );
       })
       .catch(() => setEngines([]));
   }, [open, engines]);
