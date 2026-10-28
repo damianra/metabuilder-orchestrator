@@ -199,7 +199,7 @@ export default function ProjectDetail({ slug, onChanged }) {
   if (error) {
     return (
       <div className="space-y-4">
-        <a href="#/backend" className="inline-flex items-center gap-1.5 text-sm text-sky-700 hover:underline">
+        <a href="#/backend" className="inline-flex items-center gap-1.5 text-sm text-accent-700 hover:underline">
           <ArrowLeft size={15} /> proyectos
         </a>
         <p className="text-sm text-red-700">error: {error}</p>
@@ -257,7 +257,7 @@ export default function ProjectDetail({ slug, onChanged }) {
 
   return (
     <div className="space-y-4">
-      <a href="#/backend" className="inline-flex items-center gap-1.5 text-sm text-sky-700 hover:underline">
+      <a href="#/backend" className="inline-flex items-center gap-1.5 text-sm text-accent-700 hover:underline">
         <ArrowLeft size={15} /> proyectos
       </a>
 
@@ -397,7 +397,7 @@ export default function ProjectDetail({ slug, onChanged }) {
               </label>
             )}
             <button
-              className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-accent-700 disabled:opacity-40"
               disabled={busy === 'publish' || publishing}
               onClick={pub}
             >
@@ -418,7 +418,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                 href={publish.repoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sky-700 underline"
+                className="text-accent-700 underline"
               >
                 {publish.repoUrl}
               </a>
@@ -428,7 +428,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                 href={publish.pagesUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sky-700 underline"
+                className="text-accent-700 underline"
               >
                 {publish.pagesUrl}
               </a>
@@ -496,7 +496,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                 href={`http://localhost:${container.hostPort ?? suggestedPort}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-sky-700 hover:underline"
+                className="font-medium text-accent-700 hover:underline"
               >
                 localhost:{container.hostPort ?? suggestedPort}
               </a>
@@ -569,14 +569,14 @@ export default function ProjectDetail({ slug, onChanged }) {
               <ul className="mt-3 space-y-1 text-sm">
                 {apiSurface.endpoints.map((e, i) => (
                   <li key={i} className="flex items-center gap-2">
-                    <span className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${e.method === 'GET' ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'}`}>{e.method}</span>
+                    <span className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${e.method === 'GET' ? 'bg-emerald-100 text-emerald-800' : 'bg-accent-100 text-accent-800'}`}>{e.method}</span>
                     <code className="text-slate-700">{e.path}</code>
                     <span className="text-xs text-slate-400">{e.file}</span>
                     {devRunning && e.method === 'GET' && (
                       <button
                         title={`GET ${e.path} contra el dev-run (proxy via dashboard)`}
                         onClick={() => probeEndpoint(e.path)}
-                        className="ml-auto shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-sky-700 ring-1 ring-sky-300 hover:bg-sky-50"
+                        className="ml-auto shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-accent-700 ring-1 ring-accent-300 hover:bg-accent-50"
                       >
                         probar
                       </button>
@@ -612,7 +612,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                       href={u}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mr-3 font-medium text-sky-700 hover:underline"
+                      className="mr-3 font-medium text-accent-700 hover:underline"
                     >
                       {u}
                     </a>
@@ -855,7 +855,7 @@ export default function ProjectDetail({ slug, onChanged }) {
               onChange={(e) => setBackendForm((f) => ({ ...f, idea: e.target.value }))}
               placeholder="¿Qué datos maneja tu app? (ej. productos, pedidos, posts — vacío = lo infiere de la UI)"
               rows={3}
-              className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500"
+              className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-accent-500"
             />
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <label className="text-xs text-slate-600">
@@ -907,7 +907,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                     () => 'extend encolado — el agente diseña la API sobre tu frontend',
                   );
                 }}
-                className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-40"
+                className="inline-flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-700 disabled:opacity-40"
               >
                 {busy === 'add-backend' ? spin : <Plus size={15} />} generar backend
               </button>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Send } from 'lucide-react';
+import { DraftingCompass, Plus, Send } from 'lucide-react';
 import { api } from '../api.js';
 
 const EMPTY = {
@@ -107,15 +107,15 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
     }
   };
 
-  const input = 'w-full rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-slate-300 focus:ring-2 focus:ring-sky-500 outline-none';
+  const input = 'w-full rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-slate-300 focus:ring-2 focus:ring-accent-500 outline-none';
   const label = 'block text-xs font-semibold text-slate-600 mb-1';
 
   return (
     <form onSubmit={submit} className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
       <h2 className="flex items-center gap-2 text-lg font-bold tracking-tight text-slate-900">
-        <Plus size={18} className="text-sky-600" /> Nueva app
+        <DraftingCompass size={18} className="text-accent-600" /> Nueva app
         {clonedFrom && (
-          <span className="rounded-lg bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-700 ring-1 ring-sky-200">
+          <span className="rounded-lg bg-accent-50 px-2 py-0.5 text-xs font-semibold text-accent-700 ring-1 ring-accent-200">
             config de {clonedFrom}
           </span>
         )}
@@ -285,7 +285,7 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
         <button
           type="submit"
           disabled={!canSubmit}
-          className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 rounded-lg bg-accent-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-accent-700 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Send size={15} /> Encolar generación
         </button>

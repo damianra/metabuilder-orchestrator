@@ -2,7 +2,7 @@
 
 export const STATUS_META = {
   done: { label: 'done', cls: 'bg-emerald-100 text-emerald-800 ring-emerald-300' },
-  running: { label: 'running', cls: 'bg-sky-100 text-sky-800 ring-sky-300 animate-pulse' },
+  running: { label: 'running', cls: 'bg-accent-100 text-accent-800 ring-accent-300 animate-pulse' },
   pending: { label: 'pending', cls: 'bg-slate-100 text-slate-700 ring-slate-300' },
   failed: { label: 'failed', cls: 'bg-red-100 text-red-800 ring-red-300' },
   cancelled: { label: 'cancelled', cls: 'bg-slate-100 text-slate-500 ring-slate-300' },

@@ -11,7 +11,7 @@ const chip = (j) =>
       : j.status === 'failed'
         ? 'bg-red-100 text-red-800'
         : j.status === 'running'
-          ? 'bg-sky-100 text-sky-800 animate-pulse'
+          ? 'bg-accent-100 text-accent-800 animate-pulse'
           : 'bg-slate-100 text-slate-600';
 
 // pending → borrar; running → flag cancelRequested y el worker mata el

@@ -1,3 +1,67 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Temas por área — cada tab cambia la paleta `accent-*` entera (los
+ * números son triplets rgb del shade equivalente de Tailwind):
+ *   design    → violet  (lienzo creativo — dot-grid de canvas)
+ *   backend   → emerald (terminal/server — scanline sutil)
+ *   fullstack → amber   (taller — blueprint grid entre arte y build)
+ */
+.theme-design {
+  --a50: 245 243 255; --a100: 237 233 254; --a200: 221 214 254;
+  --a300: 196 181 253; --a400: 167 139 250; --a500: 139 92 246;
+  --a600: 124 58 237; --a700: 109 40 217; --a800: 91 33 182; --a900: 76 29 149;
+}
+.theme-backend {
+  --a50: 236 253 245; --a100: 209 250 229; --a200: 167 243 208;
+  --a300: 110 231 183; --a400: 52 211 153; --a500: 16 185 129;
+  --a600: 5 150 105; --a700: 4 120 87; --a800: 6 95 70; --a900: 6 78 59;
+}
+.theme-fullstack {
+  --a50: 255 251 235; --a100: 254 243 199; --a200: 253 230 138;
+  --a300: 252 211 77; --a400: 251 191 36; --a500: 245 158 11;
+  --a600: 217 119 6; --a700: 180 83 9; --a800: 146 64 14; --a900: 120 53 15;
+}
+/* Fallback (detalle de proyecto, sin tab): el sky original. */
+.theme-neutral {
+  --a50: 240 249 255; --a100: 224 242 254; --a200: 186 230 253;
+  --a300: 125 211 252; --a400: 56 189 248; --a500: 14 165 233;
+  --a600: 2 132 199; --a700: 3 105 161; --a800: 7 89 133; --a900: 12 74 110;
+}
+
+/* Motifs de fondo por área — texturas sutiles que delimitan el
+ * territorio sin distraer del contenido. */
+.motif-canvas {
+  background-image: radial-gradient(circle, rgb(var(--a300) / .35) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.motif-terminal {
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgb(var(--a200) / .14) 0 1px,
+    transparent 1px 26px
+  );
+}
+.motif-blueprint {
+  background-image:
+    linear-gradient(rgb(var(--a300) / .18) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--a300) / .18) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+/* Micro-detalles de personalidad. */
+.font-glyph { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+::selection {
+  background: rgb(var(--a200) / .9);
+}
+
+/* Transiciones suaves en hover/interactive que Tailwind no anima por
+ * defecto — personalidad sin ruido. */
+a, button, select, [role='button'] {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: 160ms;
+  transition-timing-function: ease-out;
+}

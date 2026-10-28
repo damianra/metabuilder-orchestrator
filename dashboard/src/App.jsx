@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, BellOff, Boxes, Cpu } from 'lucide-react';
+import { Bell, BellOff, Boxes, Cpu, DraftingCompass, Palette, ServerCog } from 'lucide-react';
 import { api } from './api.js';
 import { diffFinished, notifyFinished, snapshotStatuses } from './notifications.js';
 import NewAppForm from './components/NewAppForm.jsx';
@@ -85,12 +85,23 @@ export default function App() {
   const running = jobs.filter((j) => j.status === 'running').length;
   const queued = jobs.filter((j) => j.status === 'pending').length;
 
+  // Tema + motif por área — cada tab se siente en su territorio:
+  // diseño = canvas violeta, backend = terminal emerald, fullstack =
+  // taller blueprint, detalle = neutro.
+  const theme = {
+    design: 'theme-design motif-canvas',
+    list: 'theme-backend motif-terminal',
+    fullstack: 'theme-fullstack motif-blueprint',
+    detail: 'theme-neutral',
+  }[route.view];
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className={`min-h-screen bg-slate-50 ${theme}`}>
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <a href="#/" className="flex items-center gap-2 font-bold tracking-tight text-slate-900">
-            <Boxes size={20} className="text-sky-600" /> MetaBuilder
+            <Boxes size={20} className="text-accent-600" /> MetaBuilder
+            <span className="font-glyph text-[10px] font-normal text-slate-400">//orchestrator</span>
           </a>
           <div className="flex items-center gap-3 text-xs text-slate-500">
             {notifPerm === 'default' && (
@@ -121,7 +132,7 @@ export default function App() {
                 <Cpu size={13} /> motor: {engine}
               </button>
             )}
-            {running > 0 && <span className="text-sky-700 font-semibold">{running} corriendo</span>}
+            {running > 0 && <span className="text-accent-700 font-semibold">{running} corriendo</span>}
             {queued > 0 && <span>{queued} en cola</span>}
             <span className={`inline-flex items-center gap-1.5 ${apiDown ? 'text-red-600' : 'text-emerald-700'}`}>
               <span className={`h-2 w-2 rounded-full ${apiDown ? 'bg-red-500' : 'bg-emerald-500'}`} />
@@ -150,26 +161,27 @@ export default function App() {
         {engine !== null && !gateOpen && route.view !== 'detail' && (
           <nav className="flex gap-1 rounded-xl bg-white p-1 ring-1 ring-slate-200 shadow-sm">
             {[
-              ['design', 'Diseñar app', '#/'],
-              ['list', 'Backend', '#/backend'],
-              ['fullstack', 'Fullstack', '#/fullstack'],
-            ].map(([v, label, href]) => (
+              ['design', 'Diseñar app', '#/', Palette],
+              ['list', 'Backend', '#/backend', ServerCog],
+              ['fullstack', 'Fullstack', '#/fullstack', DraftingCompass],
+            ].map(([v, label, href, Icon]) => (
               <a
                 key={v}
                 href={href}
-                className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold ${
                   route.view === v
-                    ? 'bg-sky-600 text-white'
+                    ? 'bg-accent-600 text-white shadow-sm'
                     : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                {label}
+                <Icon size={14} /> {label}
               </a>
             ))}
           </nav>
         )}
         {engine !== null && !gateOpen && (
-          route.view === 'detail' ? (
+          <div key={route.view} className="animate-view-enter space-y-5">
+          {route.view === 'detail' ? (
             <ProjectDetail slug={route.slug} onChanged={refresh} />
           ) : route.view === 'design' ? (
             <DesignTab
@@ -195,7 +207,8 @@ export default function App() {
               <QueuePanel jobs={jobs} worker={worker} onChanged={refresh} />
               <ProjectList projects={projects} />
             </>
-          )
+          )}
+          </div>
         )}
       </main>
     </div>
