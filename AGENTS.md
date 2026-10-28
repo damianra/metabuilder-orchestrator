@@ -26,6 +26,7 @@ npm start -- --idea "..." --scope fullstack|frontend|backend \
             [--arch flat|mvc|layers|feature] \
             [--stack-frontend vite-react|nextjs] \
             [--stack-backend express-sqlite] \
+            [--compliance cookies|terminos|pagos|auth[,...]] \
             [--agent devin|opencode] \
             [--github] [--no-push] [--keep-going] [-y|--yes]
 

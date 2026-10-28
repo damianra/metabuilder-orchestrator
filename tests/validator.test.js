@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validatePlan } from '../src/agents/validator.js';
+import { applyCompliance, complianceFor } from '../src/compliance/index.js';
 import { verticals } from '../src/verticals/index.js';
 
 const baseStep = {
@@ -32,7 +33,7 @@ describe('validatePlan — reglas de schema', () => {
 describe('validatePlan — restricciones de scope', () => {
   const okSteps = [
     { ...baseStep, id: 1, description: 'init con vite' },
-    { ...baseStep, id: 2, type: 'frontend', description: 'UI con reglas de ui + privacidad y consentimiento' },
+    { ...baseStep, id: 2, type: 'frontend', description: 'UI con reglas de ui + privacidad y consentimiento + página 404' },
     { ...baseStep, id: 3, type: 'test', description: 'tests con vitest', verify: 'npx vitest run' },
     { ...baseStep, id: 4, type: 'e2e', description: 'specs playwright', verify: 'npm run test:e2e' },
   ];
@@ -64,21 +65,30 @@ describe('validatePlan — restricciones de scope', () => {
 });
 
 describe('verticales — buildPlan() siempre produce planes válidos', () => {
+  // El path real del planner: buildPlan → applyCompliance → validatePlan
+  // (el registry inyecta los bloques base — p.ej. 404 — que buildPlan
+  // no declara por sí solo).
+  const planOf = (v, opts, scope) => {
+    const p = verticals[v].buildPlan({ projectName: 't', phone: '', ...opts, scope });
+    applyCompliance(p, complianceFor({ idea: opts.idea, scope }));
+    return p;
+  };
+
   it('orders: los 3 scopes validan', () => {
     for (const scope of ['fullstack', 'frontend', 'backend']) {
-      const p = verticals.orders.buildPlan({ projectName: 't', idea: 'pizzería', scope, phone: '' });
+      const p = planOf('orders', { idea: 'pizzería' }, scope);
       expect(validatePlan(p, scope), `scope ${scope}`).toEqual([]);
     }
   });
 
   it('landing: valida con su scope forzado', () => {
-    const p = verticals.landing.buildPlan({ projectName: 't', idea: 'café', phone: '' });
+    const p = planOf('landing', { idea: 'café' }, 'frontend');
     expect(validatePlan(p, p.scope)).toEqual([]);
   });
 
   it('blog: los 3 scopes validan', () => {
     for (const scope of ['fullstack', 'frontend', 'backend']) {
-      const p = verticals.blog.buildPlan({ projectName: 't', idea: 'blog de recetas', scope });
+      const p = planOf('blog', { idea: 'blog de recetas' }, scope);
       expect(validatePlan(p, scope), `scope ${scope}`).toEqual([]);
     }
   });

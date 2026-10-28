@@ -76,6 +76,35 @@ que cambia es cuánta lógica vive ahí (flat = todo; mvc/layers/feature
 Preflight appenda `agentsRules` del patrón al AGENTS.md de la app
 generada — es el contrato que builder/fixer/reviewer leen.
 
+## Registry de cumplimiento
+
+`src/compliance/` declara cada perfil legal/de seguridad como datos
+(`privacidad`, `notfound`, `cookies`, `terminos`, `pagos`, `auth`):
+`promptBlock` (bloque canónico inyectado en la descripción de un paso),
+`requirements` (misma forma que los de stacks — `check`/`type`/`keywords`/
+`error` + `prompt` equivalente) y `infer` opcional (regex de detección
+sobre la idea). `resolveCompliance` arma la lista de perfiles activos:
+**base siempre** (`privacidad`+`notfound` cuando el scope tiene
+frontend — el usuario no tiene que pedirlos) + inferidos por la idea +
+explícitos del flag `--compliance a,b,c` (aditivo — nunca quita la
+base; id inválido → exit 2). El scope filtra: `auth` solo si hay
+backend; `privacidad`/`notfound`/`cookies`/`terminos` solo si hay
+frontend.
+
+`applyCompliance(plan, ids)` corre en el planner junto a `applyArch`:
+si algún paso del tipo requerido ya cubre las keywords del perfil lo
+respeta; si no, appenda el `promptBlock` canónico al paso relevante.
+Funciona igual para planes de verticales (donde `legalBlock` ya cubre
+`privacidad` — no se duplica) y planes `custom` escritos por Devin.
+`plan.compliance` persiste; `complianceFor` resuelve la precedencia
+flag > plan > inferencia — el resume restaura como `plan.stacks`. Los
+bullets llegan a `planner.md`/`plan-repair.md` merged en `stackRules`:
+una sola fuente para validator y prompts. El `reviewer.md` incluye el
+check "perfiles declarados en `plan.compliance` implementados". El
+dashboard expone `compliance` en `GET /api/options` y lo acepta en
+`POST /api/runs`. Agregar un perfil = nuevo archivo + entrada en el
+`Map` de `index.js`.
+
 ## Skeleton de app
 
 `src/templates/app-skeleton/` es un proyecto Vite+React+Tailwind+Vitest+

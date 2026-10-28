@@ -30,7 +30,7 @@ const fullPlan = (steps) => ({
 const OK_STEPS = [
   step({ id: 1, type: 'infra', description: 'init Vite+React+Tailwind', verify: 'npm run build' }),
   step({ id: 2, type: 'backend', description: 'Express + SQLite API', verify: 'npm run api' }),
-  step({ id: 3, type: 'frontend', description: 'pantallas con reglas de UI + privacidad y consentimiento', verify: 'npm run build' }),
+  step({ id: 3, type: 'frontend', description: 'pantallas con reglas de UI + privacidad y consentimiento + página 404', verify: 'npm run build' }),
   step({ id: 4, type: 'test', description: 'suite Vitest', verify: 'npx vitest run' }),
   step({ id: 5, type: 'e2e', description: 'specs Playwright', verify: 'npm run test:e2e' }),
 ];
@@ -142,7 +142,7 @@ describe('stack nextjs', () => {
     const plan = fullPlan([
       step({ id: 1, type: 'infra', description: 'init skeleton Next.js App Router', verify: 'npm run build' }),
       step({ id: 2, type: 'backend', description: 'Express + SQLite API', verify: 'npm run api' }),
-      step({ id: 3, type: 'frontend', description: 'páginas con reglas de UI + privacidad y consentimiento', verify: 'npm run build' }),
+      step({ id: 3, type: 'frontend', description: 'páginas con reglas de UI + privacidad y consentimiento + página 404', verify: 'npm run build' }),
       step({ id: 4, type: 'test', description: 'suite Vitest', verify: 'npx vitest run' }),
       step({ id: 5, type: 'e2e', description: 'specs Playwright', verify: 'npm run test:e2e' }),
     ]);
@@ -159,7 +159,7 @@ describe('stack nextjs', () => {
     const plan = fullPlan([
       step({ id: 1, type: 'infra', description: 'init skeleton Vite + React', verify: 'npm run build' }),
       step({ id: 2, type: 'backend', description: 'Express + SQLite API', verify: 'npm run api' }),
-      step({ id: 3, type: 'frontend', description: 'pantallas con reglas de UI + privacidad y consentimiento', verify: 'npm run build' }),
+      step({ id: 3, type: 'frontend', description: 'pantallas con reglas de UI + privacidad y consentimiento + página 404', verify: 'npm run build' }),
       step({ id: 4, type: 'test', description: 'suite Vitest', verify: 'npx vitest run' }),
       step({ id: 5, type: 'e2e', description: 'specs Playwright', verify: 'npm run test:e2e' }),
     ]);

@@ -1,3 +1,4 @@
+import { complianceRequirements, resolveCompliance } from '../compliance/index.js';
 import { planRequirements, resolveStacks, stacksFor } from '../stacks/index.js';
 import { log, writePlan } from './common.js';
 
@@ -47,8 +48,20 @@ export function validatePlan(plan, scope, { stacks, arch } = {}) {
   if (!hasBackend(scope) && steps.some((s) => s.type === 'backend'))
     errors.push('scope frontend no debe incluir pasos backend');
 
-  // Requisitos declarativos de los stacks activos (src/stacks/).
-  for (const req of planRequirements(stacks)) {
+  // Requisitos declarativos de los stacks activos (src/stacks/) + los
+  // perfiles de cumplimiento (plan.compliance o inferidos) — dedup por
+  // error porque privacidad convive en ambas fuentes.
+  const complianceIds =
+    plan.compliance ?? resolveCompliance({ idea: plan.idea ?? '', scope });
+  const reqs = [
+    ...new Map(
+      [...planRequirements(stacks), ...complianceRequirements(complianceIds)].map((r) => [
+        r.error,
+        r,
+      ]),
+    ).values(),
+  ];
+  for (const req of reqs) {
     if (req.check === 'some') {
       const ok = steps.some(
         (s) => (req.type === null || s.type === req.type) && mentions(s, ...req.keywords),
