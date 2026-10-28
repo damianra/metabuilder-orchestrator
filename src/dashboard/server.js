@@ -813,7 +813,7 @@ export function createDashboardApp({
     if (b.stackBackend && b.stackBackend !== 'express-sqlite') {
       if (b.appType && b.appType !== 'custom') {
         return res.status(400).json({
-          error: `vertical "${b.appType}" solo aplica a stack express-sqlite (los overlays son SQLites cos) — usá custom`,
+          error: `vertical "${b.appType}" solo aplica a stack express-sqlite (los overlays son SQLites) — usá custom`,
         });
       }
       b.appType = 'custom';

@@ -2,7 +2,7 @@
 // - securityHeaders: cabeceras mínimas anti MIME-sniffing/clickjacking.
 // - rateLimit: contador in-memory por IP para métodos que escriben
 //   (POST/PUT/DELETE) — frena spam de pedidos, comentarios y uploads.
-//   Las apps son single-process con SQLite local: un Map alcanza; un
+//   Las apps son single-process: un Map alcanza; un
 //   multi-instance necesitaría store compartido (fuera de scope).
 
 export function securityHeaders(req, res, next) {

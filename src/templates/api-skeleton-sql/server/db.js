@@ -88,7 +88,9 @@ export async function q(text, params = []) {
 export async function insert(text, params = []) {
   const p = await openDb();
   const sql =
-    DRIVER === 'pg' && !/returning\s/i.test(text) ? `${text} RETURNING id` : text;
+    DRIVER === 'pg' && !/returning\s/i.test(text)
+      ? `${text.replace(/;\s*$/, '')} RETURNING id`
+      : text;
   const res = await p.query(ph(sql), params);
   if (DRIVER === 'mysql') return res[0].insertId;
   return res.rows?.[0]?.id ?? null;
