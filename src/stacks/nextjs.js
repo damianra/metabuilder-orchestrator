@@ -49,6 +49,15 @@ export default {
     },
     {
       check: 'some',
+      type: 'frontend',
+      keywords: ['privacidad', 'consentimiento'],
+      error:
+        'algún paso frontend debe declarar la página de privacidad y el consentimiento en formularios con datos personales',
+      prompt:
+        'Algún paso `frontend` debe declarar la página de privacidad y el checkbox de consentimiento en formularios con datos personales (reglas de privacidad del `AGENTS.md`).',
+    },
+    {
+      check: 'some',
       type: 'test',
       keywords: ['vitest'],
       error: 'falta paso test con Vitest',
