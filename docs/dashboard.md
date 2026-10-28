@@ -172,10 +172,13 @@ lanza API+Vite+worker (`queue.js watch`) en un proceso — los jobs
 encolados desde la UI se procesan solos; la UI es un consumidor más de
 la API — no conoce paths del FS ni los registries directamente.
 La vista principal son tres tabs — "Backend" (`BackendTab.jsx`: chat
-con un agente backend-experto sobre `backend-work/` = api-skeleton,
-api-surface en vivo + probar via `/api/backend/probe`, guardar → plan
-sintético scope `backend`; sin pickers de stack/compliance — los
-infiere el agente) + cola + proyectos, "Diseñar app"
+con un agente backend-experto sobre `backend-work/` = skeleton del
+stack elegido (`createBackend(stackId)` copia `skeletonDir` y lo
+persiste en `backend-state.json`; el prompt recibe las convenciones
+del stack via `agentsStack`/`agentsDb`), api-surface en vivo +
+probar via `/api/backend/probe`, guardar → plan sintético scope
+`backend`; picker de stack backend en la pantalla de crear —
+compliance la infiere el agente) + cola + proyectos, "Diseñar app"
 (`DesignTab.jsx`) y "Fullstack" (`NewAppForm` con
 `fixedScope="fullstack"` — front+back en un solo run, la vía rápida).
 Los endpoints `/api/backend*` son espejo de `/api/design*`
