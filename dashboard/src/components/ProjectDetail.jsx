@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, CircleCheckBig, CloudUpload, Container, Copy, ExternalLink, FileText, FlaskConical, GitBranch, Globe, LoaderCircle, Play, RotateCcw, Square, Trash2 } from 'lucide-react';
+import { ArrowLeft, CircleCheckBig, CloudUpload, Container, Copy, ExternalLink, FileText, FlaskConical, GitBranch, Globe, LoaderCircle, Play, Plus, RotateCcw, Square, Trash2 } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import { api } from '../api.js';
 import { timeAgo } from '../util.js';
@@ -36,6 +36,13 @@ export default function ProjectDetail({ slug, onChanged }) {
   const [showPubLog, setShowPubLog] = useState(false);
   const [pubLog, setPubLog] = useState(null);
   const [notice, setNotice] = useState(null);
+  // Modal "agregar backend" (v9): scope frontend → --extend a fullstack.
+  const [backendOpen, setBackendOpen] = useState(false);
+  const [backendForm, setBackendForm] = useState({ idea: '', arch: 'flat', github: false, ghpages: false });
+  const [archOptions, setArchOptions] = useState([]);
+  // Superficie de API: endpoints escaneados de server/routes/ + probe.
+  const [apiSurface, setApiSurface] = useState(null);
+  const [probe, setProbe] = useState(null); // {path, status, body}
 
   const load = () =>
     api.project(slug).then(setProject).catch((e) => setError(e.message));
@@ -222,6 +229,26 @@ export default function ProjectDetail({ slug, onChanged }) {
   // detalle alcanza para renderizar el botón sin flash.
   const repoUrl = repoInfo?.repoUrl ?? project.repoUrl;
   const hasFrontend = project.scope !== 'backend';
+  const hasBackend = project.scope !== 'frontend';
+  const apiPort = (project.devTargets ?? []).find((t) => t.script === 'api')?.port ?? 4000;
+
+  // API surface: se pide solo cuando hay backend — endpoints
+  // escaneados de server/routes/ (auto-mount /api/<file>).
+  useEffect(() => {
+    if (!hasBackend) return;
+    api.apiSurface(slug).then(setApiSurface).catch(() => {});
+  }, [hasBackend, slug]);
+
+  const probeEndpoint = async (path) => {
+    setProbe({ path, status: '…', body: '' });
+    try {
+      const r = await fetch(`http://localhost:${apiPort}${path}`);
+      const body = await r.text();
+      setProbe({ path, status: r.status, body: body.slice(0, 800) });
+    } catch (e) {
+      setProbe({ path, status: 'ERR', body: e.message });
+    }
+  };
   // publish llega en el detalle (publish.json del server): running
   // → spinner, done → anchors, failed → error.
   const publish = project.publish;
@@ -259,6 +286,20 @@ export default function ProjectDetail({ slug, onChanged }) {
           >
             {busy === 'resume' ? spin : <Play size={15} />} Resume
           </button>
+          {project.scope === 'frontend' && (
+            <button
+              className={btn}
+              disabled={Boolean(busy)}
+              title="Agrega backend al proyecto (--extend): el agente lee la UI y diseña la API"
+              onClick={async () => {
+                setBackendOpen(true);
+                if (!archOptions.length)
+                  api.options().then((o) => setArchOptions(o.archs ?? [])).catch(() => {});
+              }}
+            >
+              <Plus size={15} /> Agregar backend
+            </button>
+          )}
           <button
             className={btn}
             disabled={busy || building}
@@ -516,6 +557,42 @@ export default function ProjectDetail({ slug, onChanged }) {
         )}
       </section>
 
+      {hasBackend && (
+        <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800">
+            <Globe size={16} className="text-slate-500" /> API
+          </h3>
+            {apiSurface?.endpoints?.length ? (
+              <ul className="mt-3 space-y-1 text-sm">
+                {apiSurface.endpoints.map((e, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <span className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${e.method === 'GET' ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'}`}>{e.method}</span>
+                    <code className="text-slate-700">{e.path}</code>
+                    <span className="text-xs text-slate-400">{e.file}</span>
+                    {devRunning && e.method === 'GET' && (
+                      <button
+                        title={`GET http://localhost:${apiPort}${e.path}`}
+                        onClick={() => probeEndpoint(e.path)}
+                        className="ml-auto shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-sky-700 ring-1 ring-sky-300 hover:bg-sky-50"
+                      >
+                        probar
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-xs text-slate-400">sin endpoints detectados en server/routes/</p>
+            )}
+            {probe && (
+              <pre className="mt-3 max-h-48 overflow-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-200 font-mono">
+                GET {probe.path} → {probe.status}
+                {'\n'}{probe.body}
+              </pre>
+            )}
+        </section>
+      )}
+
       {(devTargets.length > 0 || devRun) && (
         <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
           <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800">
@@ -754,6 +831,86 @@ export default function ProjectDetail({ slug, onChanged }) {
             </pre>
           )}
         </section>
+      )}
+
+      {backendOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          onClick={() => setBackendOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-5 ring-1 ring-slate-200 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-bold text-slate-800">Agregar backend a {slug}</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              El agente lee el frontend existente y diseña la API (Express + SQLite), la
+              integración UI↔API y los tests — todo sobre este mismo proyecto.
+            </p>
+            <textarea
+              value={backendForm.idea}
+              onChange={(e) => setBackendForm((f) => ({ ...f, idea: e.target.value }))}
+              placeholder="¿Qué datos maneja tu app? (ej. productos, pedidos, posts — vacío = lo infiere de la UI)"
+              rows={3}
+              className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500"
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <label className="text-xs text-slate-600">
+                Arquitectura{' '}
+                <select
+                  value={backendForm.arch}
+                  onChange={(e) => setBackendForm((f) => ({ ...f, arch: e.target.value }))}
+                  className="rounded-lg border border-slate-300 px-2 py-1"
+                >
+                  {(archOptions.length ? archOptions : ['flat']).map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={backendForm.github}
+                  onChange={(e) => setBackendForm((f) => ({ ...f, github: e.target.checked }))}
+                />
+                github
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={backendForm.ghpages}
+                  disabled={!backendForm.github}
+                  onChange={(e) => setBackendForm((f) => ({ ...f, ghpages: e.target.checked }))}
+                />
+                gh-pages
+              </label>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setBackendOpen(false)} className={btn}>
+                cancelar
+              </button>
+              <button
+                disabled={busy === 'add-backend'}
+                onClick={() => {
+                  setBackendOpen(false);
+                  act(
+                    {
+                      action: 'add-backend',
+                      idea: backendForm.idea.trim() || undefined,
+                      arch: backendForm.arch,
+                      github: backendForm.github,
+                      ghpages: backendForm.ghpages,
+                    },
+                    () => 'extend encolado — el agente diseña la API sobre tu frontend',
+                  );
+                }}
+                className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-40"
+              >
+                {busy === 'add-backend' ? spin : <Plus size={15} />} generar backend
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -645,6 +645,34 @@ export function createDashboardApp({
     res.json({ devRun: readDevRun(dir), log, urls: parseDevUrls(log?.lines?.join('\n') ?? '') });
   });
 
+  // Superficie de API del proyecto: el api-skeleton auto-monta cada
+  // server/routes/<name>.js en /api/<name> — basta escanear los
+  // archivos y capturar router.<method>('<path>').
+  app.get('/api/projects/:slug/api-surface', (req, res) => {
+    const slug = validSlug(req, res);
+    if (!slug) return;
+    const routesDir = join(appDir(slug), 'server', 'routes');
+    const endpoints = [];
+    if (existsSync(routesDir)) {
+      for (const f of readdirSync(routesDir).sort()) {
+        if (!f.endsWith('.js')) continue;
+        const mount = `/api/${f.slice(0, -3)}`;
+        let src;
+        try {
+          src = readFileSync(join(routesDir, f), 'utf8');
+        } catch {
+          continue;
+        }
+        for (const m of src.matchAll(
+          /router\.(get|post|put|delete|patch)\s*\(\s*['"`]([^'"`]+)['"`]/g,
+        )) {
+          endpoints.push({ method: m[1].toUpperCase(), path: mount + m[2], file: f });
+        }
+      }
+    }
+    res.json({ endpoints });
+  });
+
   // Engine de containers disponible en la máquina (docker o podman).
   app.get('/api/runtime', async (req, res) => res.json({ engine: await getEngine() }));
 

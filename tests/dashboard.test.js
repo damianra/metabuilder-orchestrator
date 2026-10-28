@@ -282,6 +282,25 @@ describe('POST /api/projects/:slug/actions', () => {
     ).toBe(409);
   });
 
+  it('api-surface escanea server/routes y arma /api/<file><path>', async () => {
+    const dir = seedApp('con-api');
+    mkdirSync(join(dir, 'server', 'routes'), { recursive: true });
+    writeFileSync(
+      join(dir, 'server', 'routes', 'products.js'),
+      "router.get('/', (req, res) => {});\nrouter.post('/nuevo', (req, res) => {});\nrouter.delete('/:id', (req, res) => {});\n",
+    );
+    const { status, body } = await api('/api/projects/con-api/api-surface');
+    expect(status).toBe(200);
+    expect(body.endpoints).toEqual([
+      { method: 'GET', path: '/api/products/', file: 'products.js' },
+      { method: 'POST', path: '/api/products/nuevo', file: 'products.js' },
+      { method: 'DELETE', path: '/api/products/:id', file: 'products.js' },
+    ]);
+    // proyecto sin backend → lista vacía
+    seedApp('sin-api');
+    expect((await api('/api/projects/sin-api/api-surface')).body.endpoints).toEqual([]);
+  });
+
   it('GET /:slug/repo sin git → nulls; con remote + gh-pages → repoUrl + pagesUrl', async () => {
     seedApp('sin-git');
     expect(await api('/api/projects/sin-git/repo')).toEqual({
