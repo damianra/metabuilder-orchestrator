@@ -933,7 +933,7 @@ export function createDashboardApp({
   app.get('/api/backend', (req, res) => res.json(backendStatus()));
 
   app.post('/api/backend', (req, res) => {
-    const r = createBackend();
+    const r = createBackend(req.body?.stackId);
     res.status(r.ok ? 201 : 409).json(r);
   });
 

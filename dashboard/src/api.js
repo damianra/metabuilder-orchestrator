@@ -61,7 +61,7 @@ export const api = {
     }),
 
   backendStatus: () => req('/api/backend'),
-  createBackend: () => req('/api/backend', { method: 'POST' }),
+  createBackend: (stackId) => req('/api/backend', { method: 'POST', body: JSON.stringify(stackId ? { stackId } : {}) }),
   discardBackend: () => req('/api/backend', { method: 'DELETE' }),
   backendDev: () => req('/api/backend/dev', { method: 'POST' }),
   backendStopDev: () => req('/api/backend/stop-dev', { method: 'POST' }),

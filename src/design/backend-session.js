@@ -81,17 +81,32 @@ export function backendStatus(dir = BACKEND_DIR) {
 // copyApiSkeleton (preflight): promueve package.partial.json →
 // package.json y gitignore.partial → .gitignore (sin esto el publish
 // de la app guardada commitearía .env/*.sqlite/node_modules).
-export function createBackend() {
+export function createBackend(stackId = 'express-sqlite') {
   touchActivity();
   if (existsSync(join(BACKEND_DIR, 'package.json'))) {
     return { ok: false, error: 'ya existe una sesión de backend — descartala o guardala' };
   }
+  const stack = getStack(stackId);
+  if (stack?.kind !== 'backend') {
+    return { ok: false, error: `stack backend inválido "${stackId}"` };
+  }
   mkdirSync(BACKEND_DIR, { recursive: true });
-  copyApiSkeleton(BACKEND_DIR);
-  writeState({ messages: [], created: new Date().toISOString() });
+  copyApiSkeleton(BACKEND_DIR, stack.skeletonDir);
+  writeState({ messages: [], created: new Date().toISOString(), stackId: stack.id });
   startInstall(BACKEND_DIR);
   return { ok: true };
 }
+
+// Convenciones del stack elegido — se inyectan al prompt del experto
+// para que recomiende implementaciones coherentes con el skeleton.
+const stackHint = (stackId) =>
+  stackId === 'nest-typeorm'
+    ? 'Recurso nuevo = entity + service + controller + módulo en `src/`; DataSource TypeORM por DB_TYPE en `.env`; `npm run api` = `tsc` + `node dist/main.js` (TS).'
+    : stackId === 'express-mongo'
+      ? 'Document store: `col(name)` de `server/db.js` (driver mongodb nativo + `MONGO_URI`/`MONGO_DB` en `.env`), seed schemaless en `seed-data.js` — no hay `schema.sql`.'
+      : stackId === 'express-postgres' || stackId === 'express-mysql'
+        ? `DB externa ${stackId === 'express-mysql' ? 'MySQL' : 'PostgreSQL'}: pool + \`q()\`/\`insert()\` de \`server/db.js\` con placeholders \`?\` (se normalizan a \`$n\` en pg) — config por \`DB_*\` en \`.env\`.`
+        : 'SQLite embebida (better-sqlite3) via `server/db.js` + `schema.sql` idempotente.';
 
 export async function backendChat(text, { agent = '', onChunk = () => {}, onActivity = () => {} } = {}) {
   touchActivity();
@@ -102,8 +117,13 @@ export async function backendChat(text, { agent = '', onChunk = () => {}, onActi
   const history = state.messages
     .map((m) => `${m.role === 'user' ? 'Usuario' : 'Experto'}: ${m.text}`)
     .join('\n');
+  const st = getStack(state.stackId ?? 'express-sqlite');
+  const stackBlock = st
+    ? `\n\n## Stack elegido por el usuario\n\n${st.agentsStack} — ${st.agentsDb}. ${stackHint(st.id)}\n`
+    : '';
   const prompt =
     loadPrompt('backend-designer', {}) +
+    stackBlock +
     (history ? `\n\n## Conversación hasta ahora\n\n${history}\n\n` : '\n\n') +
     `Usuario: ${text}`;
 
