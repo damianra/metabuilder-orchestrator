@@ -158,7 +158,7 @@ export default function ProjectDetail({ slug, onChanged }) {
     setNotice(null);
     try {
       await api.action(slug, { action: 'delete' });
-      window.location.hash = '#/';
+      window.location.hash = '#/backend';
     } catch (err) {
       setNotice(`error: ${err.message}`);
       setBusy(null);
@@ -199,7 +199,7 @@ export default function ProjectDetail({ slug, onChanged }) {
   if (error) {
     return (
       <div className="space-y-4">
-        <a href="#/" className="inline-flex items-center gap-1.5 text-sm text-sky-700 hover:underline">
+        <a href="#/backend" className="inline-flex items-center gap-1.5 text-sm text-sky-700 hover:underline">
           <ArrowLeft size={15} /> proyectos
         </a>
         <p className="text-sm text-red-700">error: {error}</p>
@@ -257,7 +257,7 @@ export default function ProjectDetail({ slug, onChanged }) {
 
   return (
     <div className="space-y-4">
-      <a href="#/" className="inline-flex items-center gap-1.5 text-sm text-sky-700 hover:underline">
+      <a href="#/backend" className="inline-flex items-center gap-1.5 text-sm text-sky-700 hover:underline">
         <ArrowLeft size={15} /> proyectos
       </a>
 
