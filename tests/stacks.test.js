@@ -42,6 +42,24 @@ describe('resolveStacks', () => {
     expect(backend.id).toBe('express-sqlite');
   });
 
+  it('express-postgres/mysql resuelven kind backend + skeleton sql + keywords', () => {
+    for (const id of ['express-postgres', 'express-mysql']) {
+      const s = getStack(id);
+      expect(s.kind).toBe('backend');
+      expect(s.skeletonDir).toBe('api-skeleton-sql');
+      expect(s.verify.test).toBe('npx vitest run');
+    }
+    const kw = (id) => planRequirements(resolveStacks('backend', { backend: id }))
+      .flatMap((r) => r.keywords);
+    expect(kw('express-postgres')).toContain('postgres');
+    expect(kw('express-mysql')).toContain('mysql');
+    expect(kw('express-postgres')).not.toContain('sqlite');
+    // listStacks los expone al picker del form/options
+    expect(listStacks('backend').map((s) => s.id)).toEqual(
+      expect.arrayContaining(['express-sqlite', 'express-postgres', 'express-mysql']),
+    );
+  });
+
   it('scope frontend/backend anula el stack opuesto', () => {
     expect(resolveStacks('frontend').backend).toBeNull();
     expect(resolveStacks('backend').frontend).toBeNull();
@@ -56,7 +74,11 @@ describe('resolveStacks', () => {
 describe('listStacks/getStack', () => {
   it('filtra por kind y resuelve por id', () => {
     expect(listStacks('frontend').map((s) => s.id)).toEqual(['vite-react', 'nextjs']);
-    expect(listStacks('backend').map((s) => s.id)).toEqual(['express-sqlite']);
+    expect(listStacks('backend').map((s) => s.id)).toEqual([
+      'express-sqlite',
+      'express-postgres',
+      'express-mysql',
+    ]);
     expect(getStack('vite-react').kind).toBe('frontend');
     expect(getStack('nope')).toBeNull();
   });

@@ -1,8 +1,15 @@
 import viteReact from './vite-react.js';
 import expressSqlite from './express-sqlite.js';
+import expressPostgres from './express-postgres.js';
+import expressMysql from './express-mysql.js';
 import nextjs from './nextjs.js';
 
-const STACKS = new Map([viteReact, expressSqlite, nextjs].map((s) => [s.id, s]));
+const STACKS = new Map(
+  [viteReact, expressSqlite, expressPostgres, expressMysql, nextjs].map((s) => [
+    s.id,
+    s,
+  ]),
+);
 
 export function getStack(id) {
   return STACKS.get(id) ?? null;
