@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { openDb } from '../db.js';
+import { capString } from '../security.js';
 
 const db = openDb();
 const router = Router();
@@ -27,7 +28,7 @@ router.post('/', (req, res) => {
   if (!post) return res.status(404).json({ error: 'post no encontrado' });
   const { lastInsertRowid } = db
     .prepare('INSERT INTO comments (post_id, author, body) VALUES (?, ?, ?)')
-    .run(post.id, author.trim(), body.trim());
+    .run(post.id, capString(author.trim(), 100), capString(body.trim(), 2000));
   res
     .status(201)
     .json(db.prepare('SELECT * FROM comments WHERE id = ?').get(lastInsertRowid));

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { openDb } from '../db.js';
+import { capString } from '../security.js';
 
 const db = openDb();
 const router = Router();
@@ -40,7 +41,12 @@ router.post('/', (req, res) => {
     'INSERT INTO order_items (order_id, product_id, name, qty, price) VALUES (?, ?, ?, ?, ?)',
   );
   const order = db.transaction(() => {
-    const { lastInsertRowid } = insertOrder.run(customer.trim(), phone.trim(), notes, total);
+    const { lastInsertRowid } = insertOrder.run(
+      capString(customer.trim(), 100),
+      capString(phone.trim(), 40),
+      capString(notes, 500),
+      total,
+    );
     for (const l of lines) insertItem.run(lastInsertRowid, l.product_id, l.name, l.qty, l.price);
     return db.prepare('SELECT * FROM orders WHERE id = ?').get(lastInsertRowid);
   })();

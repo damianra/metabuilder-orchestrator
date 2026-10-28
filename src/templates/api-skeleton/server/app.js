@@ -3,6 +3,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { requestLogger } from './log.js';
+import { rateLimit, securityHeaders } from './security.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -15,6 +16,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 export async function createApp() {
   const app = express();
   app.use(express.json({ limit: '2mb' }));
+  app.use(securityHeaders);
+  app.use('/api', rateLimit({ windowMs: 60_000, max: 20 }));
   app.use(requestLogger);
 
   app.get('/api/health', (req, res) => res.json({ ok: true }));
@@ -52,7 +55,10 @@ export async function createApp() {
   app.use((err, req, res, next) => {
     console.error(err);
     const status = err.name === 'MulterError' ? 400 : (err.status ?? 500);
-    res.status(status).json({ error: err.message ?? 'internal error' });
+    // 500s responden genérico — err.message puede filtrar internals.
+    res
+      .status(status)
+      .json({ error: status < 500 ? err.message : 'error interno' });
   });
   return app;
 }

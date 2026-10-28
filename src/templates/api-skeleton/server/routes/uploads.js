@@ -6,6 +6,12 @@ import multer from 'multer';
 
 const uploadsDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'uploads');
 
+// Whitelist por extensión — el mimetype lo declara el cliente y se
+// falsifica; la extensión decide cómo express.static sirve el archivo.
+// SVG fuera: un <script> en un .svg servido same-origin es XSS propio
+// (nosniff no lo cubre si se navega directo al archivo).
+const ALLOWED_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif']);
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: uploadsDir,
@@ -13,7 +19,11 @@ const upload = multer({
       cb(null, randomUUID() + extname(file.originalname).toLowerCase()),
   }),
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => cb(null, file.mimetype.startsWith('image/')),
+  fileFilter: (req, file, cb) => {
+    const ext = extname(file.originalname).toLowerCase();
+    const ok = file.mimetype.startsWith('image/') && ALLOWED_EXT.has(ext);
+    cb(null, ok);
+  },
 });
 
 // POST /api/uploads — campo "file" (image/*, máx 5MB). Responde
