@@ -44,6 +44,9 @@ export default function BackendTab({ onSaved }) {
   const slugRef = useRef(null);
 
   const refresh = useCallback(() => api.backendStatus().then(setStatus).catch(() => {}), []);
+  const [options, setOptions] = useState(null);
+  const [stackId, setStackId] = useState('express-sqlite');
+  useEffect(() => { api.options().then(setOptions).catch(() => {}); }, []);
 
   useEffect(() => {
     refresh();
@@ -62,7 +65,7 @@ export default function BackendTab({ onSaved }) {
     setBusy('create');
     setError(null);
     try {
-      await api.createBackend();
+      await api.createBackend(stackId);
       await refresh();
     } catch (e) {
       setError(e.message);
@@ -179,9 +182,18 @@ export default function BackendTab({ onSaved }) {
           <ServerCog size={28} className="mx-auto text-sky-600" />
           <h2 className="mt-2 text-sm font-bold text-slate-800">Backend</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Describí tu dominio y un agente backend-experto construye la API (Express +
-            SQLite) iterando con vos — con propuestas, schema, rutas y tests.
+            Describí tu dominio y un agente backend-experto construye la API sobre el
+            stack que elijas — con propuestas, schema, rutas y tests.
           </p>
+          <select
+            value={stackId}
+            onChange={(e) => setStackId(e.target.value)}
+            className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+          >
+            {(options?.stacks?.backend ?? ['express-sqlite']).map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
           <button
             onClick={create}
             disabled={busy === 'create'}
@@ -200,6 +212,11 @@ export default function BackendTab({ onSaved }) {
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="flex items-center gap-2 text-sm font-bold text-slate-800">
           <ServerCog size={16} className="text-sky-600" /> Backend
+          {status.stackId && (
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200">
+              {status.stackId}
+            </span>
+          )}
         </h2>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <button
