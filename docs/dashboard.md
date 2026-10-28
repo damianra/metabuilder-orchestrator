@@ -166,7 +166,7 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
 
 Subpackage propio con su package.json —
 Vite+React+Tailwind+Vitest, mismo stack que el app-skeleton. Hash
-routing (`#/` tab Backend, `#/design` Diseñar app, `#/fullstack` tab
+routing (`#/` Diseñar app, `#/backend` tab Backend, `#/fullstack` tab
 Fullstack, `#/p/<slug>` detalle), polling 4-5s. `dev.js`
 lanza API+Vite+worker (`queue.js watch`) en un proceso — los jobs
 encolados desde la UI se procesan solos; la UI es un consumidor más de

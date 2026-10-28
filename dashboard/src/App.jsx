@@ -14,9 +14,9 @@ const parseHash = () => {
   const m = window.location.hash.match(/^#\/p\/([a-z0-9-]+)/);
   if (m) return { view: 'detail', slug: m[1] };
   const c = window.location.hash.match(/[?&]clone=([a-z0-9-]+)/)?.[1] ?? null;
-  if (window.location.hash.startsWith('#/design')) return { view: 'design' };
+  if (window.location.hash.startsWith('#/backend')) return { view: 'list', clone: c };
   if (window.location.hash.startsWith('#/fullstack')) return { view: 'fullstack', clone: c };
-  return { view: 'list', clone: c };
+  return { view: 'design' }; // landing = Diseñar app (#/ y #/design)
 };
 
 export default function App() {
@@ -47,7 +47,7 @@ export default function App() {
     api
       .project(route.clone)
       .then((p) => {
-        const want = p?.scope === 'fullstack' ? '#/fullstack' : '#/';
+        const want = p?.scope === 'fullstack' ? '#/fullstack' : '#/backend';
         if (!window.location.hash.startsWith(want)) {
           window.location.hash = `${want}?clone=${route.clone}`;
         }
@@ -150,8 +150,8 @@ export default function App() {
         {engine !== null && !gateOpen && route.view !== 'detail' && (
           <nav className="flex gap-1 rounded-xl bg-white p-1 ring-1 ring-slate-200 shadow-sm">
             {[
-              ['list', 'Backend', '#/'],
-              ['design', 'Diseñar app', '#/design'],
+              ['design', 'Diseñar app', '#/'],
+              ['list', 'Backend', '#/backend'],
               ['fullstack', 'Fullstack', '#/fullstack'],
             ].map(([v, label, href]) => (
               <a
