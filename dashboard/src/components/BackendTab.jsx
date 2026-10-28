@@ -17,7 +17,7 @@ function ProposalCard({ proposal, onPick, disabled }) {
             key={i}
             disabled={disabled}
             onClick={() => onPick(o)}
-            className="rounded-lg px-2.5 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-300 hover:bg-sky-50 disabled:opacity-40"
+            className="rounded-lg px-2.5 py-1 text-xs font-semibold text-accent-700 ring-1 ring-accent-300 hover:bg-accent-50 disabled:opacity-40"
           >
             {o.label}
           </button>
@@ -179,7 +179,7 @@ export default function BackendTab({ onSaved }) {
     return (
       <section className="rounded-2xl bg-white p-8 ring-1 ring-slate-200 shadow-sm">
         <div className="mx-auto max-w-md text-center">
-          <ServerCog size={28} className="mx-auto text-sky-600" />
+          <ServerCog size={28} className="mx-auto text-accent-600" />
           <h2 className="mt-2 text-sm font-bold text-slate-800">Backend</h2>
           <p className="mt-1 text-sm text-slate-500">
             Describí tu dominio y un agente backend-experto construye la API sobre el
@@ -197,7 +197,7 @@ export default function BackendTab({ onSaved }) {
           <button
             onClick={create}
             disabled={busy === 'create'}
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-40"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-700 disabled:opacity-40"
           >
             {busy === 'create' ? spin : <ServerCog size={15} />} Nueva API
           </button>
@@ -211,7 +211,7 @@ export default function BackendTab({ onSaved }) {
     <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="flex items-center gap-2 text-sm font-bold text-slate-800">
-          <ServerCog size={16} className="text-sky-600" /> Backend
+          <ServerCog size={16} className="text-accent-600" /> Backend
           {status.stackId && (
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200">
               {status.stackId}
@@ -230,7 +230,7 @@ export default function BackendTab({ onSaved }) {
             className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ring-1 disabled:opacity-40 ${
               status.apiRunning
                 ? 'text-slate-600 ring-slate-300 hover:bg-slate-50'
-                : 'text-sky-700 ring-sky-300 hover:bg-sky-50'
+                : 'text-accent-700 ring-accent-300 hover:bg-accent-50'
             }`}
           >
             {busy === 'dev' ? spin : status.apiRunning ? <Square size={12} /> : <Play size={12} />}
@@ -241,7 +241,7 @@ export default function BackendTab({ onSaved }) {
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="nombre-app"
-            className="w-36 rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none focus:border-sky-500"
+            className="w-36 rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none focus:border-accent-500"
           />
           <button
             title="Mueve el workspace a generated-apps/<slug> como app real"
@@ -284,7 +284,7 @@ export default function BackendTab({ onSaved }) {
               if (m.role === 'user') {
                 return (
                   <div key={i} className="flex justify-end">
-                    <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-sky-600 px-3 py-2 text-sm text-white">
+                    <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-accent-600 px-3 py-2 text-sm text-white">
                       {m.text}
                     </div>
                   </div>
@@ -307,7 +307,7 @@ export default function BackendTab({ onSaved }) {
             {inflight && (
               <>
                 <div className="flex justify-end">
-                  <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-sky-600 px-3 py-2 text-sm text-white">
+                  <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-accent-600 px-3 py-2 text-sm text-white">
                     {inflight.user}
                   </div>
                 </div>
@@ -332,13 +332,13 @@ export default function BackendTab({ onSaved }) {
               onKeyDown={(e) => e.key === 'Enter' && send()}
               placeholder="Pedile un cambio al experto backend…"
               disabled={busy === 'chat'}
-              className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-sky-500 disabled:opacity-50"
+              className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-accent-500 disabled:opacity-50"
             />
             <button
               title="Enviar"
               onClick={() => send()}
               disabled={busy === 'chat' || !input.trim()}
-              className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg bg-accent-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-accent-700 disabled:opacity-40"
             >
               {busy === 'chat' ? spin : <Send size={14} />}
             </button>
@@ -355,7 +355,7 @@ export default function BackendTab({ onSaved }) {
                   <li key={i} className="flex items-center gap-2">
                     <span
                       className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${
-                        e.method === 'GET' ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'
+                        e.method === 'GET' ? 'bg-emerald-100 text-emerald-800' : 'bg-accent-100 text-accent-800'
                       }`}
                     >
                       {e.method}
@@ -366,7 +366,7 @@ export default function BackendTab({ onSaved }) {
                       <button
                         title={`GET ${e.path} (proxy via dashboard)`}
                         onClick={() => probeEndpoint(e.path)}
-                        className="ml-auto shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-sky-700 ring-1 ring-sky-300 hover:bg-sky-50"
+                        className="ml-auto shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-accent-700 ring-1 ring-accent-300 hover:bg-accent-50"
                       >
                         probar
                       </button>

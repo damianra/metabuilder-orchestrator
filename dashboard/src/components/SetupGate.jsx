@@ -22,7 +22,7 @@ const DocsLink = ({ url }) => (
     href={url}
     target="_blank"
     rel="noreferrer"
-    className="inline-flex items-center gap-0.5 text-sky-700 underline"
+    className="inline-flex items-center gap-0.5 text-accent-700 underline"
     onClick={(ev) => ev.stopPropagation()}
   >
     docs <ExternalLink size={10} />
@@ -65,7 +65,7 @@ export default function SetupGate({ current, onDone }) {
   return (
     <div className="mx-auto max-w-2xl py-10">
       <div className="flex items-center gap-2">
-        <Cpu size={20} className="text-sky-600" />
+        <Cpu size={20} className="text-accent-600" />
         <h1 className="text-xl font-bold tracking-tight text-slate-900">
           {current ? 'Cambiar motor de agente' : 'Elegí el motor de agente'}
         </h1>
@@ -84,12 +84,12 @@ export default function SetupGate({ current, onDone }) {
               key={e.id}
               type="button"
               onClick={() => setSelected(e.id)}
-              className={`${card} ${active ? 'bg-sky-50 ring-2 ring-sky-600 shadow-md' : 'hover:ring-sky-400'}`}
+              className={`${card} ${active ? 'bg-accent-50 ring-2 ring-accent-600 shadow-md' : 'hover:ring-accent-400'}`}
             >
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 font-bold text-slate-900">
                   {e.label}
-                  {active && <CircleCheckBig size={16} className="text-sky-600" />}
+                  {active && <CircleCheckBig size={16} className="text-accent-600" />}
                 </span>
                 <span
                   className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold ring-1 ${st.cls}`}
@@ -128,7 +128,7 @@ export default function SetupGate({ current, onDone }) {
           type="button"
           onClick={save}
           disabled={!selected || busy}
-          className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 rounded-lg bg-accent-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-accent-700 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Wrench size={15} /> Usar este motor
         </button>

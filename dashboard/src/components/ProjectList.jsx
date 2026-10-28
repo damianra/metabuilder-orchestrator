@@ -36,7 +36,7 @@ export default function ProjectList({ projects }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="filtrar por slug o status…"
-          className="w-full rounded-lg bg-white py-2 pl-9 pr-3 text-sm ring-1 ring-slate-300 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
+          className="w-full rounded-lg bg-white py-2 pl-9 pr-3 text-sm ring-1 ring-slate-300 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-500"
         />
       </div>
       {!filtered.length && (
@@ -64,12 +64,12 @@ export default function ProjectList({ projects }) {
                 {p.appType && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">{p.appType}</span>}
                 {p.arch && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">arch {p.arch}</span>}
                 {p.hasDockerfile && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-sky-700">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-accent-50 px-2 py-0.5 text-accent-700">
                     <Container size={11} /> docker
                   </span>
                 )}
                 {p.hasRemote && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-sky-700">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-accent-50 px-2 py-0.5 text-accent-700">
                     <GitBranch size={11} /> repo
                   </span>
                 )}
@@ -82,7 +82,7 @@ export default function ProjectList({ projects }) {
                 </div>
                 <div className="mt-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${p.steps.failed ? 'bg-red-500' : 'bg-sky-500'}`}
+                    className={`h-full rounded-full ${p.steps.failed ? 'bg-red-500' : 'bg-accent-500'}`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>

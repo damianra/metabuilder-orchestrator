@@ -27,15 +27,15 @@ vi.mock('../../api.js', () => ({
 }));
 
 describe('SetupGate', () => {
-  it('click en una card la selecciona (ring-sky-600) y habilita "Usar este motor"', async () => {
+  it('click en una card la selecciona (ring-accent-600) y habilita "Usar este motor"', async () => {
     render(<SetupGate current={null} onDone={() => {}} />);
     const card = (await screen.findByText('Devin CLI')).closest('button');
     const save = screen.getByRole('button', { name: /usar este motor/i });
     // sin selección el botón queda deshabilitado
     expect(save.disabled).toBe(true);
-    expect(card.className).not.toContain('ring-sky-600');
+    expect(card.className).not.toContain('ring-accent-600');
     fireEvent.click(card);
-    expect(card.className).toContain('ring-sky-600');
+    expect(card.className).toContain('ring-accent-600');
     expect(save.disabled).toBe(false);
   });
 

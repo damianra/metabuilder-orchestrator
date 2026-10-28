@@ -30,7 +30,7 @@ function ProposalCard({ proposal, onPick, disabled }) {
             key={i}
             disabled={disabled}
             onClick={() => onPick(o)}
-            className="rounded-lg px-2.5 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-300 hover:bg-sky-50 disabled:opacity-40"
+            className="rounded-lg px-2.5 py-1 text-xs font-semibold text-accent-700 ring-1 ring-accent-300 hover:bg-accent-50 disabled:opacity-40"
           >
             {o.label}
           </button>
@@ -240,7 +240,7 @@ export default function DesignTab({ onSaved }) {
     return (
       <section className="rounded-2xl bg-white p-8 ring-1 ring-slate-200 shadow-sm">
         <div className="mx-auto max-w-md text-center">
-          <Palette size={28} className="mx-auto text-sky-600" />
+          <Palette size={28} className="mx-auto text-accent-600" />
           <h2 className="mt-2 text-sm font-bold text-slate-800">Diseñar app</h2>
           <p className="mt-1 text-sm text-slate-500">
             Iterá un frontend chateando con el agente — el preview se levanta con un vite dev
@@ -252,7 +252,7 @@ export default function DesignTab({ onSaved }) {
               <select
                 value={backendFor}
                 onChange={(e) => setBackendFor(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-sky-500"
+                className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-accent-500"
               >
                 <option value="">sin backend — diseño standalone</option>
                 {backends.map((b) => (
@@ -264,7 +264,7 @@ export default function DesignTab({ onSaved }) {
           <button
             onClick={create}
             disabled={busy === 'create'}
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-40"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-700 disabled:opacity-40"
           >
             {busy === 'create' ? spin : <Palette size={15} />} Nuevo diseño
           </button>
@@ -278,7 +278,7 @@ export default function DesignTab({ onSaved }) {
     <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="flex items-center gap-2 text-sm font-bold text-slate-800">
-          <Palette size={16} className="text-sky-600" /> Diseñar app
+          <Palette size={16} className="text-accent-600" /> Diseñar app
         </h2>
         {status.backend && (
           <span
@@ -322,7 +322,7 @@ export default function DesignTab({ onSaved }) {
               title="Levanta el vite dev server del workspace para el preview en vivo"
               onClick={startPreview}
               disabled={Boolean(busy)}
-              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-300 hover:bg-sky-50 disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-accent-700 ring-1 ring-accent-300 hover:bg-accent-50 disabled:opacity-40"
             >
               {busy === 'dev' ? spin : <Play size={12} />} preview
             </button>
@@ -333,7 +333,7 @@ export default function DesignTab({ onSaved }) {
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
               placeholder="nombre-app"
-              className="w-36 rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none focus:border-sky-500"
+              className="w-36 rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none focus:border-accent-500"
             />
           )}
           <button
@@ -382,7 +382,7 @@ export default function DesignTab({ onSaved }) {
               if (m.role === 'user') {
                 return (
                   <div key={i} className="flex justify-end">
-                    <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-sky-600 px-3 py-2 text-sm text-white">
+                    <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-accent-600 px-3 py-2 text-sm text-white">
                       {m.text}
                     </div>
                   </div>
@@ -407,7 +407,7 @@ export default function DesignTab({ onSaved }) {
             {inflight && (
               <>
                 <div className="flex justify-end">
-                  <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-sky-600 px-3 py-2 text-sm text-white">
+                  <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-accent-600 px-3 py-2 text-sm text-white">
                     {inflight.user}
                   </div>
                 </div>
@@ -432,13 +432,13 @@ export default function DesignTab({ onSaved }) {
               onKeyDown={(e) => e.key === 'Enter' && send()}
               placeholder="Pedile un cambio al diseñador…"
               disabled={busy === 'chat'}
-              className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-sky-500 disabled:opacity-50"
+              className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-accent-500 disabled:opacity-50"
             />
             <button
               title="Enviar"
               onClick={() => send()}
               disabled={busy === 'chat' || !input.trim()}
-              className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg bg-accent-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-accent-700 disabled:opacity-40"
             >
               {busy === 'chat' ? spin : <Send size={14} />}
             </button>
@@ -452,7 +452,7 @@ export default function DesignTab({ onSaved }) {
                   href={previewUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 truncate text-xs text-sky-700 hover:underline"
+                  className="inline-flex items-center gap-1 truncate text-xs text-accent-700 hover:underline"
                 >
                   <ExternalLink size={12} /> {previewUrl}
                 </a>

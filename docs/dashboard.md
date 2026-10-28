@@ -171,6 +171,14 @@ Fullstack, `#/p/<slug>` detalle), polling 4-5s. `dev.js`
 lanza API+Vite+worker (`queue.js watch`) en un proceso — los jobs
 encolados desde la UI se procesan solos; la UI es un consumidor más de
 la API — no conoce paths del FS ni los registries directamente.
+UI con **temas por área**: la paleta `accent-*` resuelve por
+variables CSS y cada tab la redefine (`tailwind.config.js` +
+`index.css`): Diseñar app → violeta con dot-grid de canvas,
+Backend → emerald con scanline sutil de terminal, Fullstack →
+ámbar con blueprint grid (taller), detalle de proyecto → sky
+neutro. El cambio de tab corre `.animate-view-enter` (wrapper
+keyed) y los elementos interactivos llevan transición suave.
+
 La vista principal son tres tabs — "Backend" (`BackendTab.jsx`: chat
 con un agente backend-experto sobre `backend-work/` = skeleton del
 stack elegido (`createBackend(stackId)` copia `skeletonDir` y lo
