@@ -4,6 +4,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildGraph } from './orchestrator/graph.js';
 import { listArchs } from './arch/index.js';
+import { resolveCompliance } from './compliance/index.js';
 import { getStack, listStacks } from './stacks/index.js';
 import { getVertical, inferAppType, listVerticals } from './verticals/index.js';
 import { resolveResumeDir } from './tools/slug.js';
@@ -188,6 +189,16 @@ if (args.agent && args.agent !== 'auto' && !getEngine(args.agent)) {
   console.error(`--agent desconocido "${args.agent}" (usá ${listEngines().join('|')}|auto)`);
   process.exit(2);
 }
+if (args.compliance) {
+  try {
+    // Suma perfiles explícitos a los base/inferidos — el flag es
+    // aditivo, nunca saca los que la app necesita.
+    resolveCompliance({ idea: args.idea ?? '', scope: args.scope ?? 'fullstack', flag: args.compliance });
+  } catch (e) {
+    console.error(e.message);
+    process.exit(2);
+  }
+}
 if (args.ghpages && !args.github) {
   console.error('--ghpages requiere --github (crea el repo antes de publicar Pages)');
   process.exit(2);
@@ -212,6 +223,7 @@ const initial = {
   verifyDocker: Boolean(args.verifyDocker),
   stackFrontend: args.stackFrontend ?? null,
   stackBackend: args.stackBackend ?? null,
+  compliance: args.compliance ?? null,
   agent: args.agent ?? '',
 };
 

@@ -49,6 +49,10 @@ export const OrchestratorState = Annotation.Root({
   // (src/stacks/). plan.stacks los persiste y manda en resume.
   stackFrontend: Annotation({ reducer: replace, default: () => null }),
   stackBackend: Annotation({ reducer: replace, default: () => null }),
+  // ids de perfiles de cumplimiento explícitos (--compliance "a,b,c")
+  // — null = resolver por base+inferencia; sin canal, LangGraph
+  // descarta la clave del input inicial y el flag sería no-op.
+  compliance: Annotation({ reducer: replace, default: () => null }),
   // --agent: engine ACP para los nodos generativos (src/engines/).
   // '' → resolveEngineId decide: settings.json > AGENT_PROVIDER >
   // 'auto' (preflight lo resuelve a un id concreto con sonda de auth).

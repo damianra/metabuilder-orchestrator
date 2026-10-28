@@ -62,14 +62,14 @@ Decisión clave: se usa **ACP, no `opencode run --format json`** — el
 | 4 ✅ | **Hardening orquestador** — vitest ^5 + vite ^7 en root/dashboard/skeletons (npm audit: 0 vulns), warning si `DASHBOARD_HOST` no es loopback. | chore |
 | 5 ✅ | **Workflow de seguridad** — `npm audit --audit-level=critical` como gate en CI del repo + `ci.yml` en los 3 skeletons (apps nacen con CI propio). | feat |
 
-**Propuesta en evaluación (v7)**: **registry de cumplimiento** al estilo
-`src/stacks/`/`src/arch/` — perfiles declarativos (`cookies`,
-`terminos`, `privacidad`, `pagos`, `auth`, `menores`) con prompt block +
-keywords de validator + checks de reviewer + overlays de componentes
-(banner de cookies, página de términos). Detección por idea
-(`inferCompliance`) + flag `--compliance <ids>` → `plan.compliance`
-persiste como `plan.stacks`. La base ya quedó: `legalBlock` es el perfil
-`privacidad` hardcodeado — generalizarlo es el siguiente paso natural.
+## Backlog v7 — registry de cumplimiento — en progreso
+
+| # | Tarea | Tipo |
+| --- | --- | --- |
+| 1 ✅ | **`src/compliance/` registry** — 6 perfiles declarativos (privacidad, notfound, cookies, terminos, pagos, auth): promptBlock + requirements + infer regex. Base `privacidad`+`notfound` siempre activa con frontend; inferencia por idea; flag `--compliance a,b,c`; `plan.compliance` persiste. | feat |
+| 2 | Overlays de componentes (CookieBanner.jsx, página /terminos como archivo copiable en vez de prompt-only). | feat |
+| 3 | Perfil `menores` (age gate / verificación parental). | feat |
+| 4 | UI del dashboard: selector de perfiles compliance en "Nueva app" (options ya expone `compliance`). | feat |
 
 ## Heredado de v2/v3 (sigue fuera de scope)
 

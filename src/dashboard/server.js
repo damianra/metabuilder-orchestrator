@@ -20,6 +20,7 @@ import { slugify } from '../tools/slug.js';
 import { buildReport, resolveRunId } from '../report.js';
 import { writeDockerFiles, detectFrontend, detectOutDir } from '../tools/docker.js';
 import { listArchs } from '../arch/index.js';
+import { getCompliance, listCompliance } from '../compliance/index.js';
 import { getVertical, listVerticals } from '../verticals/index.js';
 import { getStack, listStacks, resolveStacksSafe } from '../stacks/index.js';
 import { getEngine as getAgentEngine, listEngines } from '../engines/index.js';
@@ -476,6 +477,7 @@ export function createDashboardApp({
         backend: listStacks('backend').map((s) => s.id),
       },
       engines: listEngines(),
+      compliance: listCompliance(),
       // engine configurado (settings/env) — null = setup gate pendiente
       engine: configuredEngine(),
     }),
@@ -757,6 +759,12 @@ export function createDashboardApp({
     if (b.agent && b.agent !== 'auto' && !getAgentEngine(b.agent)) {
       return res.status(400).json({ error: `agent desconocido "${b.agent}" (${listEngines().join('|')}|auto)` });
     }
+    if (b.compliance) {
+      const bad = String(b.compliance).split(',').map((s) => s.trim()).filter((id) => !getCompliance(id));
+      if (bad.length) {
+        return res.status(400).json({ error: `compliance desconocido "${bad[0]}" (${listCompliance().join('|')})` });
+      }
+    }
     // El gate es obligatorio: sin engine configurado (settings/env) ni
     // override por run, encolar sería tirar el job al auto por defecto.
     if (!b.agent && !configuredEngine()) {
@@ -774,6 +782,7 @@ export function createDashboardApp({
     if (b.stackBackend) args.push('--stack-backend', b.stackBackend);
     if (b.agent) args.push('--agent', b.agent);
     if (b.phone) args.push('--phone', String(b.phone));
+    if (b.compliance) args.push('--compliance', String(b.compliance));
     if (b.github) args.push('--github');
     if (b.ghpages) args.push('--ghpages');
     if (b.verifyDocker) args.push('--verify-docker');
