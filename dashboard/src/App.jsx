@@ -155,8 +155,10 @@ export default function App() {
             <ProjectDetail slug={route.slug} onChanged={refresh} />
           ) : route.view === 'design' ? (
             <DesignTab
-              onSaved={() => {
-                window.location.hash = '#/';
+              onSaved={(slug) => {
+                // Guardado → detalle del proyecto: ahí vive "agregar
+                // backend" para completar el flujo diseño→fullstack.
+                window.location.hash = `#/p/${slug}`;
                 refresh();
               }}
             />

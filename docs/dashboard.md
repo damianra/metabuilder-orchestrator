@@ -63,6 +63,16 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
   proyecto frontend en fullstack; acepta `idea`/`arch`/`github`/
   `ghpages`; sin `github` agrega `--no-push`; 409 si ya tiene
   `server/`),
+- `GET /api/projects/:slug/api-surface` — escanea `server/routes/*.js`
+  (auto-mount `/api/<file>` + `router.<method>('<path>')`) →
+  `{endpoints:[{method, path, file}]}`. El detalle lo muestra como
+  sección "API" (tabla método+ruta) con "probar" por endpoint GET
+  cuando el dev-run corre;
+- `GET /api/projects/:slug/probe?path=/api/...` — proxy del "probar":
+  fetch server-side a `localhost:<apiPort>` (del dev-run; el skeleton
+  no emite CORS, el browser no podría llamarlo directo). Solo paths
+  `/api/*` → 400; respeta el puerto real de `devTargets` → `{status,
+  body}` (body truncado a 4KB);
   `publish` (async — `publishRepo` de `src/tools/publish.js` en
   background: crea el repo via REST si falta, commitea lo pendiente,
   pushea `main` y — solo con `ghpages:true` y scope con frontend —

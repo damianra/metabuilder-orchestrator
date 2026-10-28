@@ -167,6 +167,9 @@ export default function DesignTab({ onSaved }) {
     if (busy) return;
     if (o.reply) return send(o.reply);
     if (o.action === 'save') return slugRef.current?.focus();
+    // extend necesita el diseño guardado primero — tras guardar se
+    // navega al detalle, donde vive el botón "agregar backend".
+    if (o.action === 'extend') return slugRef.current?.focus();
     if (o.action === 'preview') return startPreview();
     send(o.label);
   };
