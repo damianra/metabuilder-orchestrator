@@ -59,6 +59,10 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
 - `POST /api/projects/:slug/actions` — `resume` (encola
   `--resume <slug> --yes` — sin flags de deploy: el CLI restaura
   `plan.deploy`, "lo ingresado previamente"; publicar es acción aparte),
+  `add-backend` (encola `--extend <slug> --yes` — convierte un
+  proyecto frontend en fullstack; acepta `idea`/`arch`/`github`/
+  `ghpages`; sin `github` agrega `--no-push`; 409 si ya tiene
+  `server/`),
   `publish` (async — `publishRepo` de `src/tools/publish.js` en
   background: crea el repo via REST si falta, commitea lo pendiente,
   pushea `main` y — solo con `ghpages:true` y scope con frontend —

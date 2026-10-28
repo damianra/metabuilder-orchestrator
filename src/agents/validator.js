@@ -32,6 +32,13 @@ export function validatePlan(plan, scope, { stacks, arch } = {}) {
 
   if (errors.length) return errors;
 
+  // plan.validated = ya validó antes (el validator lo sella al pasar)
+  // o lo emitió código propio (plan sintético de saveDesign): los
+  // requirements de completitud — init/test/e2e/privacidad — existen
+  // para planes A CONSTRUIR, no aplican a pasos ya construidos. El
+  // chequeo estructural de arriba corre siempre.
+  if (plan.validated) return [];
+
   const steps = plan.steps;
   steps.forEach((s, i) => {
     if (typeof s.id !== 'number') errors.push(`step[${i}]: falta id numérico`);

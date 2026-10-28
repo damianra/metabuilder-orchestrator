@@ -195,7 +195,11 @@ export function saveDesign(slug) {
           {
             id: 1,
             type: 'frontend',
-            description: 'diseño iterado en chat',
+            // Descripción compliant: las keywords (Vite/UI) mantienen el
+            // plan legible por validatePlan aunque se pierda el flag
+            // validated — y el extend las reutiliza al re-validar.
+            description:
+              'Frontend implementado iterando en chat de diseño — UI React + Vite + Tailwind aplicando las reglas de UI del AGENTS.md',
             verify: 'npm run build',
             status: 'done',
             attempts: 1,

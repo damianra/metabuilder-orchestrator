@@ -1,6 +1,6 @@
 import { Command } from '@langchain/langgraph';
 import { createInterface } from 'node:readline/promises';
-import { writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildGraph } from './orchestrator/graph.js';
 import { listArchs } from './arch/index.js';
@@ -57,11 +57,11 @@ async function collectArgs(args) {
   const interactive = Boolean(process.stdin.isTTY) && !args.yes;
   const asker = createAsker();
   try {
-    // --resume: idea/scope/appType/name/phone salen del plan.json —
-    // solo se preguntan las decisiones de deploy. --yes también las
-    // salta: un run encolado (dashboard/queue) heredaría el TTY del
-    // worker y se colgaría esperando input que nadie ve.
-    if (args.resume) {
+    // --resume/--extend: idea/scope/appType/name/phone salen del
+    // plan.json — solo se preguntan las decisiones de deploy. --yes
+    // también las salta: un run encolado (dashboard/queue) heredaría
+    // el TTY del worker y se colgaría esperando input que nadie ve.
+    if (args.resume || args.extend) {
       if (!args.github && !args.noPush && interactive && !args.yes) {
         const g = await asker.ask('¿Crear repo en GitHub? [s/N] ');
         args.github = /^s/i.test(g);
@@ -143,6 +143,27 @@ if (args.resume) {
   }
 }
 
+// --extend <dir|slug>: mismo resolve que --resume, pero el pipeline
+// appendea pasos backend al plan (proyecto frontend → fullstack).
+if (args.extend) {
+  if (args.resume) {
+    console.error('--extend y --resume son excluyentes');
+    process.exit(2);
+  }
+  resumeDir = resolveResumeDir(args.extend, config.generatedAppsDir);
+  if (!resumeDir) {
+    console.error(
+      `--extend: no se encontró "${args.extend}" con plan.json ` +
+        `(probado como ruta y como slug en ${config.generatedAppsDir})`,
+    );
+    process.exit(2);
+  }
+  if (existsSync(join(resumeDir, 'server'))) {
+    console.error(`--extend: ${resumeDir} ya tiene backend (server/) — nada que extender`);
+    process.exit(2);
+  }
+}
+
 // Deploy en resume: plan.deploy es "lo ingresado previamente" — manda
 // salvo flags explícitos (--github/--no-push, o lo que respondió el
 // usuario en las preguntas de collectArgs).
@@ -213,6 +234,7 @@ const initial = {
   appType: args.appType ?? 'custom',
   arch: args.arch ?? 'flat',
   resumeDir,
+  extend: Boolean(args.extend),
   projectSlug: args.name ?? '',
   noPush: args.noPush,
   keepGoing: args.keepGoing,
@@ -300,7 +322,7 @@ const runConfig = { configurable: { thread_id: `run-${Date.now()}` } };
 if (!args.quiet) {
   const deploy = args.github ? (args.ghpages ? 'GitHub + Pages' : 'GitHub') : 'local';
   if (resumeDir) {
-    console.log(`\n🚀 MetaBuilder — reanudando ${resumeDir}`);
+    console.log(`\n🚀 MetaBuilder — ${args.extend ? 'extendiendo' : 'reanudando'} ${resumeDir}`);
     console.log(`   deploy=${deploy}\n`);
   } else {
     console.log(`\n🚀 MetaBuilder — "${args.idea.slice(0, 90)}"`);

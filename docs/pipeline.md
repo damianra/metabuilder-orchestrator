@@ -83,7 +83,39 @@ En resume, `preflight` además copia los overlays de compliance que
 falten (apps pre-v7 o `--compliance` nuevo) — solo archivos ausentes,
 nunca pisa lo que el builder pudo personalizar.
 
-## Finalización (finalizer.js)
+## `--extend <slug>` — frontend → fullstack
+
+Resume + inyección de pasos backend sobre un proyecto frontend
+existente (p.ej. un diseño guardado desde la pestaña Diseñar app):
+
+1. **CLI** (`src/index.js`): resuelve el dir como `--resume`, error si
+   ya tiene `server/`, `state.extend=true`. `--idea` opcional describe
+   el dominio de la API (fallback: `plan.idea`).
+2. **preflight**: si `extend` y falta `server/` → `copyApiSkeleton`
+   (mergea `package.partial.json` sobre el package.json existente,
+   copia `server/`, appenda `.gitignore` — nunca pisa). AGENTS.md y
+   Dockerfile se re-escriben por detección (`server/` → sección
+   backend + `Dockerfile.fullstack`), como en cualquier resume.
+3. **planner** (rama `state.extend`): sesión de agente con
+   `prompts/extend-backend.md` — lee `src/` para conocer los datos
+   mock de la UI y appendea pasos `backend` (schema/seed/routes sobre
+   el api-skeleton) + paso `frontend` de **integración** (reemplazar
+   mocks por `fetch` a `/api/*`) + `test` + `e2e`. Del archivo que
+   escribe el agente solo se toma la cola de steps (los `done`
+   originales quedan verbatim). Después `normalizeExtendedPlan`
+   (`src/tools/extend-plan.js`) aplica lo determinístico:
+   `scope→fullstack`, `validated=false` (re-valida el plan fusionado),
+   `stacks.backend/frontend`, sufijo canónico de keywords en pasos
+   frontend (cubre requirements 'each'/`some` y el step legacy de
+   saveDesign), renumeración de ids. Luego el resume común:
+   `applyArch`/`applyCompliance` parchean lo que falte (misma red de
+   seguridad que `repairPlan`) → validate → builder → verify → resto
+   del pipeline sin cambios.
+4. **Semántica de `plan.validated`**: el validator saltea los
+   requirements de completitud cuando `validated === true` (lo escribe
+   el validator al pasar y `saveDesign` al emitir el plan sintético) —
+   el chequeo estructural corre siempre. Así un `--resume` de un
+   diseño guardado no cae en `repairPlan` solo por keywords.
 
 `finalVerify` corre la batería según scope: `npm run build` +
 `npx vitest run` + `npm run test:e2e` (solo si hay frontend; backend

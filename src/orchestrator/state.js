@@ -20,6 +20,9 @@ export const OrchestratorState = Annotation.Root({
   runDir: Annotation({ reducer: replace, default: () => '' }),
   // --resume <dir>: reanudar un run desde su plan.json
   resumeDir: Annotation({ reducer: replace, default: () => '' }),
+  // --extend <slug>: resume + appendea pasos backend al plan de un
+  // proyecto frontend existente (lo resuelve el nodo planner).
+  extend: Annotation({ reducer: replace, default: () => false }),
 
   // plan.json
   plan: Annotation({ reducer: replace, default: () => null }),
