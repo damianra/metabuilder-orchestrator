@@ -62,7 +62,7 @@ Decisión clave: se usa **ACP, no `opencode run --format json`** — el
 | 4 ✅ | **Hardening orquestador** — vitest ^5 + vite ^7 en root/dashboard/skeletons (npm audit: 0 vulns), warning si `DASHBOARD_HOST` no es loopback. | chore |
 | 5 ✅ | **Workflow de seguridad** — `npm audit --audit-level=critical` como gate en CI del repo + `ci.yml` en los 3 skeletons (apps nacen con CI propio). | feat |
 
-## Backlog v7 — registry de cumplimiento — en progreso
+## Backlog v7 — registry de cumplimiento — todo mergeado
 
 | # | Tarea | Tipo |
 | --- | --- | --- |
