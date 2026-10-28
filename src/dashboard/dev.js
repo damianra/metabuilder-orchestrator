@@ -63,6 +63,11 @@ const shutdown = (code = 0) => {
 
 process.on('SIGINT', () => shutdown());
 process.on('SIGTERM', () => shutdown());
+// Cerrar la terminal manda SIGHUP (no SIGINT/SIGTERM) — sin este
+// handler los hijos (vite en :4173, api, worker) quedaban huérfanos
+// ocupando los puertos y la siguiente corrida degradaba a :4174 con
+// un cache deps_temp_* a medio optimizar.
+process.on('SIGHUP', () => shutdown());
 for (const p of procs) {
   // Cualquier cierre que no iniciamos nosotros tumba el par (code===null
   // = muerte por señal/OOM — API sin UI o UI sin API no sirven).
