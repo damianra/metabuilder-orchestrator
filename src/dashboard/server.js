@@ -509,7 +509,7 @@ export function createDashboardApp({
       const i = args.indexOf(flag);
       return i >= 0 ? args[i + 1] : null;
     };
-    const resume = at('--resume');
+    const resume = at('--resume') ?? at('--extend');
     if (resume) return basename(resume.replace(/\/+$/, ''));
     // --name es el slug directo (el CLI lo slugifica igual) — se
     // resuelve aunque la app todavía no exista (job pending).
@@ -859,6 +859,21 @@ export function createDashboardApp({
       // Sin flags de deploy: el CLI restaura plan.deploy (lo que el run
       // original ya tenía). Publicar se hace aparte, con `publish`.
       return res.status(201).json({ job: addJob(['--resume', slug, '--yes'], baseDir) });
+    }
+
+    // --extend: appendea pasos backend al plan de un proyecto
+    // frontend-only → el mismo job lo construye a fullstack.
+    if (action === 'add-backend') {
+      if (existsSync(join(dir, 'server'))) {
+        return res.status(409).json({ error: 'el proyecto ya tiene backend (server/)' });
+      }
+      const args = ['--extend', slug, '--yes'];
+      if (req.body.idea) args.push('--idea', String(req.body.idea));
+      if (req.body.arch) args.push('--arch', String(req.body.arch));
+      if (req.body.github) args.push('--github');
+      else args.push('--no-push');
+      if (req.body.ghpages && req.body.github) args.push('--ghpages');
+      return res.status(201).json({ job: addJob(args, baseDir) });
     }
 
     // Publicar en GitHub bajo demanda (async): crea el repo si falta,

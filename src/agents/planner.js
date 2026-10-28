@@ -7,6 +7,7 @@ import {
 } from '../compliance/index.js';
 import { resolveStacks, stackIds, stackRuleBullets } from '../stacks/index.js';
 import { runAgentPrompt } from '../tools/acp.js';
+import { normalizeExtendedPlan } from '../tools/extend-plan.js';
 import { getVertical } from '../verticals/index.js';
 import { activity, log, loadPrompt, readPlan, runLogPath, textFeed, writePlan } from './common.js';
 
@@ -17,8 +18,75 @@ import { activity, log, loadPrompt, readPlan, runLogPath, textFeed, writePlan } 
  * 3. appType 'custom' → planner LLM vía Devin ACP.
  */
 export async function plannerNode(state) {
-  const existing = readPlan(state.projectDir);
+  let existing = readPlan(state.projectDir);
   if (existing?.steps?.length) {
+    // Entradas de log previas al resume común (hoy: extend) — se
+    // anteponen a la entrada "reanudado" del return.
+    const history = [];
+    // ---- --extend: el agente appendea pasos backend al plan de un
+    // frontend existente, y cae al resume común (validate→build).
+    if (state.extend) {
+      const extArch = resolveArchSafe(existing.arch, state.arch);
+      const prompt = loadPrompt('extend-backend', {
+        idea: state.idea || existing.idea || '',
+        stackRules: [
+          stackRuleBullets('fullstack', {
+            frontend: existing.stacks?.frontend ?? state.stackFrontend ?? undefined,
+            backend: state.stackBackend ?? undefined,
+          }),
+          ...complianceRuleBullets(
+            complianceFor({
+              idea: state.idea || existing.idea,
+              scope: 'fullstack',
+              flag: state.compliance,
+              plan: existing,
+            }),
+          ).map((b) => `- ${b}`),
+        ].join('\n'),
+        archRules: archRuleBullet(extArch),
+      });
+      const feed = textFeed();
+      const res = await runAgentPrompt({
+        agent: state.agent,
+        prompt,
+        cwd: state.projectDir,
+        timeoutMs: config.devinTimeoutMs,
+        logPath: runLogPath(state, 'extend'),
+        onActivity: activity,
+        onText: feed.onText,
+      });
+      feed.flush();
+      if (!res.ok) {
+        return {
+          status: 'failed',
+          lastError: `extend falló: ${res.error}`,
+          history: [log('planner', `extend: ${res.engine ?? 'engine'} falló — ${res.error}`)],
+        };
+      }
+      // Merge defensivo: del archivo que escribió el agente solo se
+      // toma la COLA de steps (los done originales quedan verbatim,
+      // aunque el agente haya reordenado o reescrito el plan).
+      const extended = readPlan(state.projectDir);
+      const before = existing.steps.length;
+      if (extended?.steps?.length > before) {
+        // Los appendeados entran siempre pending — si el agente les
+        // puso status:'done' se saltean silenciosamente en el build.
+        existing.steps = [
+          ...existing.steps,
+          ...extended.steps.slice(before).map((s) => ({ ...s, status: 'pending' })),
+        ];
+      }
+      normalizeExtendedPlan(existing, {
+        dir: state.projectDir,
+        stackBackend: state.stackBackend ?? 'express-sqlite',
+      });
+      history.push(
+        log(
+          'planner',
+          `extend: ${existing.steps.length - before} pasos nuevos (scope → fullstack)`,
+        ),
+      );
+    }
     // plan.json pre-existente ⇒ resume. Los pasos que no llegaron a
     // 'done' vuelven a 'pending' (un paso 'building' murió a medio
     // construir) y el índice retoma en el primero pendiente.
@@ -77,6 +145,7 @@ export async function plannerNode(state) {
       arch: arch.id,
       status: 'planned',
       history: [
+        ...history,
         log(
           'planner',
           `plan.json reanudado: ${done}/${existing.steps.length} pasos done, ` +

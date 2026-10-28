@@ -30,6 +30,19 @@ describe('validatePlan — reglas de schema', () => {
   });
 });
 
+describe('validatePlan — plan.validated (confianza)', () => {
+  it('validated:true salta requirements pero no el schema', () => {
+    // El plan sintético de saveDesign: un solo paso done que nunca
+    // pasaría los requirements (vite/e2e/vitest/privacidad) — con
+    // validated:true se acepta porque los pasos ya están construidos.
+    const p = plan([{ ...baseStep, description: 'diseño iterado en chat', status: 'done' }]);
+    expect(validatePlan(p, 'frontend').length).toBeGreaterThan(0);
+    expect(validatePlan({ ...p, validated: true }, 'frontend')).toEqual([]);
+    // schema roto sigue fallando aun con validated
+    expect(validatePlan({ validated: true, steps: [] }, 'frontend')).not.toEqual([]);
+  });
+});
+
 describe('validatePlan — restricciones de scope', () => {
   const okSteps = [
     { ...baseStep, id: 1, description: 'init con vite' },

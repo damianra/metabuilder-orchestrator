@@ -180,6 +180,14 @@ export async function preflightNode(state) {
         detectStackId(dir) ?? undefined,
       backend: planStacks?.backend ?? state.stackBackend ?? undefined,
     });
+    // --extend: el proyecto es frontend-only → el api-skeleton entra
+    // ANTES de writeAgentsMd/writeDockerFiles para que la detección de
+    // server/ ya vea el backend (mergea package.json, nunca pisa).
+    if (state.extend && !existsSync(join(dir, 'server'))) {
+      copyApiSkeleton(dir, resumeStacks.backend?.skeletonDir ?? 'api-skeleton');
+      history.push(log('preflight', 'api-skeleton copiado (extend → fullstack)'));
+      activity('api-skeleton copiado');
+    }
     writeAgentsMd(dir, {
       withBackend: existsSync(join(dir, 'server')),
       arch: resolveArchSafe(planArch, state.arch),

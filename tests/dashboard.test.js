@@ -244,6 +244,44 @@ describe('POST /api/projects/:slug/actions', () => {
     expect(body.job.args).toEqual(['--resume', 'app-uno', '--yes']);
   });
 
+  it('add-backend encola --extend <slug> --yes con flags opcionales', async () => {
+    seedApp('solo-front');
+    const { status, body } = await post('/api/projects/solo-front/actions', {
+      action: 'add-backend',
+      idea: 'api de productos y pedidos',
+      arch: 'mvc',
+      github: true,
+      ghpages: true,
+    });
+    expect(status).toBe(201);
+    expect(body.job.args).toEqual([
+      '--extend',
+      'solo-front',
+      '--yes',
+      '--idea',
+      'api de productos y pedidos',
+      '--arch',
+      'mvc',
+      '--github',
+      '--ghpages',
+    ]);
+  });
+
+  it('add-backend sin github → --no-push; con server/ → 409', async () => {
+    seedApp('front-dos');
+    const { status, body } = await post('/api/projects/front-dos/actions', {
+      action: 'add-backend',
+    });
+    expect(status).toBe(201);
+    expect(body.job.args).toEqual(['--extend', 'front-dos', '--yes', '--no-push']);
+
+    const dir = seedApp('ya-fullstack');
+    mkdirSync(join(dir, 'server'), { recursive: true });
+    expect(
+      (await post('/api/projects/ya-fullstack/actions', { action: 'add-backend' })).status,
+    ).toBe(409);
+  });
+
   it('GET /:slug/repo sin git → nulls; con remote + gh-pages → repoUrl + pagesUrl', async () => {
     seedApp('sin-git');
     expect(await api('/api/projects/sin-git/repo')).toEqual({
