@@ -92,8 +92,8 @@ o descartarlo. Workspace: `design-work/` en la raíz (gitignored — fuera de ge
 
 | # | Tarea | Tipo |
 | --- | --- | --- |
-| 1 | **Backend diseño** — `src/prompts/designer.md` (persona diseñador senior), `src/design/session.js` (workspace + sesión ACP persistente + chat), endpoints `POST /api/design` / `POST /api/design/chat` (SSE) / `POST /api/design/dev` (start-stop vite→url) / `GET /api/design` / `POST /api/design/save` / `DELETE /api/design`, tests. | L |
-| 2 | **UI tabs + DesignTab** — tabs en App.jsx ("Nueva app"/"Diseñar app"), panel chat (EventSource) + iframe preview + input nombre-guardar + descartar, tests + build. | M |
+| 1 ✅ | **Backend diseño** — `src/prompts/designer.md` (persona diseñador senior), `src/design/session.js` (workspace + sesión ACP persistente + chat), endpoints `POST /api/design` / `POST /api/design/chat` (SSE) / `POST /api/design/dev` (start-stop vite→url) / `GET /api/design` / `POST /api/design/save` / `DELETE /api/design`, tests. | L |
+| 2 ✅ | **UI tabs + DesignTab** — tabs en App.jsx ("Nueva app"/"Diseñar app"), panel chat (SSE por fetch — EventSource no soporta POST) + iframe preview + input nombre-guardar + descartar, tests + build. | M |
 | 3 | Idle-parking de la sesión de diseño (cerrar a los N min sin actividad, recrear al próximo mensaje). | S |
 
 ## Heredado de v2/v3 (sigue fuera de scope)

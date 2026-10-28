@@ -13,9 +13,9 @@ import { startDevRun, stopDevRun } from '../dashboard/server.js';
 export const DESIGN_DIR = join(config.rootDir, 'design-work');
 const statePath = join(DESIGN_DIR, 'design-state.json');
 
-const readState = () => {
+const readState = (p = statePath) => {
   try {
-    return JSON.parse(readFileSync(statePath, 'utf8'));
+    return JSON.parse(readFileSync(p, 'utf8'));
   } catch {
     return { messages: [], created: null };
   }
@@ -28,18 +28,36 @@ const writeState = (s) => {
   }
 };
 
-export function designStatus() {
-  if (!existsSync(join(DESIGN_DIR, 'package.json'))) return { exists: false, messages: [] };
-  // URLs del dev server parseadas del log (el iframe del preview las
-  // consume — vite imprime el puerto real al arrancar).
-  let urls = [];
+const pidAlive = (pid) => {
   try {
-    const log = readFileSync(join(DESIGN_DIR, 'dev-run.log'), 'utf8');
-    urls = [...new Set(log.match(/https?:\/\/localhost:\d+/g) ?? [])];
+    return pid ? process.kill(pid, 0) : false;
   } catch {
-    /* sin dev-run.log todavía */
+    return false;
   }
-  return { exists: true, ...readState(), urls };
+};
+
+export function designStatus(dir = DESIGN_DIR) {
+  if (!existsSync(join(dir, 'package.json'))) return { exists: false, messages: [] };
+  // URLs solo con el run vivo: dev-run.log es append-only y tras
+  // stop-dev seguiría reportando la URL vieja con el iframe muerto
+  // (mismo gate que devRun.status/stale en el detalle de proyecto).
+  let devRunning = false;
+  try {
+    const st = JSON.parse(readFileSync(join(dir, 'dev-run.json'), 'utf8'));
+    devRunning = st?.status === 'running' && (st.procs ?? []).some((p) => pidAlive(p.pid));
+  } catch {
+    /* sin dev-run.json → nunca corrió */
+  }
+  let urls = [];
+  if (devRunning) {
+    try {
+      const log = readFileSync(join(dir, 'dev-run.log'), 'utf8');
+      urls = [...new Set(log.match(/https?:\/\/localhost:\d+/g) ?? [])];
+    } catch {
+      /* sin dev-run.log todavía */
+    }
+  }
+  return { exists: true, ...readState(join(dir, 'design-state.json')), urls, devRunning };
 }
 
 // Crea el workspace copiando el app-skeleton (mismo contrato que
@@ -92,14 +110,6 @@ export async function designChat(text, { agent = '', onChunk = () => {}, onActiv
   writeState(state);
   return { ok: true, text: reply };
 }
-
-const pidAlive = (pid) => {
-  try {
-    return pid ? process.kill(pid, 0) : false;
-  } catch {
-    return false;
-  }
-};
 
 export const designDev = () => {
   if (!existsSync(join(DESIGN_DIR, 'package.json'))) {
