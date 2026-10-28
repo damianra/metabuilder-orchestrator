@@ -77,7 +77,7 @@ Segundo tab del dashboard: el usuario itera un frontend en modo **chat
 con el agente** (Devin/OpenCode via ACP) mientras un **vite dev server
 sirve preview en vivo en iframe** (HMR gratis); al terminar puede
 guardarlo como app real (`generated-apps/<slug>` + plan.json sintético)
-o descartarlo. Workspace: `generated-apps/.design-work/` (gitignored).
+o descartarlo. Workspace: `design-work/` en la raíz (gitignored — fuera de generated-apps para no aparecer como proyecto).
 
 **Decisiones tomadas** (análisis previo):
 - Preview = solo vite dev server (el `X-Frame-Options: DENY` del
@@ -92,7 +92,7 @@ o descartarlo. Workspace: `generated-apps/.design-work/` (gitignored).
 
 | # | Tarea | Tipo |
 | --- | --- | --- |
-| 1 | **Backend diseño** — `src/prompts/designer.md` (persona diseñador senior), `src/design/session.js` (workspace + sesión ACP persistente + chat), endpoints `POST /api/design` / `POST /api/design/chat` (SSE) / `POST /api/design/dev` (start-stop vite→url) / `GET /api/design/status` / `POST /api/design/save` / `DELETE /api/design`, tests. | L |
+| 1 | **Backend diseño** — `src/prompts/designer.md` (persona diseñador senior), `src/design/session.js` (workspace + sesión ACP persistente + chat), endpoints `POST /api/design` / `POST /api/design/chat` (SSE) / `POST /api/design/dev` (start-stop vite→url) / `GET /api/design` / `POST /api/design/save` / `DELETE /api/design`, tests. | L |
 | 2 | **UI tabs + DesignTab** — tabs en App.jsx ("Nueva app"/"Diseñar app"), panel chat (EventSource) + iframe preview + input nombre-guardar + descartar, tests + build. | M |
 | 3 | Idle-parking de la sesión de diseño (cerrar a los N min sin actividad, recrear al próximo mensaje). | S |
 

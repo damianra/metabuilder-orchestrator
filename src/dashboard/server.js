@@ -21,6 +21,15 @@ import { buildReport, resolveRunId } from '../report.js';
 import { writeDockerFiles, detectFrontend, detectOutDir } from '../tools/docker.js';
 import { listArchs } from '../arch/index.js';
 import { getCompliance, listCompliance } from '../compliance/index.js';
+import {
+  createDesign,
+  designChat,
+  designDev,
+  designStatus,
+  designStopDev,
+  discardDesign,
+  saveDesign,
+} from '../design/session.js';
 import { getVertical, listVerticals } from '../verticals/index.js';
 import { getStack, listStacks, resolveStacksSafe } from '../stacks/index.js';
 import { getEngine as getAgentEngine, listEngines } from '../engines/index.js';
@@ -791,6 +800,49 @@ export function createDashboardApp({
     if (!b.github) args.push('--no-push');
 
     res.status(201).json({ job: addJob(args, baseDir) });
+  });
+
+  // ---- Diseñar app: workspace + chat iterativo + preview vite ----
+
+  app.get('/api/design', (req, res) => res.json(designStatus()));
+
+  app.post('/api/design', (req, res) => {
+    const r = createDesign();
+    res.status(r.ok ? 201 : 409).json(r);
+  });
+
+  app.delete('/api/design', (req, res) => res.json(discardDesign()));
+
+  // Chat SSE: cada data: es un chunk del agente; done/error al cerrar.
+  app.post('/api/design/chat', async (req, res) => {
+    const text = String(req.body?.text ?? '').trim();
+    if (!text) return res.status(400).json({ error: 'text requerido' });
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    });
+    const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    const r = await designChat(text, {
+      agent: req.body?.agent ?? '',
+      onChunk: (t) => send('chunk', { text: t }),
+      onActivity: (a) => send('activity', { text: a }),
+    });
+    send(r.ok ? 'done' : 'error', r.ok ? { text: r.text } : { error: r.error });
+    res.end();
+  });
+
+  app.post('/api/design/dev', (req, res) => {
+    const r = designDev();
+    res.status(r.ok ? 200 : 409).json(r);
+  });
+  app.post('/api/design/stop-dev', (req, res) => res.json(designStopDev()));
+
+  app.post('/api/design/save', (req, res) => {
+    const slug = String(req.body?.slug ?? '').trim();
+    if (!SLUG_RE.test(slug)) return res.status(400).json({ error: 'slug inválido (a-z0-9-)' });
+    const r = saveDesign(slug);
+    res.status(r.ok ? 201 : 409).json(r);
   });
 
   // Acciones sobre un proyecto existente.

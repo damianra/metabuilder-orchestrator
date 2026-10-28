@@ -17,6 +17,14 @@ export function startInstall(dir, cmd = 'npm install') {
 
 export const isInstalling = (dir) => pending.has(dir) && !results.has(dir);
 
+// Limpia la cache por dir — necesario cuando el dir se borra y se
+// recrea en la misma ruta (design-work): si no, la segunda creación
+// hereda el resultado viejo y queda sin node_modules.
+export function clearInstall(dir) {
+  pending.delete(dir);
+  results.delete(dir);
+}
+
 export async function awaitInstall(dir) {
   if (!pending.has(dir)) return { ok: true };
   if (!results.has(dir)) results.set(dir, await pending.get(dir));
