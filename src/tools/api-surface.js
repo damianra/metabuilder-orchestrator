@@ -60,9 +60,9 @@ function nestSurface(dir) {
     }
     const base = src.match(/@Controller\(\s*['"`]([^'"`]*)['"`]\s*\)/)?.[1] ?? '';
     for (const m of src.matchAll(
-      /@(Get|Post|Put|Patch|Delete)\(\s*['"`]([^'"`]*)['"`]\s*\)/g,
+      /@(Get|Post|Put|Patch|Delete)\(\s*(?:['"`]([^'"`]*)['"`]\s*)?\)/g,
     )) {
-      const sub = m[2].replace(/^\/+/, '');
+      const sub = (m[2] ?? '').replace(/^\/+/, '');
       const path = `/${base}/${sub}`.replace(/\/+/g, '/');
       endpoints.push({ method: m[1].toUpperCase(), path, file: rel.split('/').pop() });
     }

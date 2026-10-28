@@ -107,7 +107,11 @@ export function createDesign({ attachTo = null } = {}) {
   const agentsSrc = readFileSync(join(config.templatesDir, 'AGENTS.md'), 'utf8');
   writeFileSync(
     join(DESIGN_DIR, 'AGENTS.md'),
-    agentsSrc.replaceAll('{{frontendStack}}', 'Vite + React + Tailwind'),
+    agentsSrc
+      .replaceAll('{{frontendStack}}', 'Vite + React + Tailwind')
+      // El design-work no tiene backend — defaults de writeAgentsMd.
+      .replaceAll('{{backendFramework}}', 'Node.js + Express')
+      .replaceAll('{{backendDb}}', 'SQLite (archivo local, sin servidores externos)'),
   );
   for (const f of ['package.json', 'index.html', 'src/App.jsx']) {
     const p = join(DESIGN_DIR, f);
@@ -271,7 +275,7 @@ function saveDesignAttach(slug) {
     withBackend: true,
     arch: resolveArchSafe(plan.arch, 'flat'),
     frontendStack: getStack('vite-react'),
-    backendStack: getStack(detectBackendStackId(dest)),
+    backendStack: getStack(plan.stacks?.backend ?? detectBackendStackId(dest)),
   });
   clearInstall(DESIGN_DIR);
   rmSync(DESIGN_DIR, { recursive: true, force: true });

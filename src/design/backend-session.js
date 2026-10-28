@@ -208,7 +208,7 @@ export function saveBackend(slug) {
       withBackend: true,
       arch: resolveArchSafe(savedPlan.arch, 'flat'),
       frontendStack: undefined,
-      backendStack: getStack(detectBackendStackId(dest)),
+      backendStack: getStack(savedPlan.stacks?.backend ?? detectBackendStackId(dest)),
     });
   } catch {
     /* AGENTS.md falló — el guardado sigue siendo válido */
