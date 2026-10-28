@@ -8,6 +8,8 @@ export default {
   id: 'express-sqlite',
   kind: 'backend',
   label: 'Express + SQLite',
+  agentsStack: 'Node.js + Express',
+  agentsDb: 'SQLite (archivo local, sin servidores externos)',
   skeletonDir: 'api-skeleton',
 
   verify: {

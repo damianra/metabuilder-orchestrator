@@ -18,8 +18,8 @@ import { run } from '../tools/shell.js';
 import { addJob, cancelJob, clearJobs, jobsDir, readJobs, readWorker } from '../queue.js';
 import { slugify } from '../tools/slug.js';
 import { buildReport, resolveRunId } from '../report.js';
-import { writeDockerFiles, detectFrontend, detectOutDir } from '../tools/docker.js';
-import { apiSurfaceFor } from '../tools/api-surface.js';
+import { writeDockerFiles, detectFrontend, detectOutDir, detectBackendStackId } from '../tools/docker.js';
+import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
 import { listArchs } from '../arch/index.js';
 import { getCompliance, listCompliance } from '../compliance/index.js';
 import {
@@ -663,7 +663,7 @@ export function createDashboardApp({
   app.get('/api/projects/:slug/api-surface', (req, res) => {
     const slug = validSlug(req, res);
     if (!slug) return;
-    res.json({ endpoints: apiSurfaceFor(appDir(slug)) });
+    res.json({ endpoints: apiSurfaceFor(appDir(slug), { kind: apiSurfaceKindOf(detectBackendStackId(appDir(slug))) }) });
   });
 
   // Probe de un endpoint: el fetch va server-side — el browser no

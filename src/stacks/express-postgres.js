@@ -8,6 +8,8 @@ export default {
   id: 'express-postgres',
   kind: 'backend',
   label: 'Express + PostgreSQL',
+  agentsStack: 'Node.js + Express',
+  agentsDb: 'PostgreSQL (vía DB_* en .env)',
   skeletonDir: 'api-skeleton-sql',
 
   verify: {

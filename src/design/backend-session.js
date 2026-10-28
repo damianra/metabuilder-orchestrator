@@ -9,8 +9,10 @@ import { runAgentPrompt } from '../tools/acp.js';
 import { startInstall, awaitInstall, clearInstall } from '../tools/install.js';
 import { loadPrompt } from '../agents/common.js';
 import { startDevRun, stopDevRun } from '../dashboard/server.js';
-import { apiSurfaceFor } from '../tools/api-surface.js';
+import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
+import { detectBackendStackId } from '../tools/docker.js';
 import { copyApiSkeleton, writeAgentsMd } from '../agents/preflight.js';
+import { getStack } from '../stacks/index.js';
 import { resolveArchSafe } from '../arch/index.js';
 
 export const BACKEND_DIR = join(config.rootDir, 'backend-work');
@@ -70,7 +72,9 @@ export function backendStatus(dir = BACKEND_DIR) {
   } catch {
     /* sin dev-run.json */
   }
-  return { exists: true, ...readState(join(dir, 'backend-state.json')), apiRunning, apiSurface: apiSurfaceFor(dir) };
+  return { exists: true, ...readState(join(dir, 'backend-state.json')), apiRunning,
+    apiSurface: apiSurfaceFor(dir, { kind: apiSurfaceKindOf(detectBackendStackId(dir)) }),
+  };
 }
 
 // Crea el workspace copiando el api-skeleton — reuse de
@@ -168,7 +172,7 @@ export function saveBackend(slug) {
         appType: 'custom',
         arch: 'flat',
         idea: 'api creada en la pestaña Backend (chat experto)',
-        stacks: { backend: 'express-sqlite' },
+        stacks: { backend: detectBackendStackId(BACKEND_DIR) ?? 'express-sqlite' },
         validated: true,
         steps: [
           {
@@ -204,6 +208,7 @@ export function saveBackend(slug) {
       withBackend: true,
       arch: resolveArchSafe(savedPlan.arch, 'flat'),
       frontendStack: undefined,
+      backendStack: getStack(detectBackendStackId(dest)),
     });
   } catch {
     /* AGENTS.md falló — el guardado sigue siendo válido */

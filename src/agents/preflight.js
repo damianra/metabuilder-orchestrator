@@ -80,9 +80,11 @@ function prewarmPlaywright(dir) {
  * (src/arch/) cuando el scope tiene backend.
  * Es lo que el builder/fixer/reviewer leen como contrato del código.
  */
-export function writeAgentsMd(dir, { withBackend, arch, frontendStack }) {
+export function writeAgentsMd(dir, { withBackend, arch, frontendStack, backendStack }) {
   const base = readFileSync(join(config.templatesDir, 'AGENTS.md'), 'utf8')
-    .replaceAll('{{frontendStack}}', frontendStack?.agentsStack ?? 'React + Vite + Tailwind CSS');
+    .replaceAll('{{frontendStack}}', frontendStack?.agentsStack ?? 'React + Vite + Tailwind CSS')
+    .replaceAll('{{backendFramework}}', backendStack?.agentsStack ?? 'Node.js + Express')
+    .replaceAll('{{backendDb}}', backendStack?.agentsDb ?? 'SQLite (archivo local, sin servidores externos)');
   const rules = withBackend ? `\n## Arquitectura backend\n\n${arch.agentsRules}\n` : '';
   writeFileSync(join(dir, 'AGENTS.md'), base + rules);
 }
@@ -192,6 +194,7 @@ export async function preflightNode(state) {
       withBackend: existsSync(join(dir, 'server')),
       arch: resolveArchSafe(planArch, state.arch),
       frontendStack: resumeStacks.frontend,
+      backendStack: resumeStacks.backend,
     });
     // Dockerfile determinístico según lo que ya tiene el dir
     // (apps pre-docker lo reciben al resumir).
@@ -246,6 +249,7 @@ export async function preflightNode(state) {
     withBackend: state.scope !== 'frontend',
     arch,
     frontendStack: stacks.frontend,
+    backendStack: stacks.backend,
   });
   const dockerVariant = writeDockerFiles(dir, {
     frontend: state.scope !== 'backend',
