@@ -17,6 +17,9 @@ Express local (127.0.0.1:4100, `DASHBOARD_PORT`/`DASHBOARD_HOST`) en
   dev→5173 Vite / 3000 Next según `next.config.*`, api→4000).
 - `GET /api/projects/:slug/test-log` — tail del `test-run.log` de la
   app + el estado del último test run (mismo formato que el log de job).
+- `GET /api/projects/:slug/publish-log` — tail del `publish.log` +
+  estado del último publish (`publish.json`). La UI lo pide lazy desde
+  el toggle "publish log" del detalle.
 - `GET /api/projects/:slug/dev-log` — tail del `dev-run.log` + estado
   del dev run + `urls` parseadas del output (`http://localhost:<port>`)
   — vite/next/api imprimen su puerto real al arrancar, que puede no ser
@@ -57,8 +60,12 @@ Express local (127.0.0.1:4100, `DASHBOARD_PORT`/`DASHBOARD_HOST`) en
   pushea `main` y — solo con `ghpages:true` y scope con frontend —
   corre el build [con `pagesBaseEnv` si el stack lo exige], pushea
   `<buildDir>/` a `gh-pages` y activa Pages. Estado en `publish.json`
-  dentro de la app — running/done/failed + repoUrl/pagesUrl, expuesto
-  como `publish` en el detalle; 202 al lanzar, 409 si hay uno en curso
+  dentro de la app — running/done/failed + repoUrl/pagesUrl +
+  `pagesError` (un deploy a gh-pages fallido NO reporta pagesUrl — el
+  push a main pudo salir igual), expuesto
+  como `publish` en el detalle; output crudo en `publish.log`
+  (git/build/deploy, append por run — `GET publish-log` lo sirve);
+  202 al lanzar, 409 si hay uno en curso
   con pid vivo — `running` con pid muerto es stale y no bloquea —, 503
   sin GITHUB_TOKEN; `githubApi` inyectable en tests), `dockerize` (re-escribe Dockerfile según
   filesystem + `<engine> build` async si hay engine (docker o podman)

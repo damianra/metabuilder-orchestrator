@@ -325,6 +325,40 @@ describe('POST /api/projects/:slug/actions', () => {
       expect(cmds2.some((c) => c.includes('push -f origin gh-pages'))).toBe(true);
       expect(ghCalls.some((c) => c.startsWith('POST /repos/tester/para-publicar/pages'))).toBe(true);
 
+      // publish.log persiste el output crudo del pipeline (git/build/deploy)
+      const pubLog = readFileSync(join(dir, 'publish.log'), 'utf8');
+      expect(pubLog).toContain('push -f origin gh-pages');
+      expect(pubLog).toContain('npm run build');
+      // el token nunca llega al log — ni literal ni en base64 del extraHeader
+      expect(pubLog).not.toContain('fake-token');
+      expect(pubLog).not.toContain(
+        Buffer.from('x-access-token:fake-token').toString('base64'),
+      );
+      expect(pubLog).toContain('Authorization: Basic ***');
+      const pl = await api('/api/projects/para-publicar/publish-log');
+      expect(pl.status).toBe(200);
+      expect(pl.body.publish.status).toBe('done');
+      expect(pl.body.log.lines.join('\n')).toContain('push -f origin gh-pages');
+
+      // push a gh-pages falla → pagesError honesto, sin pagesUrl que 404
+      runCmdCalls = [];
+      runCmdHandler = (cmd) =>
+        cmd.includes('push -f origin gh-pages')
+          ? { ok: false, stdout: '', stderr: 'denied: permission' }
+          : { ok: true, stdout: '', stderr: '' };
+      const pagesFail = await post('/api/projects/para-publicar/actions', {
+        action: 'publish',
+        ghpages: true,
+      });
+      expect(pagesFail.status).toBe(202);
+      const failed = await settle();
+      expect(failed.status).toBe('done'); // el push a main sí salió
+      expect(failed.repoUrl).toBe('https://github.com/tester/para-publicar');
+      expect(failed.pagesUrl).toBeNull();
+      expect(failed.pagesError).toContain('push gh-pages falló');
+      expect(readFileSync(join(dir, 'publish.log'), 'utf8')).toContain('denied: permission');
+      runCmdHandler = () => ({ ok: true, stdout: '', stderr: '' });
+
       // publish en curso → 409: el primero queda colgado (runCmd no
       // resuelve nunca) y el segundo pega en el guard de publish.json.
       runCmdHandler = () => new Promise(() => {});
