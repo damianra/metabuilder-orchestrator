@@ -25,6 +25,9 @@ const BASE_COMPLIANCE = new Set(['privacidad', 'notfound']);
 // del dominio de la app (igual que en los chats de diseño/backend).
 const HIDDEN_COMPLIANCE = new Set(['menores']);
 
+// nest-typeorm es backend-only (#4) — el form es fullstack, no se ofrece.
+const formBackendStacks = (list = []) => list.filter((id) => id !== 'nest-typeorm');
+
 // Form "Nueva app" — los pickers se alimentan de GET /api/options
 // (registries del orquestador), nada hardcodeado. `cloneSlug` (viene de
 // #/?clone=<slug>) pre-llena scope/vertical/arch/stacks con la config de
