@@ -223,7 +223,7 @@ export default function DesignTab({ onSaved }) {
           <button
             title={confirmDiscard ? 'Confirmá para borrar el workspace' : 'Descarta el diseño y borra el workspace'}
             onClick={discard}
-            disabled={busy === 'discard'}
+            disabled={Boolean(busy)}
             className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ring-1 disabled:opacity-40 ${
               confirmDiscard
                 ? 'bg-red-600 text-white ring-red-600 hover:bg-red-700'
