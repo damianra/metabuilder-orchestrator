@@ -198,7 +198,7 @@ cp .env.example .env
 | `GIT_USER_NAME` / `GIT_USER_EMAIL` | Identidad de los commits en las apps generadas. |
 | `AGENT_PROVIDER` | Engine de agente por defecto (`devin`/`opencode`/`auto`). Menor precedencia que settings.json y `--agent`. |
 | `OPENCODE_BIN` / `OPENCODE_MODEL` | Binario alternativo / modelo `provider/model` para OpenCode (vacío = default del provider). |
-| `DEVIN_MODEL` | Default `swe-2-high` (gratuito). |
+| `DEVIN_MODEL` | Default `swe-2-high`. |
 | `DEVIN_TIMEOUT_MS` | Timeout por sesión Devin (default 15 min). |
 | `MAX_STEP_RETRIES` / `MAX_PLAN_RETRIES` | Reintentos de fix por paso / de reparación de plan (3 / 2). |
 | `VERIFY_TIMEOUT_MS` | Timeout por comando `verify` (default 5 min). |

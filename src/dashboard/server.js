@@ -761,7 +761,8 @@ export function createDashboardApp({
       return res.status(400).json({ error: `agent desconocido "${b.agent}" (${listEngines().join('|')}|auto)` });
     }
     if (b.compliance) {
-      const bad = String(b.compliance).split(',').map((s) => s.trim()).filter((id) => !getCompliance(id));
+      const ids = String(b.compliance).split(',').map((s) => s.trim()).filter(Boolean);
+      const bad = ids.filter((id) => !getCompliance(id));
       if (bad.length) {
         return res.status(400).json({ error: `compliance desconocido "${bad[0]}" (${listCompliance().join('|')})` });
       }
