@@ -41,4 +41,55 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     }),
+  designStatus: () => req('/api/design'),
+  createDesign: () => req('/api/design', { method: 'POST' }),
+  discardDesign: () => req('/api/design', { method: 'DELETE' }),
+  designDev: () => req('/api/design/dev', { method: 'POST' }),
+  designStopDev: () => req('/api/design/stop-dev', { method: 'POST' }),
+  designSave: (slug) =>
+    req('/api/design/save', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ slug }),
+    }),
+  // Chat SSE por POST — EventSource no sirve (solo GET). Se lee el
+  // stream y se parsean bloques "event: X\ndata: {…}\n\n" (el server
+  // manda un JSON de una línea por evento, sin multi-data).
+  designChat: async (text, { onChunk = () => {}, onActivity = () => {} } = {}) => {
+    const res = await fetch('/api/design/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? `HTTP ${res.status}`);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let result = { ok: false, error: 'stream cerrado sin respuesta' };
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) >= 0) {
+        const block = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        const ev = block.match(/^event: (.+)$/m)?.[1];
+        let data = {};
+        try {
+          data = JSON.parse(block.match(/^data: (.*)$/m)?.[1] ?? '{}');
+        } catch {
+          /* data malformado → {} */
+        }
+        if (ev === 'chunk') onChunk(data.text ?? '');
+        else if (ev === 'activity') onActivity(data.text ?? '');
+        else if (ev === 'done') result = { ok: true, text: data.text ?? '' };
+        else if (ev === 'error') result = { ok: false, error: data.error ?? 'error del agente' };
+      }
+    }
+    return result;
+  },
 };

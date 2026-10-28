@@ -7,10 +7,12 @@ import ProjectList from './components/ProjectList.jsx';
 import ProjectDetail from './components/ProjectDetail.jsx';
 import QueuePanel from './components/QueuePanel.jsx';
 import SetupGate from './components/SetupGate.jsx';
+import DesignTab from './components/DesignTab.jsx';
 
 const parseHash = () => {
   const m = window.location.hash.match(/^#\/p\/([a-z0-9-]+)/);
   if (m) return { view: 'detail', slug: m[1] };
+  if (window.location.hash.startsWith('#/design')) return { view: 'design' };
   const c = window.location.hash.match(/[?&]clone=([a-z0-9-]+)/);
   return { view: 'list', clone: c?.[1] ?? null };
 };
@@ -128,9 +130,36 @@ export default function App() {
             La API no responde — levantala con <code className="font-mono">npm run dashboard</code>.
           </p>
         )}
+        {engine !== null && !gateOpen && route.view !== 'detail' && (
+          <nav className="flex gap-1 rounded-xl bg-white p-1 ring-1 ring-slate-200 shadow-sm">
+            {[
+              ['list', 'Nueva app', '#/'],
+              ['design', 'Diseñar app', '#/design'],
+            ].map(([v, label, href]) => (
+              <a
+                key={v}
+                href={href}
+                className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+                  route.view === v
+                    ? 'bg-sky-600 text-white'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
+        )}
         {engine !== null && !gateOpen && (
           route.view === 'detail' ? (
             <ProjectDetail slug={route.slug} onChanged={refresh} />
+          ) : route.view === 'design' ? (
+            <DesignTab
+              onSaved={() => {
+                window.location.hash = '#/';
+                refresh();
+              }}
+            />
           ) : (
             <>
               <NewAppForm onEnqueued={refresh} cloneSlug={route.clone} />
