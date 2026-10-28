@@ -11,7 +11,7 @@ import { loadPrompt } from '../agents/common.js';
 import { startDevRun, stopDevRun } from '../dashboard/server.js';
 import { apiSurfaceFor } from '../tools/api-surface.js';
 import { writeAgentsMd } from '../agents/preflight.js';
-import { resolveArch } from '../arch/index.js';
+import { resolveArchSafe } from '../arch/index.js';
 import { getStack } from '../stacks/index.js';
 
 export const DESIGN_DIR = join(config.rootDir, 'design-work');
@@ -201,6 +201,7 @@ const SAVE_EXCLUDE = new Set(['node_modules', 'design-state.json', 'dev-run.json
 const ATTACH_EXCLUDE = new Set([
   ...SAVE_EXCLUDE,
   'package.json',
+  'package-lock.json', // el del backend queda — npm install lo regenera con las deps mergeadas
   'AGENTS.md',
   '.gitignore',
   '.git',
@@ -221,8 +222,10 @@ export function attachFrontendFiles(srcDir, destDir) {
   // backend gana en clashes de scripts (test/api/dev:api) — el front
   // solo agrega dev/build/preview/test:e2e que el back no define.
   pkg.scripts = { ...(frontPkg.scripts ?? {}), ...(pkg.scripts ?? {}) };
+  // En deps también gana el backend en clashes de versión (consistencia
+  // con scripts: el proyecto preexistente es la autoridad).
   for (const f of ['dependencies', 'devDependencies']) {
-    pkg[f] = { ...(pkg[f] ?? {}), ...(frontPkg[f] ?? {}) };
+    pkg[f] = { ...(frontPkg[f] ?? {}), ...(pkg[f] ?? {}) };
   }
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
   const giSrc = join(srcDir, '.gitignore');
@@ -263,7 +266,7 @@ function saveDesignAttach(slug) {
   const plan = JSON.parse(readFileSync(planPath, 'utf8'));
   writeAgentsMd(dest, {
     withBackend: true,
-    arch: resolveArch(plan.arch ?? 'flat'),
+    arch: resolveArchSafe(plan.arch, 'flat'),
     frontendStack: getStack('vite-react'),
   });
   clearInstall(DESIGN_DIR);
