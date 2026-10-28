@@ -13,7 +13,7 @@ vi.mock('../../api.js', () => ({
         stacks: { frontend: ['vite-react'], backend: ['express-sqlite'] },
         engines: ['devin'],
         engine: 'devin',
-        compliance: ['cookies', 'auth'],
+        compliance: ['cookies', 'auth', 'menores'],
       }),
     ),
     project: vi.fn(() =>
@@ -46,6 +46,14 @@ describe('NewAppForm (v10: backend | fullstack)', () => {
     await waitFor(() => expect(api.options).toHaveBeenCalled());
     expect(screen.queryByLabelText('Scope')).toBeNull();
     expect(screen.getByLabelText('Stack front').disabled).toBe(false);
+  });
+
+  it('menores no se ofrece: la infiere el agente del dominio', async () => {
+    render(<NewAppForm />);
+    await waitFor(() => expect(api.options).toHaveBeenCalled());
+    expect(screen.queryByText('menores')).toBeNull();
+    expect(screen.getByText('cookies')).toBeTruthy();
+    expect(screen.getByText('auth')).toBeTruthy();
   });
 
   it('clone de proyecto frontend → scope cae a backend', async () => {
