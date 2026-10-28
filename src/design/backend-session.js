@@ -97,16 +97,33 @@ export function createBackend(stackId = 'express-sqlite') {
   return { ok: true };
 }
 
-// Convenciones del stack elegido — se inyectan al prompt del experto
-// para que recomiende implementaciones coherentes con el skeleton.
-const stackHint = (stackId) =>
-  stackId === 'nest-typeorm'
-    ? 'Recurso nuevo = entity + service + controller + módulo en `src/`; DataSource TypeORM por DB_TYPE en `.env`; `npm run api` = `tsc` + `node dist/main.js` (TS).'
-    : stackId === 'express-mongo'
-      ? 'Document store: `col(name)` de `server/db.js` (driver mongodb nativo + `MONGO_URI`/`MONGO_DB` en `.env`), seed schemaless en `seed-data.js` — no hay `schema.sql`.'
-      : stackId === 'express-postgres' || stackId === 'express-mysql'
-        ? `DB externa ${stackId === 'express-mysql' ? 'MySQL' : 'PostgreSQL'}: pool + \`q()\`/\`insert()\` de \`server/db.js\` con placeholders \`?\` (se normalizan a \`$n\` en pg) — config por \`DB_*\` en \`.env\`.`
-        : 'SQLite embebida (better-sqlite3) via `server/db.js` + `schema.sql` idempotente.';
+// Convenciones "NO las rompas" del prompt del experto — por stack
+// elegido (el .md lleva `{{stackConventions}}` — no hardcodear sqlite
+// como antes, que contradecía a mongo/pg/mysql/nest).
+const CONVENTIONS = {
+  'express-sqlite': `- \`server/routes/<name>.js\` exporta un \`Router\` default → se monta solo en \`/api/<name>\` — agregar un endpoint = agregar un archivo.
+- \`server/schema.sql\` es el schema (idempotente, corre al arrancar); \`server/seed-data.js\` siembra solo si la tabla está vacía.
+- DB: \`better-sqlite3\` con prepared statements SIEMPRE — nunca interpolar valores en queries.
+- Security pack ya incluido (headers, rate limit, request logger) — no duplicar.
+- Uploads: \`POST /api/uploads\` (campo \`file\`) → \`{url:"/uploads/<f>"}\`.
+- \`npm run api\` levanta el server en :4000; \`npm test\` corre vitest; el seed corre solo al arrancar.`,
+  'express-postgres': null,
+  'express-mysql': null,
+  'express-mongo': `- \`server/routes/<name>.js\` exporta un \`Router\` default → se monta solo en \`/api/<name>\`.
+- Document store: \`col(name)\` de \`server/db.js\` (driver \`mongodb\` nativo, \`MONGO_URI\`/\`MONGO_DB\` en \`.env\`); \`seed-data.js\` por colección via \`seedIfEmpty\` — schemaless, NO hay \`schema.sql\`.
+- Ids \`ObjectId\` en path params (400 si inválido); sin prepared statements — filtrar con objetos del driver.
+- Uploads + security pack ya incluidos. \`npm run api\` :4000; \`npm test\` vitest; la DB viva la aporta el usuario.`,
+  'nest-typeorm': `- TypeScript + NestJS: recurso nuevo = entity + service + controller + módulo en \`src/\` (registrar el módulo en \`app.module\`).
+- Controllers \`*.controller.ts\`: \`@Controller('api/<name>')\` + \`@Get/@Post/@Put/@Delete\` — el api-surface los escanea.
+- TypeORM: \`src/database.module.ts\` arma el DataSource por \`DB_TYPE=postgres|mysql\` en \`.env\` — agregar entities al array \`entities\`.
+- \`npm run api\` = \`tsc\` + \`node dist/main.js\` en :4000; \`npm test\` vitest (sin DB viva — stubear el repository).
+- Sin uploads ni security pack en el skeleton — agregar como middleware/controller propios si hacen falta.`,
+};
+CONVENTIONS['express-postgres'] = CONVENTIONS['express-mysql'] =
+  `- \`server/routes/<name>.js\` exporta un \`Router\` default → se monta solo en \`/api/<name>\`.
+- DB externa: \`server/db.js\` despacha \`DB_DRIVER=pg|mysql\` (pool + \`q()\` que normaliza \`?\`→\`$n\` + \`insert()\` con id portable) — conexión por \`DB_*\` en \`.env\`; schema DDL por driver en \`SCHEMAS\` (db.js), seed via \`seedIfEmpty\`.
+- Prepared statements con \`q()\` SIEMPRE — nunca interpolar valores.
+- Uploads + security pack ya incluidos. \`npm run api\` :4000; \`npm test\` vitest; la DB viva la aporta el usuario.`;
 
 export async function backendChat(text, { agent = '', onChunk = () => {}, onActivity = () => {} } = {}) {
   touchActivity();
@@ -118,12 +135,11 @@ export async function backendChat(text, { agent = '', onChunk = () => {}, onActi
     .map((m) => `${m.role === 'user' ? 'Usuario' : 'Experto'}: ${m.text}`)
     .join('\n');
   const st = getStack(state.stackId ?? 'express-sqlite');
-  const stackBlock = st
-    ? `\n\n## Stack elegido por el usuario\n\n${st.agentsStack} — ${st.agentsDb}. ${stackHint(st.id)}\n`
-    : '';
   const prompt =
-    loadPrompt('backend-designer', {}) +
-    stackBlock +
+    loadPrompt('backend-designer', {
+      backendFramework: st?.agentsStack ?? 'Node.js + Express',
+      stackConventions: CONVENTIONS[st?.id ?? 'express-sqlite'],
+    }) +
     (history ? `\n\n## Conversación hasta ahora\n\n${history}\n\n` : '\n\n') +
     `Usuario: ${text}`;
 
