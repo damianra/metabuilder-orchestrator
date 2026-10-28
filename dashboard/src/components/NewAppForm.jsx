@@ -4,7 +4,7 @@ import { api } from '../api.js';
 
 const EMPTY = {
   idea: '',
-  scope: 'fullstack',
+  scope: 'backend',
   appType: '',
   arch: 'flat',
   stackFrontend: 'vite-react',
@@ -26,6 +26,9 @@ const BASE_COMPLIANCE = new Set(['privacidad', 'notfound']);
 // (registries del orquestador), nada hardcodeado. `cloneSlug` (viene de
 // #/?clone=<slug>) pre-llena scope/vertical/arch/stacks con la config de
 // ese proyecto — idea y nombre quedan como los tenga el usuario.
+// Desde v10 el scope UI es backend|fullstack: el frontend se construye
+// en la pestaña Diseñar app (iterativo + preview) — CLI sigue
+// aceptando --scope frontend por retrocompat (resume/planes viejos).
 export default function NewAppForm({ onEnqueued, cloneSlug }) {
   const [options, setOptions] = useState(null);
   const [form, setForm] = useState(EMPTY);
@@ -44,7 +47,9 @@ export default function NewAppForm({ onEnqueued, cloneSlug }) {
       .then((p) => {
         setForm((f) => ({
           ...f,
-          scope: p.scope ?? f.scope,
+          // clonar un proyecto frontend → backend (el front se diseña
+          // en la otra pestaña, no desde este form)
+          scope: p.scope === 'frontend' ? 'backend' : (p.scope ?? f.scope),
           appType: p.appType ?? f.appType,
           arch: p.arch ?? f.arch,
           stackFrontend: p.stacks?.frontend ?? f.stackFrontend,
@@ -125,7 +130,9 @@ export default function NewAppForm({ onEnqueued, cloneSlug }) {
         <div>
           <label className={label} htmlFor="scope">Scope</label>
           <select id="scope" className={input} value={form.scope} onChange={(e) => set('scope', e.target.value)}>
-            {(options?.scopes ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
+            {(options?.scopes ?? [])
+              .filter((s) => s !== 'frontend')
+              .map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>
@@ -231,7 +238,7 @@ export default function NewAppForm({ onEnqueued, cloneSlug }) {
           repo en GitHub
         </label>
         <label className="flex items-end gap-2 pb-2 text-sm text-slate-700">
-          <input type="checkbox" checked={form.ghpages} disabled={!form.github} onChange={(e) => set('ghpages', e.target.checked)} />
+          <input type="checkbox" checked={form.ghpages} disabled={!form.github || !hasFrontend} onChange={(e) => set('ghpages', e.target.checked)} />
           + Pages
         </label>
         <label className="flex items-end gap-2 pb-2 text-sm text-slate-700">

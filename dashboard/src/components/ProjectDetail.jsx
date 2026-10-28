@@ -365,13 +365,15 @@ export default function ProjectDetail({ slug, onChanged }) {
               <GitBranch size={15} /> GitHub
             </button>
           )}
-          <button
-            className={btn}
-            title="Nueva app con la misma config (scope/vertical/arch/stacks)"
-            onClick={() => { window.location.hash = `#/?clone=${slug}`; }}
-          >
-            <Copy size={15} /> Nueva app igual
-          </button>
+          {project.scope !== 'frontend' && (
+            <button
+              className={btn}
+              title="Nueva app con la misma config (scope/vertical/arch/stacks)"
+              onClick={() => { window.location.hash = `#/?clone=${slug}`; }}
+            >
+              <Copy size={15} /> Nueva app igual
+            </button>
+          )}
           <button
             className="ml-auto inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 bg-white hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
             disabled={busy}
