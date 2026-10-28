@@ -110,6 +110,7 @@ export default function ProjectDetail({ slug, onChanged }) {
   // /api/<file>) — solo cuando el proyecto tiene backend.
   useEffect(() => {
     setProbe(null); // el componente no remonta al cambiar de slug
+    setApiSurface(null);
     if (!project || project.scope === 'frontend') return;
     api.apiSurface(slug).then(setApiSurface).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -239,7 +240,6 @@ export default function ProjectDetail({ slug, onChanged }) {
   const repoUrl = repoInfo?.repoUrl ?? project.repoUrl;
   const hasFrontend = project.scope !== 'backend';
   const hasBackend = project.scope !== 'frontend';
-  const apiPort = (project.devTargets ?? []).find((t) => t.script === 'api')?.port ?? 4000;
 
   const probeEndpoint = async (path) => {
     setProbe({ path, status: '…', body: '' });
