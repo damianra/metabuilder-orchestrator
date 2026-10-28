@@ -80,7 +80,7 @@ function prewarmPlaywright(dir) {
  * (src/arch/) cuando el scope tiene backend.
  * Es lo que el builder/fixer/reviewer leen como contrato del código.
  */
-function writeAgentsMd(dir, { withBackend, arch, frontendStack }) {
+export function writeAgentsMd(dir, { withBackend, arch, frontendStack }) {
   const base = readFileSync(join(config.templatesDir, 'AGENTS.md'), 'utf8')
     .replaceAll('{{frontendStack}}', frontendStack?.agentsStack ?? 'React + Vite + Tailwind CSS');
   const rules = withBackend ? `\n## Arquitectura backend\n\n${arch.agentsRules}\n` : '';

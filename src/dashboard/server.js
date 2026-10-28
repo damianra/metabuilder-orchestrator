@@ -19,6 +19,7 @@ import { addJob, cancelJob, clearJobs, jobsDir, readJobs, readWorker } from '../
 import { slugify } from '../tools/slug.js';
 import { buildReport, resolveRunId } from '../report.js';
 import { writeDockerFiles, detectFrontend, detectOutDir } from '../tools/docker.js';
+import { apiSurfaceFor } from '../tools/api-surface.js';
 import { listArchs } from '../arch/index.js';
 import { getCompliance, listCompliance } from '../compliance/index.js';
 import {
@@ -651,26 +652,7 @@ export function createDashboardApp({
   app.get('/api/projects/:slug/api-surface', (req, res) => {
     const slug = validSlug(req, res);
     if (!slug) return;
-    const routesDir = join(appDir(slug), 'server', 'routes');
-    const endpoints = [];
-    if (existsSync(routesDir)) {
-      for (const f of readdirSync(routesDir).sort()) {
-        if (!f.endsWith('.js')) continue;
-        const mount = `/api/${f.slice(0, -3)}`;
-        let src;
-        try {
-          src = readFileSync(join(routesDir, f), 'utf8');
-        } catch {
-          continue;
-        }
-        for (const m of src.matchAll(
-          /router\.(get|post|put|delete|patch)\s*\(\s*['"`]([^'"`]+)['"`]/g,
-        )) {
-          endpoints.push({ method: m[1].toUpperCase(), path: mount + m[2], file: f });
-        }
-      }
-    }
-    res.json({ endpoints });
+    res.json({ endpoints: apiSurfaceFor(appDir(slug)) });
   });
 
   // Probe de un endpoint: el fetch va server-side — el browser no
@@ -852,10 +834,42 @@ export function createDashboardApp({
 
   // ---- Diseñar app: workspace + chat iterativo + preview vite ----
 
-  app.get('/api/design', (req, res) => res.json(designStatus()));
+  app.get('/api/design', (req, res) => {
+    const st = designStatus();
+    // Modo attach (v10): expone el backend destino + si su api corre
+    // (:4000) — la UI lo muestra como chip y habilita "probar".
+    if (st.attachTo) {
+      const dr = readDevRun(appDir(st.attachTo));
+      st.backend = {
+        slug: st.attachTo,
+        apiRunning: dr?.status === 'running' && (dr.procs ?? []).some((p) => p.alive),
+      };
+    }
+    res.json(st);
+  });
 
   app.post('/api/design', (req, res) => {
-    const r = createDesign();
+    // for: <slug> ata el diseño a un proyecto backend — el chat lee su
+    // api-surface y guardar copia el front dentro del mismo proyecto.
+    const forSlug = String(req.body?.for ?? '').trim();
+    if (forSlug) {
+      if (!SLUG_RE.test(forSlug)) return res.status(400).json({ error: 'slug inválido (a-z0-9-)' });
+      const dir = appDir(forSlug);
+      const plan = readJson(join(dir, 'plan.json'));
+      if (!existsSync(dir) || !plan) {
+        return res.status(404).json({ error: `no existe el proyecto ${forSlug}` });
+      }
+      if (plan.scope !== 'backend') {
+        return res.status(409).json({ error: `${forSlug} no es un proyecto backend (scope: ${plan.scope ?? '?'})` });
+      }
+      if (existsSync(join(dir, 'src')) || existsSync(join(dir, 'index.html'))) {
+        return res.status(409).json({ error: `${forSlug} ya tiene frontend` });
+      }
+      if (jobs.some((j) => jobProjectSlug(j.args) === forSlug && ['pending', 'running'].includes(j.status))) {
+        return res.status(409).json({ error: `${forSlug} tiene un job en curso` });
+      }
+    }
+    const r = createDesign({ attachTo: forSlug || null });
     res.status(r.ok ? 201 : 409).json(r);
   });
 
@@ -888,7 +902,21 @@ export function createDashboardApp({
 
   app.post('/api/design/save', (req, res) => {
     const slug = String(req.body?.slug ?? '').trim();
-    if (!SLUG_RE.test(slug)) return res.status(400).json({ error: 'slug inválido (a-z0-9-)' });
+    // Attach mode: el target es state.attachTo — slug del body no
+    // aplica (el front se copia dentro del proyecto backend).
+    const attachTo = designStatus().attachTo ?? null;
+    if (!attachTo && !SLUG_RE.test(slug)) {
+      return res.status(400).json({ error: 'slug inválido (a-z0-9-)' });
+    }
+    if (attachTo) {
+      const dir = appDir(attachTo);
+      if (existsSync(join(dir, 'src')) || existsSync(join(dir, 'index.html'))) {
+        return res.status(409).json({ error: `${attachTo} ya tiene frontend` });
+      }
+      if (jobs.some((j) => jobProjectSlug(j.args) === attachTo && ['pending', 'running'].includes(j.status))) {
+        return res.status(409).json({ error: `${attachTo} tiene un job en curso` });
+      }
+    }
     const r = saveDesign(slug);
     res.status(r.ok ? 201 : 409).json(r);
   });

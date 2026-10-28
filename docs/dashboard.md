@@ -229,6 +229,20 @@ por timer y no lazy — con la tab cerrada nadie llama a la API, que es
 justo el caso a cubrir). `designStatus` además gatea `urls` por
 `dev-run.json` vivo: un run `stopped` no reporta URL stale.
 
+Attach a backend (v10): `POST /api/design {for: slug}` crea el
+workspace ataado a un proyecto backend (valida: existe, `plan.scope ===
+'backend'`, sin `src/`/`index.html`, sin job en curso) — queda
+`attachTo` en design-state. `designChat` inyecta la `api-surface` del
+backend en el prompt del diseñador (endpoints reales, sin mocks) y el
+vite del workspace ya proxea `/api`→`:4000` (preview contra la API si
+su dev-run corre — `GET /api/design` devuelve `backend:{slug,
+apiRunning}`). `POST /api/design/save` en modo attach ignora el slug
+del body: copia el front dentro de `generated-apps/<attachTo>` (merge
+de `package.json` por clave — el backend gana en clashes; `server/`,
+`AGENTS.md`, `.gitignore` nunca se pisan), `plan.scope→fullstack` +
+`stacks.frontend` + compliance base + step frontend `done`, y
+`writeAgentsMd` re-escribe AGENTS.md con sección backend+front.
+
 Propuestas del agente (`proposal`): `designer.md` instruye al agente
 a cerrar su reply con un bloque fenced ` ```proposal ` JSON —
 `{question, options:[{label, reply?, action?}]}` — cuando necesita

@@ -2,13 +2,17 @@
 // (el scanner de proyectos lista todo ese dir) con chat iterativo.
 // La memoria del chat vive en design-state.json — cada mensaje repliega
 // el historial en el prompt (ACP no expone resume cross-session).
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { config } from '../config.js';
 import { runAgentPrompt } from '../tools/acp.js';
 import { startInstall, awaitInstall, clearInstall } from '../tools/install.js';
 import { loadPrompt } from '../agents/common.js';
 import { startDevRun, stopDevRun } from '../dashboard/server.js';
+import { apiSurfaceFor } from '../tools/api-surface.js';
+import { writeAgentsMd } from '../agents/preflight.js';
+import { resolveArch } from '../arch/index.js';
+import { getStack } from '../stacks/index.js';
 
 export const DESIGN_DIR = join(config.rootDir, 'design-work');
 const statePath = join(DESIGN_DIR, 'design-state.json');
@@ -90,8 +94,11 @@ export function designStatus(dir = DESIGN_DIR) {
 }
 
 // Crea el workspace copiando el app-skeleton (mismo contrato que
-// preflight: agente nunca hace scaffolding desde cero).
-export function createDesign() {
+// preflight: agente nunca hace scaffolding desde cero). `attachTo`
+// (v10) ata el diseño a un proyecto backend existente: el chat diseña
+// contra su API real y `saveDesign` copia el front dentro del mismo
+// proyecto en vez de crear uno nuevo.
+export function createDesign({ attachTo = null } = {}) {
   touchActivity();
   if (existsSync(join(DESIGN_DIR, 'package.json'))) return { ok: false, error: 'ya existe un diseño en curso — descartalo o guardalo' };
   mkdirSync(DESIGN_DIR, { recursive: true });
@@ -105,7 +112,7 @@ export function createDesign() {
     const p = join(DESIGN_DIR, f);
     if (existsSync(p)) writeFileSync(p, readFileSync(p, 'utf8').replaceAll('__APP_NAME__', 'design-work'));
   }
-  writeState({ messages: [], created: new Date().toISOString() });
+  writeState({ messages: [], created: new Date().toISOString(), attachTo });
   startInstall(DESIGN_DIR);
   return { ok: true };
 }
@@ -122,8 +129,13 @@ export async function designChat(text, { agent = '', onChunk = () => {}, onActiv
   const history = state.messages
     .map((m) => `${m.role === 'user' ? 'Usuario' : 'Diseñador'}: ${m.text}`)
     .join('\n');
+  // Backend attachado: la API real se inyecta en el prompt — el
+  // diseñador construye la UI contra esos endpoints (nada de mocks)
+  // y el proxy de vite del workspace (:4000) la hace funcional.
+  const apiContext = apiContextBlock(state.attachTo);
   const prompt =
     loadPrompt('designer', {}) +
+    apiContext +
     (history ? `\n\n## Conversación hasta ahora\n\n${history}\n\n` : '\n\n') +
     `Usuario: ${text}`;
 
@@ -140,6 +152,22 @@ export async function designChat(text, { agent = '', onChunk = () => {}, onActiv
   state.messages.push({ role: 'user', text }, { role: 'agent', text: reply });
   writeState(state);
   return { ok: true, text: reply };
+}
+
+// Bloque de contexto de API real para el prompt del diseñador —
+// '' cuando el diseño no está attachado (standalone) o el backend
+// no expone routes escaneables.
+export function apiContextBlock(attachTo, appsDir = config.generatedAppsDir) {
+  if (!attachTo) return '';
+  const eps = apiSurfaceFor(join(appsDir, attachTo));
+  if (!eps.length) return '';
+  return (
+    `\n\n## API real del backend "${attachTo}"\n\n` +
+    'El backend YA EXISTE y corre en :4000 — el proxy de Vite reenvía /api y /uploads. ' +
+    'Diseñá la UI llamando estos endpoints reales con fetch (SIN datos mock — la integración ya está hecha):\n\n' +
+    eps.map((e) => `- ${e.method} ${e.path}`).join('\n') +
+    '\n'
+  );
 }
 
 export const designDev = () => {
@@ -168,8 +196,87 @@ export const designStopDev = () => stopDevRun(DESIGN_DIR);
 // cualquier app generada (dockerize, publish, resume).
 const SAVE_EXCLUDE = new Set(['node_modules', 'design-state.json', 'dev-run.json', 'dev-run.log']);
 
+// Attach (v10): el front del workspace se copia DENTRO del proyecto
+// backend — nunca se pisan package.json/AGENTS.md/.gitignore/server/.
+const ATTACH_EXCLUDE = new Set([
+  ...SAVE_EXCLUDE,
+  'package.json',
+  'AGENTS.md',
+  '.gitignore',
+  '.git',
+  'dist',
+]);
+
+// Copia el front a un proyecto backend + merge del package.json por
+// clave (los scripts/deps del backend ganan en colisiones). Puro —
+// testeable en tmpdir.
+export function attachFrontendFiles(srcDir, destDir) {
+  cpSync(srcDir, destDir, {
+    recursive: true,
+    filter: (src) => !ATTACH_EXCLUDE.has(basename(src)),
+  });
+  const pkgPath = join(destDir, 'package.json');
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+  const frontPkg = JSON.parse(readFileSync(join(srcDir, 'package.json'), 'utf8'));
+  // backend gana en clashes de scripts (test/api/dev:api) — el front
+  // solo agrega dev/build/preview/test:e2e que el back no define.
+  pkg.scripts = { ...(frontPkg.scripts ?? {}), ...(pkg.scripts ?? {}) };
+  for (const f of ['dependencies', 'devDependencies']) {
+    pkg[f] = { ...(pkg[f] ?? {}), ...(frontPkg[f] ?? {}) };
+  }
+  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+  const giSrc = join(srcDir, '.gitignore');
+  if (existsSync(giSrc)) appendFileSync(join(destDir, '.gitignore'), '\n' + readFileSync(giSrc, 'utf8'));
+}
+
+// plan.json del backend → fullstack: stacks.frontend, compliance base
+// y un step `done` sintético del front (misma técnica que saveDesign).
+export function attachPlanUpdate(destDir) {
+  const planPath = join(destDir, 'plan.json');
+  const plan = JSON.parse(readFileSync(planPath, 'utf8'));
+  plan.scope = 'fullstack';
+  plan.stacks = { ...(plan.stacks ?? {}), frontend: 'vite-react' };
+  plan.compliance = [...new Set([...(plan.compliance ?? []), 'privacidad', 'notfound'])];
+  const nextId = Math.max(0, ...(plan.steps ?? []).map((s) => s.id ?? 0)) + 1;
+  (plan.steps ??= []).push({
+    id: nextId,
+    type: 'frontend',
+    description:
+      'Frontend implementado iterando en chat de diseño — UI React + Vite + Tailwind aplicando las reglas de UI del AGENTS.md',
+    verify: 'npm run build',
+    status: 'done',
+    attempts: 1,
+  });
+  writeFileSync(planPath, JSON.stringify(plan, null, 2));
+}
+
+function saveDesignAttach(slug) {
+  const dest = join(config.generatedAppsDir, slug);
+  const planPath = join(dest, 'plan.json');
+  if (!existsSync(dest) || !existsSync(planPath)) return { ok: false, error: `no existe el backend ${slug}` };
+  if (existsSync(join(dest, 'index.html')) || existsSync(join(dest, 'src'))) {
+    return { ok: false, error: `${slug} ya tiene frontend` };
+  }
+  stopDevRun(DESIGN_DIR);
+  attachFrontendFiles(DESIGN_DIR, dest);
+  attachPlanUpdate(dest);
+  const plan = JSON.parse(readFileSync(planPath, 'utf8'));
+  writeAgentsMd(dest, {
+    withBackend: true,
+    arch: resolveArch(plan.arch ?? 'flat'),
+    frontendStack: getStack('vite-react'),
+  });
+  clearInstall(DESIGN_DIR);
+  rmSync(DESIGN_DIR, { recursive: true, force: true });
+  return { ok: true, slug };
+}
+
 export function saveDesign(slug) {
   if (!existsSync(join(DESIGN_DIR, 'package.json'))) return { ok: false, error: 'no hay diseño para guardar' };
+  // Modo attach: el target viene de design-state (se eligió al crear),
+  // no del input — slug del body se ignora.
+  const attachTo = readState().attachTo;
+  if (attachTo) return saveDesignAttach(attachTo);
   const dest = join(config.generatedAppsDir, slug);
   if (existsSync(dest)) return { ok: false, error: `ya existe ${slug}` };
   stopDevRun(DESIGN_DIR);
