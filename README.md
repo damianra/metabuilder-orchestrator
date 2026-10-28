@@ -71,7 +71,7 @@ Un **stack** es un paquete cerrado de tecnologías — se elige entero, no por p
 | `express-postgres` | backend | Express 5 + `pg` + multer — DB externa via `DB_*` en `.env` | — |
 | `express-mysql` | backend | Express 5 + `mysql2` + multer — DB externa via `DB_*` en `.env` | — |
 | `express-mongo` | backend | Express 5 + `mongodb` (driver nativo) + multer — via `MONGO_URI`/`MONGO_DB` en `.env` | — |
-| `nest-typeorm` | backend | NestJS 10 + TypeORM (TS) — `DB_TYPE=postgres\|mysql\|mongodb` en `.env` | — |
+| `nest-typeorm` | backend | NestJS 10 + TypeORM (TS) — `DB_TYPE=postgres\|mysql\|mongodb` en `.env` — **backend-only** (`--scope backend`; el form no lo ofrece) | — |
 
 Los stacks están declarados como datos en `src/stacks/` — agregar uno nuevo (ej. Vue, Fastify) = nuevo archivo de definición + skeleton en `src/templates/`; aparece solo en el CLI y el dashboard.
 

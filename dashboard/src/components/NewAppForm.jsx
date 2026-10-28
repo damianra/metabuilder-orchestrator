@@ -207,7 +207,7 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
               if (e.target.value !== 'express-sqlite') set('appType', 'custom');
             }}
           >
-            {(options?.stacks?.backend ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
+            {formBackendStacks(options?.stacks?.backend ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>

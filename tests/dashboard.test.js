@@ -245,6 +245,14 @@ describe('POST /api/runs', () => {
     expect(body.job.args[i + 1]).toBe('custom');
   });
 
+  it('nest-typeorm es backend-only: 400 con scope fullstack', async () => {
+    expect(
+      (await post('/api/runs', { idea: 'x', stackBackend: 'nest-typeorm', scope: 'fullstack' })).status,
+    ).toBe(400);
+    // default scope del enqueue es fullstack — también 400 sin scope explícito
+    expect((await post('/api/runs', { idea: 'x', stackBackend: 'nest-typeorm' })).status).toBe(400);
+  });
+
   it('400 en idea vacía, scope/arch/name inválidos', async () => {
     expect((await post('/api/runs', {})).status).toBe(400);
     expect((await post('/api/runs', { idea: 'x', scope: 'todo' })).status).toBe(400);
