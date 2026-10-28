@@ -71,6 +71,31 @@ Decisión clave: se usa **ACP, no `opencode run --format json`** — el
 | 3 ✅ | **Perfil `menores`** (COPPA/GDPR art.8/Ley 25.326) — infer por niños/kids/juguetes/escolar + overlay `AgeGate`. | feat |
 | 4 ✅ | **Selector en "Nueva app"** — checkbox-group de perfiles compliance (privacidad/notfound marcados y deshabilitados: base siempre incluida); clone pre-llena `plan.compliance`; el detalle del proyecto expone `compliance`. | feat |
 
+## Backlog v8 — pestaña "Diseñar app" (chat + preview en vivo)
+
+Segundo tab del dashboard: el usuario itera un frontend en modo **chat
+con el agente** (Devin/OpenCode via ACP) mientras un **vite dev server
+sirve preview en vivo en iframe** (HMR gratis); al terminar puede
+guardarlo como app real (`generated-apps/<slug>` + plan.json sintético)
+o descartarlo. Workspace: `generated-apps/.design-work/` (gitignored).
+
+**Decisiones tomadas** (análisis previo):
+- Preview = solo vite dev server (el `X-Frame-Options: DENY` del
+  api-skeleton bloquearía el iframe por Express) → scope frontend MVP.
+- Semáforo: slot solo durante cada `session/prompt`; sesión ACP
+  persistente entre mensajes; idle largo → cerrar y recrear.
+- Streaming: `POST /api/design/chat` responde SSE con los
+  `agent_message_chunk`.
+- MVP un solo workspace — descartar = rm + recrear.
+- `plan.json` sintético al guardar → dashboard actions completas
+  (dockerize/publish/resume).
+
+| # | Tarea | Tipo |
+| --- | --- | --- |
+| 1 | **Backend diseño** — `src/prompts/designer.md` (persona diseñador senior), `src/design/session.js` (workspace + sesión ACP persistente + chat), endpoints `POST /api/design` / `POST /api/design/chat` (SSE) / `POST /api/design/dev` (start-stop vite→url) / `GET /api/design/status` / `POST /api/design/save` / `DELETE /api/design`, tests. | L |
+| 2 | **UI tabs + DesignTab** — tabs en App.jsx ("Nueva app"/"Diseñar app"), panel chat (EventSource) + iframe preview + input nombre-guardar + descartar, tests + build. | M |
+| 3 | Idle-parking de la sesión de diseño (cerrar a los N min sin actividad, recrear al próximo mensaje). | S |
+
 ## Heredado de v2/v3 (sigue fuera de scope)
 
 - **orders con delivery real**: costo por zona/mapa, persistir pedido en
