@@ -22,6 +22,7 @@ vi.mock('../../api.js', () => ({
     designSave: vi.fn((slug) => Promise.resolve({ ok: true, slug })),
     designChat: vi.fn(() => Promise.resolve({ ok: true, text: 'listo, quedó el hero' })),
     projects: vi.fn(() => Promise.resolve([{ slug: 'mi-api', scope: 'backend' }])),
+    action: vi.fn(() => Promise.resolve({ ok: true })),
   },
 }));
 
@@ -170,6 +171,22 @@ describe('DesignTab', () => {
       'Hacé la magia',
       expect.objectContaining({ onChunk: expect.any(Function) }),
     );
+  });
+
+  it('backend attachado: chip + botón api off dispara run-dev sobre ese slug', async () => {
+    state.design = {
+      exists: true,
+      messages: [],
+      attachTo: 'mi-api',
+      backend: { slug: 'mi-api', apiRunning: false },
+    };
+    api.action.mockClear();
+    await renderTab();
+    expect(screen.getByText(/para backend: mi-api/)).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(screen.getByText('api off'));
+    });
+    expect(api.action).toHaveBeenCalledWith('mi-api', { action: 'run-dev' });
   });
 
   it('descartar pide confirmación y recién ahí llama api.discardDesign', async () => {
