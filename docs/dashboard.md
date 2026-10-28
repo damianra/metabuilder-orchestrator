@@ -166,13 +166,16 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
 
 Subpackage propio con su package.json —
 Vite+React+Tailwind+Vitest, mismo stack que el app-skeleton. Hash
-routing (`#/` lista, `#/design` pestaña Diseñar app, `#/p/<slug>`
-detalle), polling 4-5s. `dev.js`
+routing (`#/` tab Backend, `#/design` Diseñar app, `#/fullstack` tab
+Fullstack, `#/p/<slug>` detalle), polling 4-5s. `dev.js`
 lanza API+Vite+worker (`queue.js watch`) en un proceso — los jobs
 encolados desde la UI se procesan solos; la UI es un consumidor más de
 la API — no conoce paths del FS ni los registries directamente.
-La vista principal son dos tabs — "Nueva app" (form + cola +
-proyectos) y "Diseñar app" (`DesignTab.jsx`): chat iterativo con el
+La vista principal son tres tabs — "Backend" (`NewAppForm` con
+`fixedScope="backend"` + cola + proyectos), "Diseñar app"
+(`DesignTab.jsx`) y "Fullstack" (el mismo form con
+`fixedScope="fullstack"` — front+back en un solo run, la vía rápida).
+El scope salió del picker: cada tab lo fija (v10). Diseñar app: chat iterativo con el
 agente sobre un workspace Vite (`design-work/`), preview en vivo en
 iframe (la URL se lee de `GET /api/design` → `urls`, parseada del
 dev-run.log), input de slug para guardar como app real y descartar

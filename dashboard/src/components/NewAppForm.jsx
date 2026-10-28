@@ -26,12 +26,14 @@ const BASE_COMPLIANCE = new Set(['privacidad', 'notfound']);
 // (registries del orquestador), nada hardcodeado. `cloneSlug` (viene de
 // #/?clone=<slug>) pre-llena scope/vertical/arch/stacks con la config de
 // ese proyecto — idea y nombre quedan como los tenga el usuario.
-// Desde v10 el scope UI es backend|fullstack: el frontend se construye
-// en la pestaña Diseñar app (iterativo + preview) — CLI sigue
-// aceptando --scope frontend por retrocompat (resume/planes viejos).
-export default function NewAppForm({ onEnqueued, cloneSlug }) {
+// Desde v10 el form vive en dos tabs: `fixedScope="backend"` (tab
+// Backend) y `fixedScope="fullstack"` (tab Fullstack rápido) — sin
+// prop queda el picker filtrado. El frontend se construye en Diseñar
+// app; el CLI sigue aceptando --scope frontend por retrocompat.
+export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
   const [options, setOptions] = useState(null);
-  const [form, setForm] = useState(EMPTY);
+  const fresh = () => ({ ...EMPTY, scope: fixedScope ?? EMPTY.scope });
+  const [form, setForm] = useState(fresh);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [clonedFrom, setClonedFrom] = useState(null);
@@ -48,8 +50,9 @@ export default function NewAppForm({ onEnqueued, cloneSlug }) {
         setForm((f) => ({
           ...f,
           // clonar un proyecto frontend → backend (el front se diseña
-          // en la otra pestaña, no desde este form)
-          scope: p.scope === 'frontend' ? 'backend' : (p.scope ?? f.scope),
+          // en la otra pestaña, no desde este form); con fixedScope el
+          // tab decide.
+          scope: fixedScope ?? (p.scope === 'frontend' ? 'backend' : (p.scope ?? f.scope)),
           appType: p.appType ?? f.appType,
           arch: p.arch ?? f.arch,
           stackFrontend: p.stacks?.frontend ?? f.stackFrontend,
@@ -87,7 +90,7 @@ export default function NewAppForm({ onEnqueued, cloneSlug }) {
       if (form.compliance.length) body.compliance = form.compliance.join(',');
       const { job } = await api.enqueueRun(body);
       setFeedback({ ok: true, text: `job #${job.id} encolado — corre \`npm run worker\` si no está corriendo` });
-      setForm(EMPTY);
+      setForm(fresh());
       onEnqueued?.();
     } catch (err) {
       setFeedback({ ok: false, text: err.message });
@@ -127,14 +130,16 @@ export default function NewAppForm({ onEnqueued, cloneSlug }) {
           <label className={label} htmlFor="name">Nombre (slug)</label>
           <input id="name" className={input} placeholder="auto" value={form.name} onChange={(e) => set('name', e.target.value)} />
         </div>
-        <div>
-          <label className={label} htmlFor="scope">Scope</label>
-          <select id="scope" className={input} value={form.scope} onChange={(e) => set('scope', e.target.value)}>
-            {(options?.scopes ?? [])
-              .filter((s) => s !== 'frontend')
-              .map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
+        {!fixedScope && (
+          <div>
+            <label className={label} htmlFor="scope">Scope</label>
+            <select id="scope" className={input} value={form.scope} onChange={(e) => set('scope', e.target.value)}>
+              {(options?.scopes ?? [])
+                .filter((s) => s !== 'frontend')
+                .map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+        )}
         <div>
           <label className={label} htmlFor="appType">Vertical</label>
           <select id="appType" className={input} value={form.appType} onChange={(e) => set('appType', e.target.value)}>
