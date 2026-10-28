@@ -865,7 +865,7 @@ export function createDashboardApp({
       if (existsSync(join(dir, 'src')) || existsSync(join(dir, 'index.html'))) {
         return res.status(409).json({ error: `${forSlug} ya tiene frontend` });
       }
-      if (jobs.some((j) => jobProjectSlug(j.args) === forSlug && ['pending', 'running'].includes(j.status))) {
+      if (readJobs(baseDir).some((j) => jobProjectSlug(j.args) === forSlug && ['pending', 'running'].includes(j.status))) {
         return res.status(409).json({ error: `${forSlug} tiene un job en curso` });
       }
     }
@@ -913,7 +913,7 @@ export function createDashboardApp({
       if (existsSync(join(dir, 'src')) || existsSync(join(dir, 'index.html'))) {
         return res.status(409).json({ error: `${attachTo} ya tiene frontend` });
       }
-      if (jobs.some((j) => jobProjectSlug(j.args) === attachTo && ['pending', 'running'].includes(j.status))) {
+      if (readJobs(baseDir).some((j) => jobProjectSlug(j.args) === attachTo && ['pending', 'running'].includes(j.status))) {
         return res.status(409).json({ error: `${attachTo} tiene un job en curso` });
       }
     }

@@ -314,6 +314,16 @@ describe('POST /api/projects/:slug/actions', () => {
     expect((await post('/api/design', { for: 'con-front' })).status).toBe(409);
     // slug inválido → 400
     expect((await post('/api/design', { for: 'Mi App!' })).status).toBe(400);
+    // 409 backend válido con job en curso (cubre la check de jobs)
+    const ok = seedApp('back-ok');
+    writeJson(join(ok, 'plan.json'), { projectName: 'back-ok', scope: 'backend', steps: [] });
+    mkdirSync(join(base, 'jobs'), { recursive: true });
+    writeJson(join(base, 'jobs', '1.json'), {
+      id: 1,
+      status: 'pending',
+      args: ['--extend', 'back-ok', '--yes'],
+    });
+    expect((await post('/api/design', { for: 'back-ok' })).status).toBe(409);
   });
 
   it('probe proxea el GET al dev-run y solo acepta /api/*', async () => {
