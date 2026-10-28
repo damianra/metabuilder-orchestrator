@@ -52,6 +52,25 @@ Decisión clave: se usa **ACP, no `opencode run --format json`** — el
 | 11 ✅ | **Handlers `error` en streams de log** — docker-build.log, test-run.log y logStream del worker quedaban con `error` unhandled; además los writes de estado en callbacks async (`writeBuildState`/`writeTestState`/`writeDevState`/publish) eran uncaught ante app borrada a mitad de operación → `tryWriteJson` best-effort. | fix | S |
 | 12 ✅ | **Split de `AGENTS.md`** (>16KB, se truncaba al inyectarse como regla) → raíz como índice + reglas operativas, detalle en `docs/pipeline.md`, `docs/generation.md`, `docs/engines.md`, `docs/dashboard.md`. | docs | M |
 
+## Backlog v6 — seguridad y cumplimiento — todo mergeado
+
+| # | Tarea | Tipo |
+| --- | --- | --- |
+| 1 ✅ | **Security pack api-skeleton** — `server/security.js` (headers nosniff/X-Frame-Options/Referrer-Policy, rate limit 20/min por IP en escrituras, `capString`), uploads con whitelist por extensión (cierra XSS por SVG/HTML-spoofed), 500s genéricos, tests. | fix |
+| 2 ✅ | **Andamiaje legal en apps generadas** — `legalBlock` compartido (`src/verticals/legal.js`) en pasos frontend: página `/privacidad` (datos/finalidad/retención/ARCO/WhatsApp→Meta), link en footer, checkbox de consentimiento no pre-tildado, reglas anti-trackers en el AGENTS.md generado, sección legal en README. | feat |
+| 3 ✅ | **Gate de seguridad en QA** — `requirements` de `vite-react`/`nextjs` exigen `privacidad`+`consentimiento` en pasos frontend (fuente única validator+prompts); checklist de seguridad en `reviewer.md`. | feat |
+| 4 ✅ | **Hardening orquestador** — vitest ^5 + vite ^7 en root/dashboard/skeletons (npm audit: 0 vulns), warning si `DASHBOARD_HOST` no es loopback. | chore |
+| 5 ✅ | **Workflow de seguridad** — `npm audit --audit-level=critical` como gate en CI del repo + `ci.yml` en los 3 skeletons (apps nacen con CI propio). | feat |
+
+**Propuesta en evaluación (v7)**: **registry de cumplimiento** al estilo
+`src/stacks/`/`src/arch/` — perfiles declarativos (`cookies`,
+`terminos`, `privacidad`, `pagos`, `auth`, `menores`) con prompt block +
+keywords de validator + checks de reviewer + overlays de componentes
+(banner de cookies, página de términos). Detección por idea
+(`inferCompliance`) + flag `--compliance <ids>` → `plan.compliance`
+persiste como `plan.stacks`. La base ya quedó: `legalBlock` es el perfil
+`privacidad` hardcodeado — generalizarlo es el siguiente paso natural.
+
 ## Heredado de v2/v3 (sigue fuera de scope)
 
 - **orders con delivery real**: costo por zona/mapa, persistir pedido en
