@@ -1,3 +1,4 @@
+import { hasBackendDir } from './tools/docker.js';
 import { Command } from '@langchain/langgraph';
 import { createInterface } from 'node:readline/promises';
 import { existsSync, writeFileSync } from 'node:fs';
@@ -158,7 +159,7 @@ if (args.extend) {
     );
     process.exit(2);
   }
-  if (existsSync(join(resumeDir, 'server'))) {
+  if (hasBackendDir(resumeDir)) {
     console.error(`--extend: ${resumeDir} ya tiene backend (server/) — nada que extender`);
     process.exit(2);
   }

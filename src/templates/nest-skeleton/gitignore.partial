@@ -1,9 +1,5 @@
 # nest-skeleton
-.env
-server/uploads/*
-!server/uploads/.gitkeep
-docker-build.*
-test-run.*
-dev-run.*
-publish.*
+node_modules/
 dist/
+.env
+*.log

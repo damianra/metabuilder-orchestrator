@@ -11,9 +11,22 @@ import { config } from '../config.js';
  * `outDir` = directorio de build del stack frontend ('dist' en Vite,
  * 'out' en Next export) — los templates llevan @OUT_DIR@.
  */
+// Detección de backend por carpeta: express skeletons usan server/,
+// el nest-skeleton usa src/ + nest-cli.json.
+export const hasBackendDir = (dir) =>
+  existsSync(join(dir, 'server')) || existsSync(join(dir, 'nest-cli.json'));
+
 export function writeDockerFiles(dir, { frontend, backend, outDir }) {
   const tdir = join(config.templatesDir, 'docker');
-  const variant = frontend && backend ? 'fullstack' : backend ? 'backend' : 'frontend';
+  // Backend TypeScript (nest) necesita build stage tsc + dist/ —
+  // Dockerfile.backend-ts; los express skeletons usan server/index.js.
+  const variant = frontend && backend
+    ? 'fullstack'
+    : backend
+      ? detectBackendStackId(dir) === 'nest-typeorm'
+        ? 'backend-ts'
+        : 'backend'
+      : 'frontend';
   const tpl = readFileSync(join(tdir, `Dockerfile.${variant}`), 'utf8');
   writeFileSync(join(dir, 'Dockerfile'), tpl.replaceAll('@OUT_DIR@', outDir ?? 'dist'));
   copyFileSync(join(tdir, '.dockerignore'), join(dir, '.dockerignore'));
