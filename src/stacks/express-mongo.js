@@ -1,0 +1,49 @@
+/**
+ * Stack backend: Express 5 + MongoDB (driver nativo `mongodb`) +
+ * multer + dotenv. Skeleton propio (`api-skeleton-mongo`) — document
+ * store con `col(name)` y seed schemaless via `MONGO_URI`/`MONGO_DB`.
+ */
+export default {
+  id: 'express-mongo',
+  kind: 'backend',
+  label: 'Express + MongoDB',
+  skeletonDir: 'api-skeleton-mongo',
+
+  verify: {
+    test: 'npx vitest run',
+  },
+
+  requirements: [
+    {
+      check: 'some',
+      type: null,
+      keywords: ['express'],
+      error: 'falta paso de Express',
+      prompt:
+        'Si incluye backend: Express en `server/` — el api-skeleton-mongo ya está instalado; el paso personaliza colecciones/seed/routes, no scaffold desde cero.',
+    },
+    {
+      check: 'some',
+      type: null,
+      keywords: ['mongodb'],
+      error: 'falta paso de MongoDB',
+      prompt:
+        'La capa de datos es MongoDB vía `MONGO_URI`/`MONGO_DB` en .env — `server/db.js` da `col(name)` del driver nativo + `seed-data.js` por colección (sin schema, schemaless).',
+    },
+    {
+      check: 'some',
+      type: 'test',
+      keywords: ['vitest'],
+      error: 'falta paso test con Vitest',
+      prompt:
+        'Al menos un paso `type: "test"` que configure Vitest con verify `npx vitest run` o `npm test`.',
+    },
+  ],
+
+  readme: {
+    stack: '- Node.js + Express + MongoDB (backend)',
+    e2eSuffix: '',
+    dev: 'npm run api        # API Express en http://localhost:4000 (requiere MONGO_URI en .env)',
+    tests: [],
+  },
+};

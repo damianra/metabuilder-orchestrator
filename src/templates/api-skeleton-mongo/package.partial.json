@@ -1,0 +1,20 @@
+{
+  "name": "__APP_NAME__",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "api": "node server/index.js",
+    "dev:api": "node --watch server/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.9",
+    "express": "^5.1.0",
+    "mongodb": "^6.10.0",
+    "multer": "^2.0.2"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.0"
+  }
+}

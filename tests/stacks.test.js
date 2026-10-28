@@ -42,22 +42,29 @@ describe('resolveStacks', () => {
     expect(backend.id).toBe('express-sqlite');
   });
 
-  it('express-postgres/mysql resuelven kind backend + skeleton sql + keywords', () => {
-    for (const id of ['express-postgres', 'express-mysql']) {
+  it('stacks backend extra resuelven kind + skeleton + keywords propias', () => {
+    const expected = [
+      ['express-postgres', 'api-skeleton-sql', 'postgres'],
+      ['express-mysql', 'api-skeleton-sql', 'mysql'],
+      ['express-mongo', 'api-skeleton-mongo', 'mongodb'],
+    ];
+    for (const [id, skel, kwStack] of expected) {
       const s = getStack(id);
       expect(s.kind).toBe('backend');
-      expect(s.skeletonDir).toBe('api-skeleton-sql');
+      expect(s.skeletonDir).toBe(skel);
       expect(s.verify.test).toBe('npx vitest run');
+      const kw = planRequirements(resolveStacks('backend', { backend: id }))
+        .flatMap((r) => r.keywords);
+      expect(kw).toContain(kwStack);
+      expect(kw).not.toContain('sqlite');
     }
-    const kw = (id) => planRequirements(resolveStacks('backend', { backend: id }))
-      .flatMap((r) => r.keywords);
-    expect(kw('express-postgres')).toContain('postgres');
-    expect(kw('express-mysql')).toContain('mysql');
-    expect(kw('express-postgres')).not.toContain('sqlite');
     // listStacks los expone al picker del form/options
-    expect(listStacks('backend').map((s) => s.id)).toEqual(
-      expect.arrayContaining(['express-sqlite', 'express-postgres', 'express-mysql']),
-    );
+    expect(listStacks('backend').map((s) => s.id)).toEqual([
+      'express-sqlite',
+      'express-postgres',
+      'express-mysql',
+      'express-mongo',
+    ]);
   });
 
   it('scope frontend/backend anula el stack opuesto', () => {
@@ -78,6 +85,7 @@ describe('listStacks/getStack', () => {
       'express-sqlite',
       'express-postgres',
       'express-mysql',
+      'express-mongo',
     ]);
     expect(getStack('vite-react').kind).toBe('frontend');
     expect(getStack('nope')).toBeNull();

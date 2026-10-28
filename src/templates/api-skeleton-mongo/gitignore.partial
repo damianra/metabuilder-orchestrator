@@ -1,0 +1,8 @@
+# api-skeleton-mongo
+.env
+server/uploads/*
+!server/uploads/.gitkeep
+docker-build.*
+test-run.*
+dev-run.*
+publish.*
