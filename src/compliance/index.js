@@ -9,9 +9,10 @@ import cookies from './cookies.js';
 import terminos from './terminos.js';
 import pagos from './pagos.js';
 import auth from './auth.js';
+import menores from './menores.js';
 
 const PROFILES = new Map(
-  [privacidad, notfound, cookies, terminos, pagos, auth].map((p) => [p.id, p]),
+  [privacidad, notfound, cookies, terminos, pagos, auth, menores].map((p) => [p.id, p]),
 );
 
 // Perfiles base: se aplican SIEMPRE que el scope tenga frontend — el
@@ -19,7 +20,7 @@ const PROFILES = new Map(
 // notfound: toda app necesita su 404).
 const BASE_FRONTEND = ['privacidad', 'notfound'];
 // Perfiles que solo aplican con frontend / con backend según scope.
-const NEEDS_FRONTEND = new Set(['privacidad', 'notfound', 'cookies', 'terminos']);
+const NEEDS_FRONTEND = new Set(['privacidad', 'notfound', 'cookies', 'terminos', 'menores']);
 const NEEDS_BACKEND = new Set(['auth']);
 
 export const getCompliance = (id) => PROFILES.get(id) ?? null;
@@ -68,6 +69,15 @@ export const complianceRequirements = (ids) =>
 // Bullets para prompts planner/plan-repair.
 export const complianceRuleBullets = (ids) =>
   complianceRequirements(ids).map((r) => r.prompt).filter(Boolean);
+
+// Dirs de overlay por perfil activo (src/compliance/overlays/<id>/) —
+// archivos que preflight copia al proyecto (componentes listos, no
+// prompt-only: el agente los integra en vez de escribirlos de cero).
+export const complianceOverlayDirs = (ids) =>
+  ids
+    .map((id) => PROFILES.get(id)?.overlayDir)
+    .filter(Boolean)
+    .map((d) => `overlays/${d}`);
 
 /**
  * Garantiza que el plan declare los perfiles activos: si algún step

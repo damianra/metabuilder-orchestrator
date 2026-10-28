@@ -1,7 +1,10 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   applyCompliance,
   complianceFor,
+  complianceOverlayDirs,
   complianceRequirements,
   complianceRuleBullets,
   getCompliance,
@@ -20,9 +23,9 @@ const step = (type, description = 'x') => ({
 });
 
 describe('compliance registry', () => {
-  it('expone los 6 perfiles con requirements', () => {
+  it('expone los 7 perfiles con requirements', () => {
     expect(listCompliance().sort()).toEqual(
-      ['auth', 'cookies', 'notfound', 'pagos', 'privacidad', 'terminos'].sort(),
+      ['auth', 'cookies', 'menores', 'notfound', 'pagos', 'privacidad', 'terminos'].sort(),
     );
     for (const id of listCompliance()) {
       expect(getCompliance(id).requirements.length).toBeGreaterThan(0);
@@ -124,5 +127,42 @@ describe('compliance registry', () => {
     });
     // los bullets para prompts vienen de la misma fuente
     expect(complianceRuleBullets(['notfound'])[0]).toContain('404');
+  });
+
+  it('autoconsistencia: cada promptBlock cubre las keywords de sus requirements', () => {
+    // Si el bloque no satisface sus propias keywords, applyCompliance
+    // appenda y validatePlan igual falla → loops de repair + duplicados.
+    for (const id of listCompliance()) {
+      const p = getCompliance(id);
+      if (!p.promptBlock) continue;
+      const text = p.promptBlock.toLowerCase();
+      for (const r of p.requirements) {
+        for (const k of r.keywords) {
+          expect(text, `${id}: promptBlock sin keyword "${k}"`).toContain(k);
+        }
+      }
+    }
+  });
+
+  it('menores se infiere por audiencia infantil y apunta a frontend', () => {
+    const ids = resolveCompliance({ idea: 'app de juguetes para niños', scope: 'fullstack' });
+    expect(ids).toContain('menores');
+    expect(getCompliance('menores').requirements[0].type).toBe('frontend');
+  });
+
+  it('overlays: cookies y menores exponen dirs copiables', () => {
+    const dirs = complianceOverlayDirs(['cookies', 'menores', 'privacidad']);
+    expect(dirs).toEqual(['overlays/cookies', 'overlays/menores']);
+    // los archivos del overlay existen en el repo
+    expect(
+      existsSync(
+        join(import.meta.dirname, '../src/compliance/overlays/cookies/src/components/CookieBanner.jsx'),
+      ),
+    ).toBe(true);
+    expect(
+      existsSync(
+        join(import.meta.dirname, '../src/compliance/overlays/menores/src/components/AgeGate.jsx'),
+      ),
+    ).toBe(true);
   });
 });
