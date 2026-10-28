@@ -62,7 +62,8 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
   `add-backend` (encola `--extend <slug> --yes` — convierte un
   proyecto frontend en fullstack; acepta `idea`/`arch`/`github`/
   `ghpages`; sin `github` agrega `--no-push`; 409 si ya tiene
-  `server/`),- `GET /api/projects/:slug/api-surface` — escanea `server/routes/*.js`
+  `server/`),
+- `GET /api/projects/:slug/api-surface` — escanea `server/routes/*.js`
   (auto-mount `/api/<file>` + `router.<method>('<path>')`) →
   `{endpoints:[{method, path, file}]}`. El detalle lo muestra como
   sección "API" (tabla método+ruta) con "probar" por endpoint GET

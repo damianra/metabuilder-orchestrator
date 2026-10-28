@@ -106,6 +106,14 @@ export default function ProjectDetail({ slug, onChanged }) {
     api.publishLog(slug).then(setPubLog).catch(() => {});
   }, [showPubLog, slug]);
 
+  // API surface: endpoints escaneados de server/routes/ (auto-mount
+  // /api/<file>) — solo cuando el proyecto tiene backend.
+  useEffect(() => {
+    if (!project || project.scope === 'frontend') return;
+    api.apiSurface(slug).then(setApiSurface).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, project?.scope]);
+
   // Publish es async: el POST solo confirma el inicio (202) — el
   // resultado llega via project.publish en el poll de 5s. En la
   // transición running→terminal se limpia el "en curso" del notice y
@@ -231,13 +239,6 @@ export default function ProjectDetail({ slug, onChanged }) {
   const hasFrontend = project.scope !== 'backend';
   const hasBackend = project.scope !== 'frontend';
   const apiPort = (project.devTargets ?? []).find((t) => t.script === 'api')?.port ?? 4000;
-
-  // API surface: se pide solo cuando hay backend — endpoints
-  // escaneados de server/routes/ (auto-mount /api/<file>).
-  useEffect(() => {
-    if (!hasBackend) return;
-    api.apiSurface(slug).then(setApiSurface).catch(() => {});
-  }, [hasBackend, slug]);
 
   const probeEndpoint = async (path) => {
     setProbe({ path, status: '…', body: '' });
