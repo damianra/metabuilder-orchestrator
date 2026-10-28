@@ -57,7 +57,12 @@ Agregar un stack = nuevo archivo + entrada en el `Map` de `index.js`.
 sin flags de deploy reusa lo que el run original eligió; un
 `--github`/`--no-push` explícito lo overridea). `stacksFor(state)` resuelve el stack efectivo en cada
 nodo: plan.stacks > flags > defaults. Frontends: `vite-react`
-(default), `nextjs`. Backend: `express-sqlite`.
+(default), `nextjs`. Backend: `express-sqlite` (default),
+`express-postgres`, `express-mysql` — los dos últimos comparten
+`api-skeleton-sql` (pool + `q()` con `?`→`$n` normalizado + schema
+por driver + `.env.example` con `DB_*`); los verticales
+`orders`/`blog` solo aplican a `express-sqlite` — con otro stack el
+app-type queda `custom` (gate en enqueue/CLI/form).
 
 ## Patrones de arquitectura de backend
 

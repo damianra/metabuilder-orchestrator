@@ -223,6 +223,28 @@ describe('POST /api/runs', () => {
     expect(body.job.args).not.toContain('--no-push');
   });
 
+  it('verticales son express-sqlite-only: 400 explícito, custom si viene auto', async () => {
+    // vertical explícito + stack no-sqlite → 400
+    expect(
+      (
+        await post('/api/runs', {
+          idea: 'x',
+          appType: 'orders',
+          stackBackend: 'express-postgres',
+        })
+      ).status,
+    ).toBe(400);
+    // appType auto ('') + stack no-sqlite → se fuerza custom (la
+    // inferencia no puede elegir un vertical sqlite)
+    const { status, body } = await post('/api/runs', {
+      idea: 'x',
+      stackBackend: 'express-mysql',
+    });
+    expect(status).toBe(201);
+    const i = body.job.args.indexOf('--app-type');
+    expect(body.job.args[i + 1]).toBe('custom');
+  });
+
   it('400 en idea vacía, scope/arch/name inválidos', async () => {
     expect((await post('/api/runs', {})).status).toBe(400);
     expect((await post('/api/runs', { idea: 'x', scope: 'todo' })).status).toBe(400);

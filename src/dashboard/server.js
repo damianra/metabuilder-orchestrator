@@ -807,6 +807,17 @@ export function createDashboardApp({
     if (b.stackBackend && getStack(b.stackBackend)?.kind !== 'backend') {
       return res.status(400).json({ error: `stackBackend inválido (${listStacks('backend').map((s) => s.id).join('|')})` });
     }
+    // Los verticales (orders/blog overlays) son express+sqlite-only:
+    // con otro stack backend se exige custom explícito; si vino auto
+    // (''), se fuerza custom para que la inferencia no elija uno.
+    if (b.stackBackend && b.stackBackend !== 'express-sqlite') {
+      if (b.appType && b.appType !== 'custom') {
+        return res.status(400).json({
+          error: `vertical "${b.appType}" solo aplica a stack express-sqlite (los overlays son SQLites cos) — usá custom`,
+        });
+      }
+      b.appType = 'custom';
+    }
     if (b.agent && b.agent !== 'auto' && !getAgentEngine(b.agent)) {
       return res.status(400).json({ error: `agent desconocido "${b.agent}" (${listEngines().join('|')}|auto)` });
     }

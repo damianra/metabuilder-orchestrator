@@ -147,9 +147,23 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
         )}
         <div>
           <label className={label} htmlFor="appType">Vertical</label>
-          <select id="appType" className={input} value={form.appType} onChange={(e) => set('appType', e.target.value)}>
+          <select
+            id="appType"
+            className={input}
+            value={form.appType}
+            disabled={hasBackend && form.stackBackend !== 'express-sqlite'}
+            title={
+              form.stackBackend !== 'express-sqlite'
+                ? 'Los verticales solo aplican a stack express-sqlite — con otra base el vertical es custom'
+                : undefined
+            }
+            onChange={(e) => set('appType', e.target.value)}
+          >
             <option value="">auto (inferir)</option>
-            {(options?.appTypes ?? []).map((t) => <option key={t} value={t}>{t}</option>)}
+            <option value="custom">custom</option>
+            {(options?.appTypes ?? [])
+              .filter((t) => t !== 'custom')
+              .map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div>
@@ -186,7 +200,12 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
             className={input}
             value={form.stackBackend}
             disabled={!hasBackend}
-            onChange={(e) => set('stackBackend', e.target.value)}
+            onChange={(e) => {
+              set('stackBackend', e.target.value);
+              // Los verticales son overlays sqlite — con otro stack el
+              // vertical queda en custom (gate también server-side).
+              if (e.target.value !== 'express-sqlite') set('appType', 'custom');
+            }}
           >
             {(options?.stacks?.backend ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
           </select>

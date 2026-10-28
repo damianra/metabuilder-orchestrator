@@ -206,6 +206,17 @@ for (const [flag, kind] of [
     process.exit(2);
   }
 }
+// Los verticales son overlays express+sqlite — con otro stack backend
+// el vertical explícito es error y la inferencia queda en custom.
+if (args.stackBackend && args.stackBackend !== 'express-sqlite') {
+  if (args.appType && args.appType !== 'custom') {
+    console.error(
+      `--app-type ${args.appType} solo aplica a --stack-backend express-sqlite (usá custom)`,
+    );
+    process.exit(2);
+  }
+  args.appType = 'custom';
+}
 if (args.agent && args.agent !== 'auto' && !getEngine(args.agent)) {
   console.error(`--agent desconocido "${args.agent}" (usá ${listEngines().join('|')}|auto)`);
   process.exit(2);
