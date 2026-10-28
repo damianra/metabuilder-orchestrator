@@ -236,7 +236,9 @@ workspace ataado a un proyecto backend (valida: existe, `plan.scope ===
 backend en el prompt del diseñador (endpoints reales, sin mocks) y el
 vite del workspace ya proxea `/api`→`:4000` (preview contra la API si
 su dev-run corre — `GET /api/design` devuelve `backend:{slug,
-apiRunning}`). `POST /api/design/save` en modo attach ignora el slug
+apiRunning}` y la UI muestra chip "api on/off :4000" que togglea
+`run-dev`/`stop-dev` sobre ese slug). `POST /api/design/save` en modo
+attach ignora el slug
 del body: copia el front dentro de `generated-apps/<attachTo>` (merge
 de `package.json` por clave — el backend gana en clashes; `server/`,
 `AGENTS.md`, `.gitignore` nunca se pisan), `plan.scope→fullstack` +

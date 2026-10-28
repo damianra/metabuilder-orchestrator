@@ -29,7 +29,7 @@ lugar de adivinar.
 | 2 ✅ | **Propuestas en el chat de diseño** — contrato `proposal` en `designer.md`: bloque fenced JSON `{question, options:[{label, reply?, action?}]}` al final del reply cuando el agente necesita validación o quiere ofrecer próximos pasos; `DesignTab` lo parsea y renderiza card con botones (`reply` → envía como mensaje, `action` → nativa: save/extend/preview). Fallback a texto plano si el JSON no parsea. Guard-rails: solo mensajes del agente, máx 4 opciones, actions desconocidas → reply. | M |
 | 3 ✅ | **Dashboard extend + API surface** — botón "agregar backend" en `ProjectDetail` visible solo si `plan.scope === 'frontend'` → modal (idea del backend, arch, flags github/ghpages) → action `add-backend`; oferta "generar backend" tras guardar un diseño; `GET /api/projects/:slug/api-surface` (scan regex de `server/routes/*.js`) + tabla método+ruta en el detalle con "probar" contra el dev-run :4000; wiring del `action:"extend"` del chat al modal. | M |
 
-## Backlog v10 — composición bidireccional (backend ↔ diseño)
+## Backlog v10 — composición bidireccional (backend ↔ diseño) — todo mergeado
 
 Decisión: cada pestaña construye UNA pieza — "Crear" genera **backend**
 (default) o **fullstack rápido** (one-shot intacto); "Diseñar app"
@@ -41,7 +41,7 @@ front→backend ya existe (v9 `--extend`); la novedad es backend→front
 | --- | --- | --- | --- |
 | 1 ✅ | **Tab "Crear" → backend/fullstack** — el scope picker pierde `frontend` (Diseñar es el mejor flujo front). Form con `backend` (default: api-skeleton + overlay del vertical + arch + compliance) o `fullstack` (one-shot actual). Pickers front-only (stack-frontend, compliance-UI) se muestran solo con scope que lleva front. Clone ("Nueva app igual") oculto en proyectos frontend. CLI `--scope frontend` se conserva para retrocompat (resume/planes viejos). | S |
 | 2 ✅ | **Backend → Diseñar app (attach)** — DesignTab con context picker "diseñar para `<backend-slug>`": `POST /api/design {for: slug}` persiste `attachTo` en design-state; `designChat` inyecta la `api-surface` del backend en el prompt (el agente construye la UI contra endpoints reales, sin mocks ni paso de integración); el vite del design-work ya proxea `/api`→`:4000` → preview contra la API real si el dev-run del backend corre. **Guardar = attach**: `saveDesign` copia el front dentro del proyecto backend (`src/`, `index.html`, configs, tests + merge de package.json por clave), `plan.scope→fullstack`, `stacks.frontend`, step `done` sintético, AGENTS.md re-escrito por detección; 409 si ya tiene `src/`/`index.html` o job running. | M-L |
-| 3 | **Lifecycle del api dev-run durante el diseño** — chip en DesignTab con el estado del `:4000` del backend attachado + botón levantar/frenar (reusa `run-dev`/`stop-dev` actions sobre ese slug). | S |
+| 3 ✅ | **Lifecycle del api dev-run durante el diseño** — chip en DesignTab con el estado del `:4000` del backend attachado + botón levantar/frenar (reusa `run-dev`/`stop-dev` actions sobre ese slug). | S |
 
 ## Heredado (sigue fuera de scope)
 

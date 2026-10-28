@@ -191,6 +191,23 @@ export default function DesignTab({ onSaved }) {
     send(o.label);
   };
 
+  // Lifecycle del api del backend attachado (:4000) — reusa las
+  // actions run-dev/stop-dev del proyecto (v10 #3).
+  const toggleApi = async () => {
+    const slug = status.backend?.slug;
+    if (!slug || busy) return;
+    setBusy('api');
+    setError(null);
+    try {
+      await api.action(slug, { action: status.backend.apiRunning ? 'stop-dev' : 'run-dev' });
+      await refresh();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
   const discard = async () => {
     if (!confirmDiscard) {
       setConfirmDiscard(true);
@@ -266,10 +283,28 @@ export default function DesignTab({ onSaved }) {
         {status.backend && (
           <span
             title={`El diseño se copia dentro de generated-apps/${status.backend.slug} al guardar`}
-            className="rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200"
+            className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200"
           >
             para backend: {status.backend.slug}
-            {status.backend.apiRunning ? ' · api :4000' : ''}
+            <button
+              title={
+                status.backend.apiRunning
+                  ? 'Frena npm run api (:4000) del backend'
+                  : 'Levanta npm run api (:4000) — el preview pega contra la API real'
+              }
+              onClick={toggleApi}
+              disabled={Boolean(busy)}
+              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ring-1 ring-emerald-300 hover:bg-emerald-100 disabled:opacity-40"
+            >
+              {busy === 'api' ? (
+                <LoaderCircle size={9} className="animate-spin" />
+              ) : status.backend.apiRunning ? (
+                <Square size={9} />
+              ) : (
+                <Play size={9} />
+              )}
+              api {status.backend.apiRunning ? 'on :4000' : 'off'}
+            </button>
           </span>
         )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
