@@ -201,6 +201,7 @@ export async function preflightNode(state) {
     const dockerVariant = writeDockerFiles(dir, {
       frontend: detectFrontend(dir),
       backend: hasBackendDir(dir),
+      backendStackId: resumeStacks.backend?.id,
       outDir: detectOutDir(dir),
     });
     history.push(log('preflight', `Dockerfile escrito (${dockerVariant})`));
@@ -254,6 +255,7 @@ export async function preflightNode(state) {
   const dockerVariant = writeDockerFiles(dir, {
     frontend: state.scope !== 'backend',
     backend: state.scope !== 'frontend',
+    backendStackId: stacks.backend?.id,
     outDir: stacks.frontend?.buildDir ?? 'dist',
   });
   history.push(log('preflight', `Dockerfile escrito (${dockerVariant})`));

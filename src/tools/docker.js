@@ -16,14 +16,14 @@ import { config } from '../config.js';
 export const hasBackendDir = (dir) =>
   existsSync(join(dir, 'server')) || existsSync(join(dir, 'nest-cli.json'));
 
-export function writeDockerFiles(dir, { frontend, backend, outDir }) {
+export function writeDockerFiles(dir, { frontend, backend, outDir, backendStackId }) {
   const tdir = join(config.templatesDir, 'docker');
   // Backend TypeScript (nest) necesita build stage tsc + dist/ —
   // Dockerfile.backend-ts; los express skeletons usan server/index.js.
   const variant = frontend && backend
     ? 'fullstack'
     : backend
-      ? detectBackendStackId(dir) === 'nest-typeorm'
+      ? (backendStackId ?? detectBackendStackId(dir)) === 'nest-typeorm'
         ? 'backend-ts'
         : 'backend'
       : 'frontend';

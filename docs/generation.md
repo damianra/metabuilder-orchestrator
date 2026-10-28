@@ -58,7 +58,10 @@ sin flags de deploy reusa lo que el run original eligió; un
 `--github`/`--no-push` explícito lo overridea). `stacksFor(state)` resuelve el stack efectivo en cada
 nodo: plan.stacks > flags > defaults. Frontends: `vite-react`
 (default), `nextjs`. Backend: `express-sqlite` (default),
-`express-postgres`, `express-mysql`, `express-mongo` — los dos
+`express-postgres`, `express-mysql`, `express-mongo`,
+`nest-typeorm` (**backend-only** — el gate lo exige: dist/ colisiona
+y necesita `Dockerfile.backend-ts` con build stage tsc; `db.js`→
+`src/database.module.ts` con TypeORM por `DB_TYPE`) — los dos
 primeros comparten `api-skeleton-sql` (pool + `q()` con `?`→`$n`
 normalizado + schema por driver + `.env.example` con `DB_*`); mongo
 usa `api-skeleton-mongo` (`col(name)` del driver nativo +
