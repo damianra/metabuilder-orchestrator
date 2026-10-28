@@ -28,6 +28,7 @@ export const api = {
   projectTestLog: (slug, tail = 200) => req(`/api/projects/${slug}/test-log?tail=${tail}`),
   containerLog: (slug, tail = 200) => req(`/api/projects/${slug}/container-log?tail=${tail}`),
   devLog: (slug, tail = 200) => req(`/api/projects/${slug}/dev-log?tail=${tail}`),
+  publishLog: (slug, tail = 200) => req(`/api/projects/${slug}/publish-log?tail=${tail}`),
   enqueueRun: (body) =>
     req('/api/runs', {
       method: 'POST',

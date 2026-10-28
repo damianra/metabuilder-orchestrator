@@ -9,3 +9,4 @@ playwright-report
 docker-build.*
 test-run.*
 dev-run.*
+publish.*

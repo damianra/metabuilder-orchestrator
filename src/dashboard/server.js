@@ -8,7 +8,7 @@
 // docker-build.json dentro de la app. Bindea a 127.0.0.1 por default —
 // es una herramienta local, no un servicio expuesto.
 
-import { existsSync, openSync, readSync, closeSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync, createWriteStream } from 'node:fs';
+import { appendFileSync, existsSync, openSync, readSync, closeSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync, createWriteStream } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -58,6 +58,16 @@ const writeJson = (p, data) => writeFileSync(p, JSON.stringify(data, null, 2) + 
 const tryWriteJson = (p, data) => {
   try {
     writeJson(p, data);
+  } catch {
+    /* dir borrada */
+  }
+};
+
+// Ídem para el publish.log (se escribe en callbacks de promesa, fuera
+// del request path — un throw sería unhandledRejection).
+const tryAppendFile = (p, text) => {
+  try {
+    appendFileSync(p, text);
   } catch {
     /* dir borrada */
   }
@@ -175,6 +185,7 @@ const readTestRun = (dir) => {
 // Publish async: publish.json en la app (mismo patrón que test-run).
 // 'running' con pid muerto (dashboard caído a mitad) → stale, relanzable.
 const publishPath = (dir) => join(dir, 'publish.json');
+const publishLogPath = (dir) => join(dir, 'publish.log');
 const readPublish = (dir) => {
   const s = readJson(publishPath(dir));
   if (s?.status === 'running' && s.pid !== process.pid && !pidAlive(s.pid)) {
@@ -601,6 +612,16 @@ export function createDashboardApp({
     res.json({ testRun: readTestRun(dir), log });
   });
 
+  // Log + estado del último publish (publish.log) — mismo formato que
+  // test-log/dev-log.
+  app.get('/api/projects/:slug/publish-log', (req, res) => {
+    const slug = validSlug(req, res);
+    if (!slug) return;
+    const dir = appDir(slug);
+    const log = tailFile(publishLogPath(dir), { lines: Number(req.query.tail) || 200 });
+    res.json({ publish: readPublish(dir), log });
+  });
+
   // Log + estado del dev run local (dev-run.log) + URLs detectadas en
   // el output (vite/next/api imprimen su puerto real al arrancar).
   app.get('/api/projects/:slug/dev-log', (req, res) => {
@@ -806,23 +827,30 @@ export function createDashboardApp({
         runCmd,
         github: githubApi,
       })
-        .then((out) =>
+        .then((out) => {
+          // Output crudo del publish → publish.log (patrón test-run.log:
+          // header por run + append). Viaja en out.logText/error.logText.
+          if (out.logText)
+            tryAppendFile(publishLogPath(dir), `\n━━ publish · ${state.startedAt}\n${out.logText}\n`);
           tryWriteJson(publishPath(dir), {
             ...state,
             status: 'done',
             repoUrl: out.repoUrl,
             pagesUrl: out.pagesUrl,
+            pagesError: out.pagesError ?? null,
             finishedAt: new Date().toISOString(),
-          }),
-        )
-        .catch((e) =>
+          });
+        })
+        .catch((e) => {
+          if (e.logText)
+            tryAppendFile(publishLogPath(dir), `\n━━ publish · ${state.startedAt}\n${e.logText}\n`);
           tryWriteJson(publishPath(dir), {
             ...state,
             status: 'failed',
             error: e.message,
             finishedAt: new Date().toISOString(),
-          }),
-        );
+          });
+        });
       return res.status(202).json(state);
     }
 

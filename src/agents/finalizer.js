@@ -327,7 +327,7 @@ export async function finalizerNode(state) {
       history.push(log('finalize', `rebuild con ${frontendStack.pagesBaseEnv}=/${repoName} OK`));
     }
     const pages = await deployPages(git, outDir, remoteUrl, owner, repoName);
-    history.push(...pages);
+    history.push(...pages.logs);
   } else if (state.deployPages && hasFrontend) {
     history.push(log('finalize', `sin ${frontendStack?.buildDir ?? 'dist'}/ o sin --github+token — Pages omitido`));
   }
@@ -355,13 +355,13 @@ export async function deployPages(
     const r = await git(cmd, distDir);
     if (!r.ok) {
       logs.push(log('finalize', `gh-pages: falló git ${cmd.split(' ')[0]} — ${r.stderr.slice(-200)}`));
-      return logs;
+      return { logs, ok: false };
     }
   }
   const r = await git(`${ghAuthArgs(token)} push -f origin gh-pages`, distDir);
   if (!r.ok) {
     logs.push(log('finalize', `push gh-pages falló: ${r.stderr.slice(-200)}`));
-    return logs;
+    return { logs, ok: false };
   }
   const pagesUrl = `https://${owner}.github.io/${repoName}/`;
   try {
@@ -396,5 +396,5 @@ export async function deployPages(
       );
     }
   }
-  return logs;
+  return { logs, ok: true };
 }

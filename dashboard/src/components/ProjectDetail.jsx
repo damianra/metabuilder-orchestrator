@@ -33,6 +33,8 @@ export default function ProjectDetail({ slug, onChanged }) {
   const [containerLog, setContainerLog] = useState(null);
   const [showDevLog, setShowDevLog] = useState(false);
   const [devLog, setDevLog] = useState(null);
+  const [showPubLog, setShowPubLog] = useState(false);
+  const [pubLog, setPubLog] = useState(null);
   const [notice, setNotice] = useState(null);
 
   const load = () =>
@@ -90,6 +92,12 @@ export default function ProjectDetail({ slug, onChanged }) {
     const t = setInterval(loadDev, 4000);
     return () => clearInterval(t);
   }, [showDevLog, devLive, slug]);
+
+  // Log del publish (publish.log): lazy, solo con el acordeón abierto.
+  useEffect(() => {
+    if (!showPubLog) return;
+    api.publishLog(slug).then(setPubLog).catch(() => {});
+  }, [showPubLog, slug]);
 
   // Publish es async: el POST solo confirma el inicio (202) — el
   // resultado llega via project.publish en el poll de 5s. En la
@@ -383,6 +391,25 @@ export default function ProjectDetail({ slug, onChanged }) {
             )}
           </p>
         )}
+        {publish?.status === 'done' && publish.pagesError && (
+          <p className="mt-1 text-xs text-amber-700">Pages: {publish.pagesError}</p>
+        )}
+        {(publish?.status === 'done' || publish?.status === 'failed') && (
+          <button
+            className="mt-1 text-xs text-slate-500 hover:underline"
+            onClick={() => setShowPubLog((v) => !v)}
+          >
+            publish log {showPubLog ? '▾' : '▸'}
+          </button>
+        )}
+        {showPubLog &&
+          (pubLog?.log ? (
+            <pre className="mt-2 max-h-96 overflow-auto rounded-lg bg-slate-900 p-4 text-xs text-slate-100 whitespace-pre-wrap">
+              {pubLog.log.lines.join('\n')}
+            </pre>
+          ) : (
+            <p className="mt-1 text-xs text-slate-500">sin publish.log todavía</p>
+          ))}
         {publish?.status === 'failed' && (
           <p className="mt-2 text-sm text-red-700">
             publish falló{publish.error ? `: ${publish.error}` : ''}

@@ -8,3 +8,4 @@ server/uploads/*
 docker-build.*
 test-run.*
 dev-run.*
+publish.*
