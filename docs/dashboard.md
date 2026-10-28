@@ -165,3 +165,16 @@ Sin engine configurado, `SetupGate` ocupa la pantalla completa: cards
 por engine con estado del probe (`GET /api/engines`), links a docs de
 instalación y "re-chequear"; el header muestra chip "motor: <label>"
 para cambiarlo en cualquier momento (`POST /api/settings`).
+
+- `GET /api/design` — estado del workspace de diseño (`design-work/` en
+  la raíz, fuera de generated-apps): `exists`, historial `messages`.
+  `POST /api/design` crea el workspace copiando el app-skeleton
+  (409 si ya hay uno); `DELETE /api/design` lo descarta (frena el dev run).
+- `POST /api/design/chat` — `{text, agent?}` → SSE `chunk`/`activity`
+  por mensaje + `done`/`error`. El historial se repliega en cada prompt
+  (la memoria vive en `design-state.json`, gitignored).
+- `POST /api/design/dev` — levanta el vite del workspace (misma lógica
+  de run-dev) → url para el iframe de preview; `POST /api/design/stop-dev`.
+- `POST /api/design/save` — `{slug}` → mueve el workspace a
+  `generated-apps/<slug>` con plan.json sintético (sin node_modules ni
+  state files) → todas las acciones de proyecto quedan habilitadas.
