@@ -1,93 +1,75 @@
-# MetaBuilder — Roadmap v10
+# MetaBuilder — Roadmap v11
 
 ## Estado
 
-v1–v8 completas y mergeadas: pipeline LangGraph end-to-end, verticales
-`landing`/`orders`/`blog`/`custom`, `api-skeleton` (Express 5 + SQLite),
-registry de stacks/arch/compliance, engines ACP intercambiables
-(Devin/OpenCode) con setup gate, dashboard completo (cola, terminal,
-notificaciones, publish async) y pestaña "Diseñar app" (backend +
-UI tabs + idle-parking del preview). Registro histórico:
-`docs/archive/ROADMAP-v1..v3.md` y `docs/archive/ROADMAP-v4-v8.md`.
+v9–v10 completas y mergeadas: composición bidireccional
+(front→`--extend`, back→diseñar attach), 3 tabs (Diseñar `#/` landing,
+Backend `#/backend` chat experto, Fullstack `#/fullstack` form), chats
+iterativos con propuestas clickeables en ambos lados, api-surface +
+probe + lifecycle del dev-run, `menores` inferida por el agente.
+Registro histórico: `docs/archive/ROADMAP-v1..v3.md`,
+`docs/archive/ROADMAP-v4-v8.md` y `docs/archive/ROADMAP-v9-v10.md`.
 
-## Visión v9
+## Visión v11
 
-De **"diseño y backend como flujos separados"** a **"piezas
-componibles"**: el diseño iterado en chat se guarda como app frontend
-real (ya existe) y después se le puede **agregar backend sobre el mismo
-proyecto** (`--extend`) → una sola app fullstack con repo, docker y
-Pages como cualquier otra. El chat de diseño gana **propuestas
-estructuradas**: el agente pide validación al usuario y ofrece
-acciones clickeables (guardar, generar backend, seguir iterando) en
-lugar de adivinar.
+De **"un solo backend"** (express-sqlite fijo) a **"backend
+configurable"**: el usuario elige su base de datos real (Postgres /
+MySQL / MongoDB) o framework (NestJS) al crear — las conexiones quedan
+establecidas con `.env` configurable y un CRUD de muestra, y el
+experto/agente construye encima. El sistema ya es modular para esto:
+`src/stacks/` es declarativo, `skeletonDir` está parametrizado y
+`--stack-backend` ya fluye por el plan.
 
-## Backlog v9 — componibilidad diseño↔backend — todo mergeado
-
-| # | Tarea | Descripción | Esfuerzo |
-| --- | --- | --- | --- |
-| 1 ✅ | **`--extend <slug>` end-to-end** — agregar backend a un proyecto frontend existente. Flag → resumeDir + `state.extend`; preflight copia `copyApiSkeleton` si falta `server/` (mergea sobre el frontend, nunca pisa); rama extend en planner con `prompts/extend-backend.md` (el agente lee el frontend y appendea pasos backend + integración frontend↔API + test + e2e); `normalizeExtendedPlan` determinístico post-agente (scope→fullstack, stacks, `validated=false`, patch de descripciones, renumeración). Fixes base incluidos: validator honra `plan.validated` (estructura sí, requirements no — salva el resume de diseños sin repairPlan) y `saveDesign` escribe descripción compliant (keywords vite/ui). Acción `add-backend` en `POST /api/projects/:slug/actions` que encola `--extend`. | L |
-| 2 ✅ | **Propuestas en el chat de diseño** — contrato `proposal` en `designer.md`: bloque fenced JSON `{question, options:[{label, reply?, action?}]}` al final del reply cuando el agente necesita validación o quiere ofrecer próximos pasos; `DesignTab` lo parsea y renderiza card con botones (`reply` → envía como mensaje, `action` → nativa: save/extend/preview). Fallback a texto plano si el JSON no parsea. Guard-rails: solo mensajes del agente, máx 4 opciones, actions desconocidas → reply. | M |
-| 3 ✅ | **Dashboard extend + API surface** — botón "agregar backend" en `ProjectDetail` visible solo si `plan.scope === 'frontend'` → modal (idea del backend, arch, flags github/ghpages) → action `add-backend`; oferta "generar backend" tras guardar un diseño; `GET /api/projects/:slug/api-surface` (scan regex de `server/routes/*.js`) + tabla método+ruta en el detalle con "probar" contra el dev-run :4000; wiring del `action:"extend"` del chat al modal. | M |
-
-## Backlog v10 — composición bidireccional (backend ↔ diseño) — todo mergeado
-
-Decisión: cada pestaña construye UNA pieza — "Crear" genera **backend**
-(default) o **fullstack rápido** (one-shot intacto); "Diseñar app"
-genera el **front**. La composición va en ambas direcciones:
-front→backend ya existe (v9 `--extend`); la novedad es backend→front
-(diseñar la UI contra la API real).
+## Backlog v11 — multi-DB + multi-framework backend
 
 | # | Tarea | Descripción | Esfuerzo |
 | --- | --- | --- | --- |
-| 1 ✅ | **3 tabs: Backend | Diseñar | Fullstack** — el scope picker salió del form: tab `#/` Diseñar (front, landing), `#/backend` Backend (scope fijo), `#/fullstack` (el form existente, scope fijo fullstack — la vía rápida). `NewAppForm` acepta `fixedScope`; clone enruta al tab según el scope del origen y se oculta en proyectos frontend. CLI `--scope frontend` se conserva para retrocompat (resume/planes viejos). | S |
-| 2 ✅ | **Backend → Diseñar app (attach)** — DesignTab con context picker "diseñar para `<backend-slug>`": `POST /api/design {for: slug}` persiste `attachTo` en design-state; `designChat` inyecta la `api-surface` del backend en el prompt (el agente construye la UI contra endpoints reales, sin mocks ni paso de integración); el vite del design-work ya proxea `/api`→`:4000` → preview contra la API real si el dev-run del backend corre. **Guardar = attach**: `saveDesign` copia el front dentro del proyecto backend (`src/`, `index.html`, configs, tests + merge de package.json por clave), `plan.scope→fullstack`, `stacks.frontend`, step `done` sintético, AGENTS.md re-escrito por detección; 409 si ya tiene `src/`/`index.html` o job running. | M-L |
-| 3 ✅ | **Lifecycle del api dev-run durante el diseño** — chip en DesignTab con el estado del `:4000` del backend attachado + botón levantar/frenar (reusa `run-dev`/`stop-dev` actions sobre ese slug). | S |
-| 4 ✅ | **Tab Backend → chat experto** — el form backend se reemplaza por una sesión de chat tipo Diseñar (`backend-work/` = copia del api-skeleton): agente backend-experto (`prompts/backend-designer.md`) que propone entidades/schema/rutas/tests y recomienda implementaciones vía bloques `proposal`; panel derecho con api-surface en vivo + "probar" (`/api/backend/probe` → :4000); guardar → `generated-apps/<slug>` con plan sintético `scope: backend`. Endpoints `/api/backend*` espejo de `/api/design*`; idle-parking compartido (`DESIGN_IDLE_MS`). Clone queda solo para proyectos fullstack (en el tab Fullstack). | M |
+| 1 | **Skeleton SQL genérico + stacks pg/mysql** — `templates/api-skeleton-sql/`: copia del api-skeleton con `server/db.js` que despacha `DB_DRIVER=pg\|mysql` (lazy-`import('pg')`/`import('mysql2/promise')`), pool + helper `q(text,params)` que normaliza placeholders `?`→`$1`; schema/seed por driver (`AUTO_INCREMENT` vs `GENERATED…IDENTITY`); `.env.example` con `DB_DRIVER/DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD`. Registry: `express-postgres` + `express-mysql` (mismo `skeletonDir`, distinto driver default + requirements keywords `postgres`/`mysql` + `agentsStack` con dialecto explícito). Misma convención `server/routes/` → api-surface/probe/dev-run/attach funcionan sin cambios. CRUD de muestra `server/routes/items.js`. | M |
+| 2 | **Skeleton Mongo + stack** — `templates/api-skeleton-mongo/`: driver nativo, `db.js` exporta `client`/`db()`/`col(name)` leyendo `MONGO_URI` (+ `MONGO_DB`); `seedIfEmpty(col,docs)`; sin `schema.sql` (schemaless — validación opcional via `$jsonSchema`); routes `items.js` con `find/insertOne/updateOne/deleteOne`. Registry `express-mongo` con requirements `mongodb`. `.env.example` con `MONGO_URI`/`MONGO_DB`. | M |
+| 3 | **Scanner por stack + detección** — `apiSurfaceFor` acepta `kind` del stack (`express-routes` por defecto; `nest-controllers` en #4). `detectStackId` para los stacks nuevos (pg/mysql/mongo por deps en package.json + db.js signature). `saveBackend` usa `detectStackId` en vez de `'express-sqlite'` fijo; AGENTS.md template parametriza la línea backend/DB hardcodeada (`{{backendStack}}`). Verticales orders/blog se gatean a `express-sqlite` (form/API rechazan vertical≠custom en stacks no-sqlite — overlays son express+sqlite-dialecto). | M |
+| 4 | **NestJS skeleton + stack** — `templates/nest-skeleton/` (TS): `@nestjs/common/core/platform-express` + **TypeORM** (`DB_TYPE=postgres\|mysql\|mongodb\|sqlite` en `.env` → UN skeleton cubre todas las DBs vía DataSource); `src/items/{entity,service,controller,module}.ts` CRUD de muestra; `npm run api` (convención :4000 preservada), `npm test` vitest+supertest; docker con build stage (variante en `templates/docker` para stacks TS: `nest build`→`dist/`). Registry `nest-typeorm` con requirements `nestjs`/`typeorm`. Scanner `nest-controllers`: regex `@Controller\('(.)'\)` + `@(Get\|Post\|Put\|Patch\|Delete)\('(.)'\)` → mismo shape `{method,path,file}`. | L |
+| 5 | **Backend tab multi-stack** — picker de stack al crear la sesión (`POST /api/backend {stack}` → `createBackend(stackId)` copia el skeleton del stack); prompt del experto por stack (`backend-designer-<id>.md` o placeholders dialecto/driver en el actual); status expone el stack activo. | S-M |
 
-## Heredado (sigue fuera de scope)
+## Cross-cutting (por tarea)
 
-- **orders con delivery real**: costo por zona/mapa, persistir pedido en
-  Sheets, panel admin.
+- **`.env`**: toda var de conexión se declara en `.env.example` del
+  skeleton — el usuario configura `DB_*`/`MONGO_URI`/`DB_TYPE` y el
+  dev-run/app las toma (`dotenv/config` ya se carga).
+- **Sin migraciones formales** por ahora: schema DDL idempotente al
+  arranque (pg/mysql) o schemaless (mongo) — TypeORM `synchronize:
+  env` ya da el equivalente para Nest.
+- **Verify/docker**: `npm test` y `Dockerfile` se mantienen por
+  convención; solo NestJS necesita build stage.
+- **Verificación con DB real**: levantar `podman run` de
+  postgres/mongo para smoke de conexión + CRUD — y **bajar el
+  contenedor al terminar siempre**.
 
 ## Evaluación futura (fuera del roadmap por ahora)
 
-- **Dry-run del extender con preview del plan**: corre solo la sesión
-  del extender → UI muestra pasos/endpoints propuestos → "ejecutar"
-  encola el extend real (el plan ya quedó escrito → resume lo reusa).
-- **Aprobación de plan en dashboard**: el nodo `confirm` usa
-  `interrupt()` solo en TTY del CLI; exponerlo a la API exige proceso
-  vivo + IPC.
-- **Más engines ACP**: `claude-code`, `gemini-cli` — si hablan ACP v1
-  entran como datos en `src/engines/` sin tocar el pipeline.
-- **Chat nativo (ACP) en lugar de terminal embebida**: chat propio
-  sobre `session/prompt` con diffs y permisos visibles.
-- **`session/resume`/`session/load` de opencode** para darle contexto
-  entre pasos del builder.
-- **NestJS / Expo**: cambian contratos de verify/deploy.
+- **Docker-compose generado**: la app + su DB en un compose para
+  levantar todo local (hoy la DB es "del usuario", vía `.env`).
+- **Migraciones** (knex/drizzle/typeorm-migrations) como paso de plan.
+- **Dry-run del extender**, **aprobación de plan en dashboard**,
+  **más engines ACP**, **chat nativo ACP**, **`session/resume` de
+  opencode** (heredados de v9-v10, sin cambio).
+- **Expo** para mobile (cambia contratos de verify/deploy).
 
-## Decisiones tomadas (v9)
+## Decisiones tomadas (v11)
 
-- **`plan.validated` es confianza, no solo cache**: lo escribe el
-  validator al pasar y `saveDesign` al emitir el plan sintético. El
-  validator lo honra saltando requirements de completitud (los pasos
-  ya están construidos) pero nunca el chequeo estructural — un plan
-  corrupto igual frena en schema. Extend lo resetea a `false`: el plan
-  fusionado se re-valida completo.
-- **Extend = resume + inyección de pasos, no pipeline nuevo**: el
-  agente appendea pasos a plan.json y toda la maquinaria existente
-  (validate → builder → verify → review → finalize) corre sin cambios.
-  La normalización post-agente es determinística porque el LLM no es
-  confiable para metadatos (`applyArch`/`applyCompliance` son la red
-  de seguridad, igual que en `repairPlan`).
-- **El paso de integración es obligatorio en el plan extendido**: un
-  frontend de chat trae datos mock — sin un step `frontend` que
-  reemplace mocks por `fetch('/api/*')` quedan dos mitades
-  desconectadas.
-- **Propuestas = texto dentro del stream, no protocolo ACP**: el chat
-  de diseño es protocolo propio (SSE); un bloque ` ```proposal ` en la
-  respuesta lo parsea la UI. Cero cambios de contrato server↔agente;
-  si el agente no lo emite o sale malformado, degrada a texto.
-- **Skeleton por detección, no por flag**: preflight extend copia
-  api-skeleton solo si `server/` no existe — re-correr extend sobre un
-  proyecto fullstack es no-op de scaffold (AGENTS.md y Dockerfile ya
-  se re-escriben por detección de contenido, como en resume).
+- **Express + DB paramétrica antes que NestJS**: el 80% del valor
+  (DB real con `.env` + CRUD) viene con skeletons Express que
+  reutilizan api-surface, dev-run, attach y el chat tal cual; NestJS
+  es fase separada por el costo de TypeScript + build.
+- **TypeORM en el skeleton Nest**: `DB_TYPE` env cubre
+  postgres/mysql/mongo con un solo skeleton y un solo prompt — mejor
+  que 3 stacks nest por DB.
+- **Placeholders normalizados por helper, no por prompt**: `q()`
+  traduce `?`→`$1` en runtime — el agente escribe un solo dialecto y
+  el `agentsStack` documenta cuál; confiar en el prompt para
+  dialectos falla silenciosamente.
+- **Verticales quedan express-sqlite-only**: orders/blog son overlays
+  de routes+schema SQLitesco — portarlos por driver es costo alto
+  para poco uso; mejor gatear que emitir vertical rota.
+- **La DB es del usuario** (`.env` con sus credenciales/host) — el
+  orquestador no levanta DBs en la app generada; podman solo para
+  pruebas de desarrollo del skeleton.
