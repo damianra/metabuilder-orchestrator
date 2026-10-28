@@ -11,8 +11,34 @@ import {
   Trash2,
 } from 'lucide-react';
 import { api } from '../api.js';
+import { parseProposal } from '../util.js';
 
 const spin = <LoaderCircle size={15} className="animate-spin" />;
+
+// Card de propuesta: el agente cierra su reply con un bloque fenced
+// ```proposal (question + opciones) y se renderiza como botones —
+// `reply` envía el texto como mensaje, `action` dispara una nativa.
+function ProposalCard({ proposal, onPick, disabled }) {
+  return (
+    <div className="mt-2 space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+      {proposal.question && (
+        <p className="text-xs font-semibold text-slate-600">{proposal.question}</p>
+      )}
+      <div className="flex flex-wrap gap-1.5">
+        {proposal.options.map((o, i) => (
+          <button
+            key={i}
+            disabled={disabled}
+            onClick={() => onPick(o)}
+            className="rounded-lg px-2.5 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-300 hover:bg-sky-50 disabled:opacity-40"
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // Pestaña "Diseñar app": chat iterativo con el agente sobre un
 // workspace Vite (design-work/) + preview en vivo por dev server.
@@ -30,6 +56,7 @@ export default function DesignTab({ onSaved }) {
   const [frameKey, setFrameKey] = useState(0);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const chatEnd = useRef(null);
+  const slugRef = useRef(null);
 
   const refresh = useCallback(() => api.designStatus().then(setStatus).catch(() => {}), []);
 
@@ -62,17 +89,19 @@ export default function DesignTab({ onSaved }) {
     }
   };
 
-  const send = async () => {
-    const text = input.trim();
-    if (!text || busy) return;
-    setInput('');
+  const send = async (text) => {
+    const t = (typeof text === 'string' ? text : input).trim();
+    if (!t || busy) return;
+    // Limpia el input solo cuando el texto venía de ahí — una propuesta
+    // con `reply` no borra un borrador que el usuario estuviera armando.
+    if (typeof text !== 'string') setInput('');
     setBusy('chat');
     setError(null);
     setActivity('');
-    const pending = { user: text, reply: '' };
+    const pending = { user: t, reply: '' };
     setInflight(pending);
     try {
-      const r = await api.designChat(text, {
+      const r = await api.designChat(t, {
         onChunk: (t) => {
           pending.reply += t;
           setInflight({ ...pending });
@@ -129,6 +158,17 @@ export default function DesignTab({ onSaved }) {
     } finally {
       setBusy('');
     }
+  };
+
+  // Actions nativas que una `proposal` del agente puede disparar —
+  // extend se cablea al modal de backend en la tarea v9 #3; una
+  // action desconocida cae al fallback reply con el label.
+  const pickOption = (o) => {
+    if (busy) return;
+    if (o.reply) return send(o.reply);
+    if (o.action === 'save') return slugRef.current?.focus();
+    if (o.action === 'preview') return startPreview();
+    send(o.label);
   };
 
   const discard = async () => {
@@ -209,6 +249,7 @@ export default function DesignTab({ onSaved }) {
             </button>
           )}
           <input
+            ref={slugRef}
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="nombre-app"
@@ -251,19 +292,32 @@ export default function DesignTab({ onSaved }) {
                 edita el código del workspace y el preview se actualiza solo (HMR).
               </p>
             )}
-            {messages.map((m, i) => (
-              <div key={i} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-                <div
-                  className={`max-w-[85%] whitespace-pre-wrap rounded-xl px-3 py-2 text-sm ${
-                    m.role === 'user'
-                      ? 'bg-sky-600 text-white'
-                      : 'bg-slate-100 text-slate-700'
-                  }`}
-                >
-                  {m.text}
+            {messages.map((m, i) => {
+              if (m.role === 'user') {
+                return (
+                  <div key={i} className="flex justify-end">
+                    <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-sky-600 px-3 py-2 text-sm text-white">
+                      {m.text}
+                    </div>
+                  </div>
+                );
+              }
+              // Solo mensajes del agente pueden traer proposal — el
+              // input del usuario nunca se parsea (guard-rail).
+              const { text, proposal } = parseProposal(m.text);
+              return (
+                <div key={i} className="flex justify-start">
+                  <div className="max-w-[85%]">
+                    <div className="whitespace-pre-wrap rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">
+                      {text}
+                    </div>
+                    {proposal && (
+                      <ProposalCard proposal={proposal} onPick={pickOption} disabled={Boolean(busy)} />
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {inflight && (
               <>
                 <div className="flex justify-end">
@@ -296,7 +350,7 @@ export default function DesignTab({ onSaved }) {
             />
             <button
               title="Enviar"
-              onClick={send}
+              onClick={() => send()}
               disabled={busy === 'chat' || !input.trim()}
               className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-40"
             >

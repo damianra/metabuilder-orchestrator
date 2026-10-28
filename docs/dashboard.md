@@ -201,3 +201,15 @@ se apaga cuando nadie tiene la tab abierta (de ahí que el sweep corra
 por timer y no lazy — con la tab cerrada nadie llama a la API, que es
 justo el caso a cubrir). `designStatus` además gatea `urls` por
 `dev-run.json` vivo: un run `stopped` no reporta URL stale.
+
+Propuestas del agente (`proposal`): `designer.md` instruye al agente
+a cerrar su reply con un bloque fenced ` ```proposal ` JSON —
+`{question, options:[{label, reply?, action?}]}` — cuando necesita
+una decisión del usuario o quiere ofrecer próximos pasos. La UI lo
+parsea con `parseProposal` (util.js): texto limpio al bubble + card
+con botones (`reply` → lo envía como mensaje; `action` → nativa:
+`save` enfoca el slug-guardar, `preview` levanta el dev server;
+desconocida → fallback reply con el label). Guard-rails: solo
+mensajes del agente (el input del usuario nunca se parsea), máx 4
+opciones, JSON malformado → texto plano. Cero cambios de contrato —
+es texto dentro del stream SSE.
