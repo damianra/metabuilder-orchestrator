@@ -32,13 +32,6 @@ export function validatePlan(plan, scope, { stacks, arch } = {}) {
 
   if (errors.length) return errors;
 
-  // plan.validated = ya validó antes (el validator lo sella al pasar)
-  // o lo emitió código propio (plan sintético de saveDesign): los
-  // requirements de completitud — init/test/e2e/privacidad — existen
-  // para planes A CONSTRUIR, no aplican a pasos ya construidos. El
-  // chequeo estructural de arriba corre siempre.
-  if (plan.validated) return [];
-
   const steps = plan.steps;
   steps.forEach((s, i) => {
     if (typeof s.id !== 'number') errors.push(`step[${i}]: falta id numérico`);
@@ -48,6 +41,14 @@ export function validatePlan(plan, scope, { stacks, arch } = {}) {
     if (!s.verify || typeof s.verify !== 'string')
       errors.push(`step[${i}]: falta verify (comando ejecutable)`);
   });
+  if (errors.length) return errors;
+
+  // plan.validated = ya validó antes (el validator lo sella al pasar)
+  // o lo emitió código propio (plan sintético de saveDesign): los
+  // requirements de completitud — scope/init/test/e2e/privacidad/arch —
+  // existen para planes A CONSTRUIR, no aplican a pasos ya construidos.
+  // El schema por-paso de arriba corre siempre.
+  if (plan.validated) return [];
 
   // Restricciones de scope
   if (!hasFrontend(scope) && steps.some((s) => s.type === 'frontend' || s.type === 'e2e'))

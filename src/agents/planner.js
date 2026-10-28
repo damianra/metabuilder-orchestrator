@@ -20,6 +20,9 @@ import { activity, log, loadPrompt, readPlan, runLogPath, textFeed, writePlan } 
 export async function plannerNode(state) {
   let existing = readPlan(state.projectDir);
   if (existing?.steps?.length) {
+    // Entradas de log previas al resume común (hoy: extend) — se
+    // anteponen a la entrada "reanudado" del return.
+    const history = [];
     // ---- --extend: el agente appendea pasos backend al plan de un
     // frontend existente, y cae al resume común (validate→build).
     if (state.extend) {
@@ -66,7 +69,12 @@ export async function plannerNode(state) {
       const extended = readPlan(state.projectDir);
       const before = existing.steps.length;
       if (extended?.steps?.length > before) {
-        existing.steps = [...existing.steps, ...extended.steps.slice(before)];
+        // Los appendeados entran siempre pending — si el agente les
+        // puso status:'done' se saltean silenciosamente en el build.
+        existing.steps = [
+          ...existing.steps,
+          ...extended.steps.slice(before).map((s) => ({ ...s, status: 'pending' })),
+        ];
       }
       normalizeExtendedPlan(existing, {
         dir: state.projectDir,
@@ -137,6 +145,7 @@ export async function plannerNode(state) {
       arch: arch.id,
       status: 'planned',
       history: [
+        ...history,
         log(
           'planner',
           `plan.json reanudado: ${done}/${existing.steps.length} pasos done, ` +
