@@ -79,17 +79,21 @@ generada — es el contrato que builder/fixer/reviewer leen.
 ## Registry de cumplimiento
 
 `src/compliance/` declara cada perfil legal/de seguridad como datos
-(`privacidad`, `notfound`, `cookies`, `terminos`, `pagos`, `auth`):
+(`privacidad`, `notfound`, `cookies`, `terminos`, `pagos`, `auth`,
+`menores`):
 `promptBlock` (bloque canónico inyectado en la descripción de un paso),
 `requirements` (misma forma que los de stacks — `check`/`type`/`keywords`/
-`error` + `prompt` equivalente) y `infer` opcional (regex de detección
-sobre la idea). `resolveCompliance` arma la lista de perfiles activos:
+`error` + `prompt` equivalente), `infer` opcional (regex de detección
+sobre la idea) y `overlayDir` opcional (`src/compliance/overlays/<id>/`
+— archivos que preflight copia al proyecto cuando el perfil está
+activo, p.ej. `CookieBanner.jsx`/`AgeGate.jsx` en `src/components/`:
+componentes listos para integrar, no prompt-only). `resolveCompliance` arma la lista de perfiles activos:
 **base siempre** (`privacidad`+`notfound` cuando el scope tiene
 frontend — el usuario no tiene que pedirlos) + inferidos por la idea +
 explícitos del flag `--compliance a,b,c` (aditivo — nunca quita la
 base; id inválido → exit 2). El scope filtra: `auth` solo si hay
-backend; `privacidad`/`notfound`/`cookies`/`terminos` solo si hay
-frontend.
+backend; `privacidad`/`notfound`/`cookies`/`terminos`/`menores` solo
+si hay frontend.
 
 `applyCompliance(plan, ids)` corre en el planner junto a `applyArch`:
 si algún paso del tipo requerido ya cubre las keywords del perfil lo

@@ -1,4 +1,5 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { complianceFor, complianceOverlayDirs } from '../compliance/index.js';
 import { basename, join } from 'node:path';
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
@@ -244,6 +245,24 @@ export async function preflightNode(state) {
         cpSync(overlayDir, join(dir, 'server'), { recursive: true });
         history.push(log('preflight', `overlay api de ${vertical.name} aplicado`));
         activity('overlay api del vertical aplicado');
+      }
+    }
+
+    // Overlays de compliance: componentes listos por perfil activo
+    // (p.ej. CookieBanner.jsx) — la resolución repite la de planner
+    // (idea+scope+flag) para que los archivos estén antes del builder.
+    if (withFrontend) {
+      const ids = complianceFor({
+        idea: state.idea,
+        scope: state.scope,
+        flag: state.compliance,
+      });
+      for (const rel of complianceOverlayDirs(ids)) {
+        const odir = join(config.rootDir, 'src', 'compliance', rel);
+        if (existsSync(odir)) {
+          cpSync(odir, dir, { recursive: true });
+          history.push(log('preflight', `overlay compliance "${rel.split('/')[1]}" copiado`));
+        }
       }
     }
 

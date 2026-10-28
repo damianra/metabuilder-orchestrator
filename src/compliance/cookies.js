@@ -5,8 +5,9 @@ export default {
   id: 'cookies',
   label: 'Cookies / trackers',
   infer: /(analytics|analitica|ads?|publicidad|marketing|pixel|tracking|metricas?|seo)/,
+  overlayDir: 'cookies',
   promptBlock: `
-- Como la app usa scripts de terceros que instalan cookies/trackers (analytics, ads, pixels, embebidos con tracking), incluir un banner de consentimiento de cookies ANTES de cargarlos: bloquear los scripts hasta que el usuario acepte (opt-in), opción de rechazar (equivalente en prominencia), y persistir la elección (localStorage). Declarar el uso de cookies en /privacidad.`,
+- Como la app usa scripts de terceros que instalan cookies/trackers (analytics, ads, pixels, embebidos con tracking), integrar el componente \`src/components/CookieBanner.jsx\` (ya copiado al proyecto): renderizarlo una vez en App, gatear scripts/iframes de terceros con \`loadThirdParty()\`/\`useCookieConsent()\` (opt-in — nada de tracking antes de aceptar), y declarar el uso de cookies en /privacidad.`,
   requirements: [
     {
       check: 'some',
