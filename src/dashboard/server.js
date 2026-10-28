@@ -811,7 +811,9 @@ export function createDashboardApp({
     // con otro stack backend se exige custom explícito; si vino auto
     // (''), se fuerza custom para que la inferencia no elija uno.
     if (b.stackBackend === 'nest-typeorm' && (b.scope ?? 'fullstack') !== 'backend') {
-      return bad(res, 'nest-typeorm es backend-only — usar scope backend (fullstack+nest no está soportado: dist/ colisiona y no hay Dockerfile TS fullstack)');
+      return res.status(400).json({
+        error: 'nest-typeorm es backend-only — usar scope backend (fullstack+nest no está soportado: dist/ colisiona y no hay Dockerfile TS fullstack)',
+      });
     }
     if (b.stackBackend && b.stackBackend !== 'express-sqlite') {
       if (b.appType && b.appType !== 'custom') {
