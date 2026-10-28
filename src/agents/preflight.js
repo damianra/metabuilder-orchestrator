@@ -1,6 +1,21 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { complianceFor, complianceOverlayDirs } from '../compliance/index.js';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
+
+// Copia solo los archivos del overlay que falten en el proyecto —
+// idempotente y seguro en resume: nunca pisa archivos que el builder
+// ya pudo haber personalizado.
+const copyOverlayMissing = (odir, dir) => {
+  for (const entry of readdirSync(odir, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const rel = join(entry.parentPath ?? entry.path, entry.name).slice(odir.length + 1);
+    const dest = join(dir, rel);
+    if (!existsSync(dest)) {
+      mkdirSync(dirname(dest), { recursive: true });
+      cpSync(join(odir, rel), dest);
+    }
+  }
+};
 import { config } from '../config.js';
 import { run } from '../tools/shell.js';
 import { checkEngineAuth } from '../tools/acp.js';
@@ -178,6 +193,21 @@ export async function preflightNode(state) {
       outDir: detectOutDir(dir),
     });
     history.push(log('preflight', `Dockerfile escrito (${dockerVariant})`));
+    // Overlays de compliance en resume también: apps pre-v7 o resume
+    // con --compliance nuevo reciben los componentes que falten (nunca
+    // se pisa un archivo existente — el builder pudo personalizarlo).
+    if (existsSync(join(dir, 'package.json')) && (savedPlan?.scope ?? state.scope) !== 'backend') {
+      const ids = complianceFor({
+        idea: savedPlan?.idea ?? state.idea,
+        scope: savedPlan?.scope ?? state.scope,
+        flag: state.compliance,
+        plan: savedPlan,
+      });
+      for (const rel of complianceOverlayDirs(ids)) {
+        const odir = join(config.rootDir, 'src', 'compliance', rel);
+        if (existsSync(odir)) copyOverlayMissing(odir, dir);
+      }
+    }
     if (existsSync(join(dir, 'package.json'))) {
       startInstall(dir);
       history.push(log('preflight', 'npm install corriendo en background (resume)'));

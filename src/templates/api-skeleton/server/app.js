@@ -17,8 +17,10 @@ export async function createApp() {
   const app = express();
   app.use(express.json({ limit: '2mb' }));
   app.use(securityHeaders);
-  app.use('/api', rateLimit({ windowMs: 60_000, max: 20 }));
+  // El logger va antes del rate limit: los 429 también quedan
+  // registrados (útil para ver abuso, no solo tráfico exitoso).
   app.use(requestLogger);
+  app.use('/api', rateLimit({ windowMs: 60_000, max: 20 }));
 
   app.get('/api/health', (req, res) => res.json({ ok: true }));
 

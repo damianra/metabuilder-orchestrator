@@ -66,6 +66,7 @@ Rechazar → `fail` sin ejecutar builds.
   "stacks": { "frontend": "vite-react", "backend": "express-sqlite" }, // idem
   "agent": "devin",  // engine ACP que lo generó (--agent); resume lo restaura
   "deploy": { "github": true, "pages": true },  // --github/--ghpages del run; resume lo restaura
+  "compliance": ["privacidad","notfound"],  // perfiles activos; resume los restaura (o los infiere si falta)
   "validated": false,
   "steps": [
     { "id": 1, "description": "...", "type": "frontend|backend|test|e2e|infra",
@@ -77,6 +78,10 @@ Rechazar → `fail` sin ejecutar builds.
 `verify` es un comando ejecutable en el dir del proyecto — el nodo
 `verifier` lo corre con `tools/shell.run` (nunca lanza; `{ok, stderr,
 timedOut}`).
+
+En resume, `preflight` además copia los overlays de compliance que
+falten (apps pre-v7 o `--compliance` nuevo) — solo archivos ausentes,
+nunca pisa lo que el builder pudo personalizar.
 
 ## Finalización (finalizer.js)
 

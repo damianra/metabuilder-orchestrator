@@ -26,6 +26,14 @@ export function rateLimit({ windowMs = 60_000, max = 20 } = {}) {
     const now = Date.now();
     const key = req.ip ?? 'unknown';
     const list = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
+    // Evicción lazy: entradas vencidas fuera; si el Map crece demasiado
+    // (flood desde muchas IPs), purga las ya expiradas — acotado a
+    // single-process, no hacen falta timers.
+    if (hits.size > 5000) {
+      for (const [k, ts] of hits) {
+        if (!ts.length || now - ts[ts.length - 1] > windowMs) hits.delete(k);
+      }
+    }
     if (list.length >= max) {
       hits.set(key, list);
       return res
