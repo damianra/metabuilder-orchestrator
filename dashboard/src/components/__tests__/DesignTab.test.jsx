@@ -21,6 +21,7 @@ vi.mock('../../api.js', () => ({
     designStopDev: vi.fn(() => Promise.resolve({ stopped: true })),
     designSave: vi.fn((slug) => Promise.resolve({ ok: true, slug })),
     designChat: vi.fn(() => Promise.resolve({ ok: true, text: 'listo, quedó el hero' })),
+    projects: vi.fn(() => Promise.resolve([{ slug: 'mi-api', scope: 'backend' }])),
   },
 }));
 

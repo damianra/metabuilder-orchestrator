@@ -53,6 +53,10 @@ export default function DesignTab({ onSaved }) {
   const [busy, setBusy] = useState(''); // create|chat|dev|stop|save|discard
   const [error, setError] = useState(null);
   const [slug, setSlug] = useState('');
+  // Attach (v10): al crear se puede elegir un proyecto backend — el
+  // agente diseña contra su API real y guardar lo copia dentro de él.
+  const [backends, setBackends] = useState([]);
+  const [backendFor, setBackendFor] = useState('');
   const [frameKey, setFrameKey] = useState(0);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const chatEnd = useRef(null);
@@ -70,6 +74,18 @@ export default function DesignTab({ onSaved }) {
 
   const messages = status?.messages ?? [];
   const previewUrl = status?.urls?.[0] ?? null;
+  const attachTo = status?.backend?.slug ?? status?.attachTo ?? null;
+
+  // Lista de backends attachables — solo se pide en la pantalla de
+  // "nuevo diseño" (cuando no hay workspace).
+  useEffect(() => {
+    if (status && status.exists === false) {
+      api
+        .projects()
+        .then((ps) => setBackends((ps ?? []).filter((p) => p.scope === 'backend')))
+        .catch(() => setBackends([]));
+    }
+  }, [status?.exists]);
   const devRunning = Boolean(status?.devRunning);
 
   useEffect(() => {
@@ -80,7 +96,7 @@ export default function DesignTab({ onSaved }) {
     setBusy('create');
     setError(null);
     try {
-      await api.createDesign();
+      await api.createDesign(backendFor || undefined);
       await refresh();
     } catch (e) {
       setError(e.message);
@@ -147,11 +163,11 @@ export default function DesignTab({ onSaved }) {
 
   const save = async () => {
     const s = slug.trim();
-    if (!s || busy) return;
+    if ((!attachTo && !s) || busy) return;
     setBusy('save');
     setError(null);
     try {
-      const r = await api.designSave(s);
+      const r = await api.designSave(s || undefined);
       onSaved?.(r.slug);
     } catch (e) {
       setError(e.message);
@@ -166,10 +182,11 @@ export default function DesignTab({ onSaved }) {
   const pickOption = (o) => {
     if (busy) return;
     if (o.reply) return send(o.reply);
-    if (o.action === 'save') return slugRef.current?.focus();
-    // extend necesita el diseño guardado primero — tras guardar se
-    // navega al detalle, donde vive el botón "agregar backend".
-    if (o.action === 'extend') return slugRef.current?.focus();
+    // En modo attach no hay input de slug — save/extend disparan el
+    // guardado directo (el front se copia dentro del backend).
+    if (o.action === 'save' || o.action === 'extend') {
+      return attachTo ? save() : slugRef.current?.focus();
+    }
     if (o.action === 'preview') return startPreview();
     send(o.label);
   };
@@ -212,6 +229,21 @@ export default function DesignTab({ onSaved }) {
             Iterá un frontend chateando con el agente — el preview se levanta con un vite dev
             server y el resultado se puede guardar como app real.
           </p>
+          {backends.length > 0 && (
+            <label className="mt-4 block text-left text-xs font-semibold text-slate-600">
+              Diseñar para un backend existente (opcional)
+              <select
+                value={backendFor}
+                onChange={(e) => setBackendFor(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-sky-500"
+              >
+                <option value="">sin backend — diseño standalone</option>
+                {backends.map((b) => (
+                  <option key={b.slug} value={b.slug}>{b.slug}</option>
+                ))}
+              </select>
+            </label>
+          )}
           <button
             onClick={create}
             disabled={busy === 'create'}
@@ -231,6 +263,15 @@ export default function DesignTab({ onSaved }) {
         <h2 className="flex items-center gap-2 text-sm font-bold text-slate-800">
           <Palette size={16} className="text-sky-600" /> Diseñar app
         </h2>
+        {status.backend && (
+          <span
+            title={`El diseño se copia dentro de generated-apps/${status.backend.slug} al guardar`}
+            className="rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200"
+          >
+            para backend: {status.backend.slug}
+            {status.backend.apiRunning ? ' · api :4000' : ''}
+          </span>
+        )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {previewUrl ? (
             <button
@@ -251,20 +292,27 @@ export default function DesignTab({ onSaved }) {
               {busy === 'dev' ? spin : <Play size={12} />} preview
             </button>
           )}
-          <input
-            ref={slugRef}
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            placeholder="nombre-app"
-            className="w-36 rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none focus:border-sky-500"
-          />
+          {!attachTo && (
+            <input
+              ref={slugRef}
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              placeholder="nombre-app"
+              className="w-36 rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none focus:border-sky-500"
+            />
+          )}
           <button
-            title="Mueve el workspace a generated-apps/<slug> como app real"
+            title={
+              attachTo
+                ? `Copia el front dentro de generated-apps/${attachTo} → fullstack`
+                : 'Mueve el workspace a generated-apps/<slug> como app real'
+            }
             onClick={save}
-            disabled={Boolean(busy) || !slug.trim()}
+            disabled={Boolean(busy) || (!attachTo && !slug.trim())}
             className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-300 hover:bg-emerald-50 disabled:opacity-40"
           >
-            {busy === 'save' ? spin : <Save size={12} />} guardar como app
+            {busy === 'save' ? spin : <Save size={12} />}{' '}
+            {attachTo ? `guardar en ${attachTo}` : 'guardar como app'}
           </button>
           <button
             title={confirmDiscard ? 'Confirmá para borrar el workspace' : 'Descarta el diseño y borra el workspace'}

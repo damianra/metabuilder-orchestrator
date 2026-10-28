@@ -301,6 +301,31 @@ describe('POST /api/projects/:slug/actions', () => {
     expect((await api('/api/projects/sin-api/api-surface')).body.endpoints).toEqual([]);
   });
 
+  it('POST /api/design for: valida slug/scope/frontend antes de crear', async () => {
+    // 404 proyecto inexistente (antes de tocar DESIGN_DIR)
+    expect((await post('/api/design', { for: 'no-existe' })).status).toBe(404);
+    // 409 scope no-backend (seedApp escribe scope fullstack)
+    seedApp('es-fullstack');
+    expect((await post('/api/design', { for: 'es-fullstack' })).status).toBe(409);
+    // 409 backend-scope pero ya tiene index.html
+    const dir = seedApp('con-front');
+    writeJson(join(dir, 'plan.json'), { projectName: 'con-front', scope: 'backend', steps: [] });
+    writeFileSync(join(dir, 'index.html'), '<html>');
+    expect((await post('/api/design', { for: 'con-front' })).status).toBe(409);
+    // slug inválido → 400
+    expect((await post('/api/design', { for: 'Mi App!' })).status).toBe(400);
+    // 409 backend válido con job en curso (cubre la check de jobs)
+    const ok = seedApp('back-ok');
+    writeJson(join(ok, 'plan.json'), { projectName: 'back-ok', scope: 'backend', steps: [] });
+    mkdirSync(join(base, 'jobs'), { recursive: true });
+    writeJson(join(base, 'jobs', '1.json'), {
+      id: 1,
+      status: 'pending',
+      args: ['--extend', 'back-ok', '--yes'],
+    });
+    expect((await post('/api/design', { for: 'back-ok' })).status).toBe(409);
+  });
+
   it('probe proxea el GET al dev-run y solo acepta /api/*', async () => {
     seedApp('probe-app');
     const origFetch = globalThis.fetch;

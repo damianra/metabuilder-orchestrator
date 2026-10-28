@@ -44,7 +44,12 @@ export const api = {
       body: JSON.stringify(body),
     }),
   designStatus: () => req('/api/design'),
-  createDesign: () => req('/api/design', { method: 'POST' }),
+  createDesign: (forSlug) =>
+    req('/api/design', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(forSlug ? { for: forSlug } : {}),
+    }),
   discardDesign: () => req('/api/design', { method: 'DELETE' }),
   designDev: () => req('/api/design/dev', { method: 'POST' }),
   designStopDev: () => req('/api/design/stop-dev', { method: 'POST' }),
@@ -52,8 +57,9 @@ export const api = {
     req('/api/design/save', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ slug }),
+      body: JSON.stringify(slug ? { slug } : {}),
     }),
+
   // Chat SSE por POST — EventSource no sirve (solo GET). Se lee el
   // stream y se parsean bloques "event: X\ndata: {…}\n\n" (el server
   // manda un JSON de una línea por evento, sin multi-data).
