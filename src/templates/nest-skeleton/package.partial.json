@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "api": "tsx src/main.ts",
-    "dev:api": "tsx watch src/main.ts",
+    "api": "tsc -p tsconfig.json && node dist/main.js",
+    "dev:api": "npm run api",
     "build": "tsc -p tsconfig.json",
     "test": "vitest run"
   },
@@ -21,7 +21,6 @@
     "pg": "^8.13.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "tsx": "^4.19.0",
     "typeorm": "^0.3.20"
   },
   "devDependencies": {

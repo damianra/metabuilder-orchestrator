@@ -57,9 +57,11 @@ export const detectBackendStackId = (dir) => {
     return null;
   }
   const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  // nest primero: el nest-skeleton trae `mongodb` como dep — si se
+  // chequea mongo antes, un app nest se detecta como express-mongo.
+  if (deps['@nestjs/core'] || existsSync(join(dir, 'nest-cli.json'))) return 'nest-typeorm';
   if (deps['better-sqlite3']) return 'express-sqlite';
   if (deps.mongodb) return 'express-mongo';
-  if (deps['@nestjs/core'] || existsSync(join(dir, 'nest-cli.json'))) return 'nest-typeorm';
   if (deps.pg || deps.mysql2) {
     try {
       const d = readFileSync(join(dir, '.env'), 'utf8').match(/^DB_DRIVER=(\w+)/m)?.[1];
