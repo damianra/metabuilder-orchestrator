@@ -184,6 +184,23 @@ y renderiza el reply a medida que llegan los `chunk`.
 (permiso on-demand via el botón campana del header; solo con la pestaña
 en background — el primer poll nunca notifica).
 
+## Flujo diseño → fullstack
+
+Las dos pestañas se componen en un solo proyecto (no son dos
+proyectos que se mergean):
+
+1. Diseño → `guardar` → `onSaved(slug)` navega a `#/p/<slug>` — el
+   detalle del proyecto recién creado.
+2. `ProjectDetail` muestra el botón **Agregar backend** solo si
+   `project.scope === 'frontend'` → modal (idea del dominio — vacío =
+   la infiere de la UI —, arch, github/ghpages) → `POST actions
+   {action:'add-backend'}` → job `--extend` (ver docs/pipeline.md).
+3. Las propuestas del chat también enrutan acá: `action:'save'` y
+   `action:'extend'` enfocan el input de slug (el guardado es el paso
+   previo obligatorio — extend opera sobre un proyecto persistido).
+4. Post-extend el detalle gana la sección **API** (`api-surface` +
+   `probe`) — los endpoints que el agente acaba de construir.
+
 Sin engine configurado, `SetupGate` ocupa la pantalla completa: cards
 por engine con estado del probe (`GET /api/engines`), links a docs de
 instalación y "re-chequear"; el header muestra chip "motor: <label>"
