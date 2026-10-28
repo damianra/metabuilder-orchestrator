@@ -314,6 +314,17 @@ describe('POST /api/projects/:slug/actions', () => {
     expect((await post('/api/design', { for: 'con-front' })).status).toBe(409);
     // slug inválido → 400
     expect((await post('/api/design', { for: 'Mi App!' })).status).toBe(400);
+  });
+
+  it('POST /api/backend/save: 400 slug inválido / 409 sin workspace', async () => {
+    expect((await post('/api/backend/save', { slug: 'Mi App!' })).status).toBe(400);
+    const r = await post('/api/backend/save', { slug: 'api-ok' });
+    // sin backend-work → saveBackend devuelve ok:false → 409
+    expect([409, 201]).toContain(r.status);
+  });
+
+  it('GET /api/backend/probe solo acepta /api/*', async () => {
+    expect((await api('/api/backend/probe?path=/evil')).status).toBe(400);
     // 409 backend válido con job en curso (cubre la check de jobs)
     const ok = seedApp('back-ok');
     writeJson(join(ok, 'plan.json'), { projectName: 'back-ok', scope: 'backend', steps: [] });

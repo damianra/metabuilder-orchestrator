@@ -60,6 +60,48 @@ export const api = {
       body: JSON.stringify(slug ? { slug } : {}),
     }),
 
+  backendStatus: () => req('/api/backend'),
+  createBackend: () => req('/api/backend', { method: 'POST' }),
+  discardBackend: () => req('/api/backend', { method: 'DELETE' }),
+  backendDev: () => req('/api/backend/dev', { method: 'POST' }),
+  backendStopDev: () => req('/api/backend/stop-dev', { method: 'POST' }),
+  backendProbe: (path) => req(`/api/backend/probe?path=${encodeURIComponent(path)}`),
+  backendSave: (slug) =>
+    req('/api/backend/save', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ slug }),
+    }),
+  backendChat: async (text, { onChunk = () => {}, onActivity = () => {} } = {}) => {
+    const res = await fetch('/api/backend/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let last = null;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) !== -1) {
+        const raw = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        const ev = raw.match(/^event: (\w+)/m)?.[1];
+        const data = raw.match(/^data: (.*)$/m)?.[1];
+        if (!ev || !data) continue;
+        const obj = JSON.parse(data);
+        if (ev === 'chunk') onChunk(obj.text ?? '');
+        else if (ev === 'activity') onActivity(obj.text ?? '');
+        else last = obj;
+      }
+    }
+    return last ?? { ok: false, error: 'stream vacío' };
+  },
+
   // Chat SSE por POST — EventSource no sirve (solo GET). Se lee el
   // stream y se parsean bloques "event: X\ndata: {…}\n\n" (el server
   // manda un JSON de una línea por evento, sin multi-data).

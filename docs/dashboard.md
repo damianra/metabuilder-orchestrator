@@ -171,11 +171,17 @@ Fullstack, `#/p/<slug>` detalle), polling 4-5s. `dev.js`
 lanza API+Vite+worker (`queue.js watch`) en un proceso — los jobs
 encolados desde la UI se procesan solos; la UI es un consumidor más de
 la API — no conoce paths del FS ni los registries directamente.
-La vista principal son tres tabs — "Backend" (`NewAppForm` con
-`fixedScope="backend"` + cola + proyectos), "Diseñar app"
-(`DesignTab.jsx`) y "Fullstack" (el mismo form con
+La vista principal son tres tabs — "Backend" (`BackendTab.jsx`: chat
+con un agente backend-experto sobre `backend-work/` = api-skeleton,
+api-surface en vivo + probar via `/api/backend/probe`, guardar → plan
+sintético scope `backend`; sin pickers de stack/compliance — los
+infiere el agente) + cola + proyectos, "Diseñar app"
+(`DesignTab.jsx`) y "Fullstack" (`NewAppForm` con
 `fixedScope="fullstack"` — front+back en un solo run, la vía rápida).
-El scope salió del picker: cada tab lo fija (v10). Diseñar app: chat iterativo con el
+Los endpoints `/api/backend*` son espejo de `/api/design*`
+(status/create/delete/chat-SSE/dev/stop-dev/probe/save) sobre
+`src/design/backend-session.js`; el idle-parking usa el mismo
+`DESIGN_IDLE_MS`. Diseñar app: chat iterativo con el
 agente sobre un workspace Vite (`design-work/`), preview en vivo en
 iframe (la URL se lee de `GET /api/design` → `urls`, parseada del
 dev-run.log), input de slug para guardar como app real y descartar

@@ -8,6 +8,7 @@ import ProjectDetail from './components/ProjectDetail.jsx';
 import QueuePanel from './components/QueuePanel.jsx';
 import SetupGate from './components/SetupGate.jsx';
 import DesignTab from './components/DesignTab.jsx';
+import BackendTab from './components/BackendTab.jsx';
 
 const parseHash = () => {
   const m = window.location.hash.match(/^#\/p\/([a-z0-9-]+)/);
@@ -185,7 +186,12 @@ export default function App() {
             <NewAppForm fixedScope="fullstack" onEnqueued={refresh} cloneSlug={route.clone} />
           ) : (
             <>
-              <NewAppForm fixedScope="backend" onEnqueued={refresh} cloneSlug={route.clone} />
+              <BackendTab
+                onSaved={(slug) => {
+                  window.location.hash = `#/p/${slug}`;
+                  refresh();
+                }}
+              />
               <QueuePanel jobs={jobs} worker={worker} onChanged={refresh} />
               <ProjectList projects={projects} />
             </>

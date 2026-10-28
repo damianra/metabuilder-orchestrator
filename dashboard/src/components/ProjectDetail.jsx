@@ -365,11 +365,11 @@ export default function ProjectDetail({ slug, onChanged }) {
               <GitBranch size={15} /> GitHub
             </button>
           )}
-          {project.scope !== 'frontend' && (
+          {project.scope === 'fullstack' && (
             <button
               className={btn}
               title="Nueva app con la misma config (scope/vertical/arch/stacks)"
-              onClick={() => { window.location.hash = `#/?clone=${slug}`; }}
+              onClick={() => { window.location.hash = `#/fullstack?clone=${slug}`; }}
             >
               <Copy size={15} /> Nueva app igual
             </button>
