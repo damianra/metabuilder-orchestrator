@@ -7,7 +7,12 @@ vertical es un plan determinístico — **el planner NO llama a Devin** para
 verticales conocidos, solo para `appType: 'custom'`. Agregar un vertical =
 nueva carpeta + registro en `src/verticals/index.js`. Las descripciones de
 pasos deben contener las keywords que espera `validator.js` (vite,
-playwright, vitest, express, sqlite, "reglas de UI").
+playwright, vitest, express, sqlite, "reglas de UI"). Los pasos `frontend`
+appendan `legalBlock` (`src/verticals/legal.js`): página `/privacidad`,
+checkbox de consentimiento en formularios con datos personales,
+prohibición de trackers sin banner, sin `dangerouslySetInnerHTML` con
+datos de usuario — reforzado por las "Reglas de privacidad y seguridad"
+del `src/templates/AGENTS.md` y la sección legal del README generado.
 
 - `landing`: frontend-only, página informativa (hero/features/menú/
   footer; contacto con formulario + botón flotante WhatsApp SOLO si se

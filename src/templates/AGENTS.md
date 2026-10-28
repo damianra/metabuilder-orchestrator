@@ -27,6 +27,15 @@ Este proyecto fue generado por MetaBuilder. Stack esperado:
 - **Navbar** simple con nombre/logo + links de ancla a las secciones.
 - Contenido no provisto por el usuario → lorem ipsum breve; imágenes → placeholder (placehold.co) o bloque con ícono Lucide.
 
+## Reglas de privacidad y seguridad (obligatorias)
+
+- Todo formulario que capture datos personales exige un checkbox **no pre-tildado** "Acepto la política de privacidad" (link a `/privacidad`) — el botón de enviar solo se habilita marcado.
+- Debe existir una página/sección `/privacidad` con aviso de datos (qué se recolecta, finalidad, retención, derechos ARCO, contacto del responsable) y link visible en el footer.
+- Prohibido scripts de terceros con cookies/trackers (analytics, pixels, embebidos con tracking) sin banner de consentimiento previo.
+- Nunca `dangerouslySetInnerHTML` con datos de usuario o de la API.
+- SQL siempre con prepared statements — nunca interpolar valores en queries.
+- Secretos solo en `.env` (gitignored); declarar en `.env.example`. Nunca en logs ni en el bundle del frontend.
+
 ## Integración WhatsApp (wa.me link)
 
 Patrón estándar cuando la app pide contacto/pedidos por WhatsApp:

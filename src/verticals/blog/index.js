@@ -1,3 +1,5 @@
+import { legalBlock } from '../legal.js';
+
 const step = (id, type, description, verify) => ({
   id,
   type,
@@ -53,7 +55,8 @@ function frontendStep(n, { withApi, idea }) {
         : 'Los posts usan datos locales en src/data/posts.js.'
     } ` +
       'Secciones: lista de posts con cover_image/excerpt/categoría/tags/fecha, filtro por categoría y por tag, buscador, detalle del post con comentarios aprobados + formulario de comentario (avisar que queda pendiente de moderación, no renderizarlo al instante), navbar y footer del blog. ' +
-      'Contenido no provisto → lorem ipsum / placeholders. Cumplir todas las reglas de UI de AGENTS.md: formulario deshabilitado hasta datos válidos, fallback informativo si la lista viene vacía o la API falla, cover_image vacía → sin imagen rota.',
+      'Contenido no provisto → lorem ipsum / placeholders. Cumplir todas las reglas de UI de AGENTS.md: formulario deshabilitado hasta datos válidos, fallback informativo si la lista viene vacía o la API falla, cover_image vacía → sin imagen rota.' +
+      legalBlock,
     'npm run build',
   );
 }

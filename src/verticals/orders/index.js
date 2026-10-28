@@ -1,3 +1,5 @@
+import { legalBlock } from '../legal.js';
+
 const step = (id, type, description, verify) => ({
   id,
   type,
@@ -66,7 +68,8 @@ function frontendStep(n, { withApi, idea, phone }) {
         : 'El menú usa datos locales en src/data/products.js.'
     } ` +
       'Contenido no provisto → lorem ipsum / placeholders. Cumplir todas las reglas de UI de AGENTS.md: botón de pedido deshabilitado hasta tener items y datos válidos, fallback informativo si el menú viene vacío o la API falla, sin links con URL vacía.' +
-      whatsappCartSpec(phone, withApi),
+      whatsappCartSpec(phone, withApi) +
+      legalBlock,
     'npm run build',
   );
 }
