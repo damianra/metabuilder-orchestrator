@@ -324,6 +324,7 @@ function projectSummary(dir, slug) {
     scope: plan?.scope ?? null,
     arch: plan?.arch ?? null,
     agent: plan?.agent ?? null,
+    compliance: plan?.compliance ?? null,
     status: status?.status ?? (plan ? 'unknown' : 'no-plan'),
     lastError: status?.lastError ?? null,
     steps: {

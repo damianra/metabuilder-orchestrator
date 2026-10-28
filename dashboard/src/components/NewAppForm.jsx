@@ -15,7 +15,12 @@ const EMPTY = {
   ghpages: false,
   verifyDocker: false,
   agent: '', // '' = engine configurado del dashboard (settings.json)
+  compliance: [], // perfiles explícitos; base (privacidad/404) va siempre
 };
+
+// Perfiles base: los aplica el orquestador siempre que hay frontend —
+// se muestran marcados y deshabilitados, no viajan en el body.
+const BASE_COMPLIANCE = new Set(['privacidad', 'notfound']);
 
 // Form "Nueva app" — los pickers se alimentan de GET /api/options
 // (registries del orquestador), nada hardcodeado. `cloneSlug` (viene de
@@ -45,6 +50,7 @@ export default function NewAppForm({ onEnqueued, cloneSlug }) {
           stackFrontend: p.stacks?.frontend ?? f.stackFrontend,
           stackBackend: p.stacks?.backend ?? f.stackBackend,
           agent: p.agent ?? f.agent,
+          compliance: (p.compliance ?? []).filter((id) => !BASE_COMPLIANCE.has(id)),
         }));
         setClonedFrom(cloneSlug);
       })
@@ -73,6 +79,7 @@ export default function NewAppForm({ onEnqueued, cloneSlug }) {
       if (form.ghpages) body.ghpages = true;
       if (form.verifyDocker) body.verifyDocker = true;
       if (form.agent) body.agent = form.agent;
+      if (form.compliance.length) body.compliance = form.compliance.join(',');
       const { job } = await api.enqueueRun(body);
       setFeedback({ ok: true, text: `job #${job.id} encolado — corre \`npm run worker\` si no está corriendo` });
       setForm(EMPTY);
@@ -179,6 +186,44 @@ export default function NewAppForm({ onEnqueued, cloneSlug }) {
           </select>
         </div>
       </div>
+
+      {(options?.compliance ?? []).length > 0 && (
+        <div className="mt-3">
+          <span className={label}>Cumplimiento</span>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {(options.compliance ?? []).map((id) => {
+              const base = BASE_COMPLIANCE.has(id);
+              const checked = base || form.compliance.includes(id);
+              return (
+                <label
+                  key={id}
+                  className={`flex items-center gap-2 text-sm ${base ? 'text-slate-400' : 'text-slate-700'}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={base}
+                    onChange={(e) =>
+                      set(
+                        'compliance',
+                        e.target.checked
+                          ? [...form.compliance, id]
+                          : form.compliance.filter((c) => c !== id),
+                      )
+                    }
+                  />
+                  {id}
+                </label>
+              );
+            })}
+            <span className="text-xs text-slate-400 self-center">
+              {hasFrontend
+                ? 'privacidad + 404 van siempre; la idea puede inferir más'
+                : 'la idea puede inferir perfiles extra'}
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <label className="flex items-end gap-2 pb-2 text-sm text-slate-700">

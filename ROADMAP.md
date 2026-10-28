@@ -66,10 +66,10 @@ Decisión clave: se usa **ACP, no `opencode run --format json`** — el
 
 | # | Tarea | Tipo |
 | --- | --- | --- |
-| 1 ✅ | **`src/compliance/` registry** — 6 perfiles declarativos (privacidad, notfound, cookies, terminos, pagos, auth): promptBlock + requirements + infer regex. Base `privacidad`+`notfound` siempre activa con frontend; inferencia por idea; flag `--compliance a,b,c`; `plan.compliance` persiste. | feat |
-| 2 | Overlays de componentes (CookieBanner.jsx, página /terminos como archivo copiable en vez de prompt-only). | feat |
-| 3 | Perfil `menores` (age gate / verificación parental). | feat |
-| 4 | UI del dashboard: selector de perfiles compliance en "Nueva app" (options ya expone `compliance`). | feat |
+| 1 ✅ | **`src/compliance/` registry** — 7 perfiles declarativos (privacidad, notfound, cookies, terminos, pagos, auth, menores): promptBlock + requirements + infer regex + overlayDir opcional. Base `privacidad`+`notfound` siempre activa con frontend; inferencia por idea; flag `--compliance a,b,c`; `plan.compliance` persiste. | feat |
+| 2 ✅ | **Overlays de componentes** — `src/compliance/overlays/<id>/` copiado por preflight: `CookieBanner.jsx` (opt-in, persiste, `loadThirdParty`/`useCookieConsent` para gatear scripts) y `AgeGate.jsx` (verificación de edad). | feat |
+| 3 ✅ | **Perfil `menores`** (COPPA/GDPR art.8/Ley 25.326) — infer por niños/kids/juguetes/escolar + overlay `AgeGate`. | feat |
+| 4 ✅ | **Selector en "Nueva app"** — checkbox-group de perfiles compliance (privacidad/notfound marcados y deshabilitados: base siempre incluida); clone pre-llena `plan.compliance`; el detalle del proyecto expone `compliance`. | feat |
 
 ## Heredado de v2/v3 (sigue fuera de scope)
 

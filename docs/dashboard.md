@@ -51,8 +51,8 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
   `textFeed` de agents/common.js). `GET /api/projects/:slug/log` — idem
   resolviendo el job más reciente cuyo `projectSlug` coincide con el slug.
 - `POST /api/runs` — encola una generación: whitelist de campos
-  (idea/scope/appType/name/arch/phone/agent/stackFrontend/stackBackend
-  + flags github/ghpages/verifyDocker) → args del CLI + `--yes` siempre (un job bajo el worker
+  (idea/scope/appType/name/arch/phone/agent/stackFrontend/stackBackend/
+  compliance + flags github/ghpages/verifyDocker) → args del CLI + `--yes` siempre (un job bajo el worker
   hereda el TTY y los prompts de deploy lo colgarían — por eso `--yes`
   también salta las preguntas github/ghpages en collectArgs). 400 si no
   hay engine de agente resoluble (setup gate).
