@@ -43,6 +43,7 @@ export default function DesignTab({ onSaved }) {
 
   const messages = status?.messages ?? [];
   const previewUrl = status?.urls?.[0] ?? null;
+  const devRunning = Boolean(status?.devRunning);
 
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -104,6 +105,7 @@ export default function DesignTab({ onSaved }) {
 
   const stopPreview = async () => {
     setBusy('stop');
+    setError(null);
     try {
       await api.designStopDev();
       await refresh();
@@ -332,7 +334,7 @@ export default function DesignTab({ onSaved }) {
           ) : (
             <div className="flex flex-1 items-center justify-center p-6 text-center">
               <p className="max-w-xs text-xs text-slate-400">
-                {busy === 'dev'
+                {devRunning || busy === 'dev'
                   ? 'levantando el dev server…'
                   : 'Sin preview todavía — el botón "preview" corre el vite del workspace y lo sirve acá en vivo.'}
               </p>

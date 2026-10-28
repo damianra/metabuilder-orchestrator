@@ -56,15 +56,23 @@ describe('DesignTab', () => {
 
   it('enviar un mensaje llama api.designChat y muestra el reply en vivo', async () => {
     state.design = { exists: true, messages: [] };
+    let resolveChat;
     api.designChat.mockImplementationOnce((text, { onChunk }) => {
       onChunk('cambiando el hero…');
-      return Promise.resolve({ ok: true, text: 'cambiando el hero…' });
+      return new Promise((r) => {
+        resolveChat = r;
+      });
     });
     await renderTab();
     const input = screen.getByPlaceholderText('Pedile un cambio al diseñador…');
     fireEvent.change(input, { target: { value: 'hero más grande' } });
     await act(async () => {
       fireEvent.click(screen.getByTitle('Enviar'));
+    });
+    // el chunk streameado ya se ve en el bubble en curso
+    expect(screen.getByText('cambiando el hero…')).toBeTruthy();
+    await act(async () => {
+      resolveChat({ ok: true, text: 'cambiando el hero…' });
     });
     expect(api.designChat).toHaveBeenCalledWith(
       'hero más grande',
