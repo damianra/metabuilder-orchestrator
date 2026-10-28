@@ -114,6 +114,10 @@ Secretos: `.env` (gitignored) leído via `dotenv/config` en
 SPA fallback GET cuando `index.html` existe en alguno (deploy
 single-server y Docker).
 
+Los 3 skeletons incluyen `.github/workflows/ci.yml` (npm ci + `npm audit
+--audit-level=critical` + npm test) — la app generada nace con CI de
+seguridad propia si se pushea a GitHub.
+
 ## Dockerfile por app
 
 Preflight escribe `Dockerfile` + `.dockerignore` en cada app generada
