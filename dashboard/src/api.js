@@ -30,6 +30,7 @@ export const api = {
   devLog: (slug, tail = 200) => req(`/api/projects/${slug}/dev-log?tail=${tail}`),
   publishLog: (slug, tail = 200) => req(`/api/projects/${slug}/publish-log?tail=${tail}`),
   apiSurface: (slug) => req(`/api/projects/${slug}/api-surface`),
+  probe: (slug, path) => req(`/api/projects/${slug}/probe?path=${encodeURIComponent(path)}`),
   enqueueRun: (body) =>
     req('/api/runs', {
       method: 'POST',

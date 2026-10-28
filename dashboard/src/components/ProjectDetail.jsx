@@ -109,6 +109,7 @@ export default function ProjectDetail({ slug, onChanged }) {
   // API surface: endpoints escaneados de server/routes/ (auto-mount
   // /api/<file>) — solo cuando el proyecto tiene backend.
   useEffect(() => {
+    setProbe(null); // el componente no remonta al cambiar de slug
     if (!project || project.scope === 'frontend') return;
     api.apiSurface(slug).then(setApiSurface).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -243,9 +244,8 @@ export default function ProjectDetail({ slug, onChanged }) {
   const probeEndpoint = async (path) => {
     setProbe({ path, status: '…', body: '' });
     try {
-      const r = await fetch(`http://localhost:${apiPort}${path}`);
-      const body = await r.text();
-      setProbe({ path, status: r.status, body: body.slice(0, 800) });
+      const r = await api.probe(slug, path);
+      setProbe({ path, status: r.status, body: (r.body ?? '').slice(0, 800) });
     } catch (e) {
       setProbe({ path, status: 'ERR', body: e.message });
     }
@@ -572,7 +572,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                     <span className="text-xs text-slate-400">{e.file}</span>
                     {devRunning && e.method === 'GET' && (
                       <button
-                        title={`GET http://localhost:${apiPort}${e.path}`}
+                        title={`GET ${e.path} contra el dev-run (proxy via dashboard)`}
                         onClick={() => probeEndpoint(e.path)}
                         className="ml-auto shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-sky-700 ring-1 ring-sky-300 hover:bg-sky-50"
                       >

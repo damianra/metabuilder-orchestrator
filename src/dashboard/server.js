@@ -673,6 +673,25 @@ export function createDashboardApp({
     res.json({ endpoints });
   });
 
+  // Probe de un endpoint: el fetch va server-side — el browser no
+  // puede llamar directo al dev-run porque el api-skeleton no emite
+  // CORS. Solo paths /api/* (no es un proxy abierto).
+  app.get('/api/projects/:slug/probe', async (req, res) => {
+    const slug = validSlug(req, res);
+    if (!slug) return;
+    const path = String(req.query.path ?? '');
+    if (!path.startsWith('/api/')) return res.status(400).json({ error: 'path /api/* requerido' });
+    const port = devTargets(appDir(slug)).find((t) => t.script === 'api')?.port ?? 4000;
+    try {
+      const r = await fetch(`http://localhost:${port}${path}`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      res.json({ status: r.status, body: (await r.text()).slice(0, 4000) });
+    } catch (e) {
+      res.json({ status: 'ERR', body: e.message });
+    }
+  });
+
   // Engine de containers disponible en la máquina (docker o podman).
   app.get('/api/runtime', async (req, res) => res.json({ engine: await getEngine() }));
 

@@ -301,6 +301,23 @@ describe('POST /api/projects/:slug/actions', () => {
     expect((await api('/api/projects/sin-api/api-surface')).body.endpoints).toEqual([]);
   });
 
+  it('probe proxea el GET al dev-run y solo acepta /api/*', async () => {
+    seedApp('probe-app');
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = async (u, o) =>
+      String(u).startsWith('http://localhost:4000')
+        ? { status: 200, text: async () => '{"ok":true}' }
+        : origFetch(u, o);
+    try {
+      const res = await api('/api/projects/probe-app/probe?path=/api/products/');
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ status: 200, body: '{"ok":true}' });
+      expect((await api('/api/projects/probe-app/probe?path=/otro')).status).toBe(400);
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
+
   it('GET /:slug/repo sin git → nulls; con remote + gh-pages → repoUrl + pagesUrl', async () => {
     seedApp('sin-git');
     expect(await api('/api/projects/sin-git/repo')).toEqual({
