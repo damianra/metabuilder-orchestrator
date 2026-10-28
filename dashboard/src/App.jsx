@@ -12,9 +12,10 @@ import DesignTab from './components/DesignTab.jsx';
 const parseHash = () => {
   const m = window.location.hash.match(/^#\/p\/([a-z0-9-]+)/);
   if (m) return { view: 'detail', slug: m[1] };
+  const c = window.location.hash.match(/[?&]clone=([a-z0-9-]+)/)?.[1] ?? null;
   if (window.location.hash.startsWith('#/design')) return { view: 'design' };
-  const c = window.location.hash.match(/[?&]clone=([a-z0-9-]+)/);
-  return { view: 'list', clone: c?.[1] ?? null };
+  if (window.location.hash.startsWith('#/fullstack')) return { view: 'fullstack', clone: c };
+  return { view: 'list', clone: c };
 };
 
 export default function App() {
@@ -37,6 +38,21 @@ export default function App() {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
+
+  // Clone: enruta al tab según el scope del proyecto origen —
+  // backend → tab Backend (#/), resto → tab Fullstack (#/fullstack).
+  useEffect(() => {
+    if (!route.clone) return;
+    api
+      .project(route.clone)
+      .then((p) => {
+        const want = p?.scope === 'fullstack' ? '#/fullstack' : '#/';
+        if (!window.location.hash.startsWith(want)) {
+          window.location.hash = `${want}?clone=${route.clone}`;
+        }
+      })
+      .catch(() => {});
+  }, [route.clone]);
 
   const refresh = useCallback(async () => {
     try {
@@ -133,8 +149,9 @@ export default function App() {
         {engine !== null && !gateOpen && route.view !== 'detail' && (
           <nav className="flex gap-1 rounded-xl bg-white p-1 ring-1 ring-slate-200 shadow-sm">
             {[
-              ['list', 'Nueva app', '#/'],
+              ['list', 'Backend', '#/'],
               ['design', 'Diseñar app', '#/design'],
+              ['fullstack', 'Fullstack', '#/fullstack'],
             ].map(([v, label, href]) => (
               <a
                 key={v}
@@ -162,9 +179,13 @@ export default function App() {
                 refresh();
               }}
             />
+          ) : route.view === 'fullstack' ? (
+            // Tab "Fullstack": el formulario existente, scope fijo —
+            // genera front+back en un solo run (la vía rápida).
+            <NewAppForm fixedScope="fullstack" onEnqueued={refresh} cloneSlug={route.clone} />
           ) : (
             <>
-              <NewAppForm onEnqueued={refresh} cloneSlug={route.clone} />
+              <NewAppForm fixedScope="backend" onEnqueued={refresh} cloneSlug={route.clone} />
               <QueuePanel jobs={jobs} worker={worker} onChanged={refresh} />
               <ProjectList projects={projects} />
             </>

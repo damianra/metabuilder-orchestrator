@@ -24,13 +24,28 @@ vi.mock('../../api.js', () => ({
 }));
 
 describe('NewAppForm (v10: backend | fullstack)', () => {
-  it('scope select no ofrece frontend y arranca en backend', async () => {
+  it('sin fixedScope: select filtra frontend y arranca en backend', async () => {
     render(<NewAppForm />);
     await waitFor(() => expect(api.options).toHaveBeenCalled());
     const select = screen.getByLabelText('Scope');
     const values = [...select.querySelectorAll('option')].map((o) => o.value);
     expect(values).toEqual(['fullstack', 'backend']);
     expect(select.value).toBe('backend');
+  });
+
+  it('fixedScope="backend": no hay select y el stack front queda off', async () => {
+    render(<NewAppForm fixedScope="backend" />);
+    await waitFor(() => expect(api.options).toHaveBeenCalled());
+    expect(screen.queryByLabelText('Scope')).toBeNull();
+    expect(screen.getByLabelText('Stack front').disabled).toBe(true);
+    expect(screen.getByLabelText('Arquitectura').disabled).toBe(false);
+  });
+
+  it('fixedScope="fullstack": no hay select y stack front habilitado', async () => {
+    render(<NewAppForm fixedScope="fullstack" />);
+    await waitFor(() => expect(api.options).toHaveBeenCalled());
+    expect(screen.queryByLabelText('Scope')).toBeNull();
+    expect(screen.getByLabelText('Stack front').disabled).toBe(false);
   });
 
   it('clone de proyecto frontend → scope cae a backend', async () => {
