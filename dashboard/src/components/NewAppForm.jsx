@@ -21,6 +21,9 @@ const EMPTY = {
 // Perfiles base: los aplica el orquestador siempre que hay frontend —
 // se muestran marcados y deshabilitados, no viajan en el body.
 const BASE_COMPLIANCE = new Set(['privacidad', 'notfound']);
+// 'menores' no se ofrece como opción manual — el agente la infiere
+// del dominio de la app (igual que en los chats de diseño/backend).
+const HIDDEN_COMPLIANCE = new Set(['menores']);
 
 // Form "Nueva app" — los pickers se alimentan de GET /api/options
 // (registries del orquestador), nada hardcodeado. `cloneSlug` (viene de
@@ -58,7 +61,9 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
           stackFrontend: p.stacks?.frontend ?? f.stackFrontend,
           stackBackend: p.stacks?.backend ?? f.stackBackend,
           agent: p.agent ?? f.agent,
-          compliance: (p.compliance ?? []).filter((id) => !BASE_COMPLIANCE.has(id)),
+          compliance: (p.compliance ?? []).filter(
+            (id) => !BASE_COMPLIANCE.has(id) && !HIDDEN_COMPLIANCE.has(id),
+          ),
         }));
         setClonedFrom(cloneSlug);
       })
@@ -203,7 +208,9 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
         <div className="mt-3">
           <span className={label}>Cumplimiento</span>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {(options.compliance ?? []).map((id) => {
+            {(options.compliance ?? [])
+              .filter((id) => !HIDDEN_COMPLIANCE.has(id))
+              .map((id) => {
               const base = BASE_COMPLIANCE.has(id);
               const checked = base || form.compliance.includes(id);
               return (
