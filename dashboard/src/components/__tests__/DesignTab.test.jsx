@@ -111,6 +111,66 @@ describe('DesignTab', () => {
     expect(onSaved).toHaveBeenCalledWith('mi-app');
   });
 
+  it('una proposal del agente se renderiza como card con botones', async () => {
+    state.design = {
+      exists: true,
+      messages: [
+        {
+          role: 'agent',
+          text: 'Listo, quedó el diseño.\n\n```proposal\n{"question":"¿cómo seguimos?","options":[{"label":"Guardar como app","action":"save"},{"label":"Seguir iterando","reply":"quiero seguir ajustando"}]}\n```',
+        },
+      ],
+    };
+    await renderTab();
+    // el bloque no se muestra como texto — va la card
+    expect(screen.getByText('¿cómo seguimos?')).toBeTruthy();
+    expect(screen.getByText('Listo, quedó el diseño.')).toBeTruthy();
+    expect(screen.queryByText(/```proposal/)).toBeNull();
+    expect(screen.getByText('Guardar como app')).toBeTruthy();
+  });
+
+  it('opción con reply → se envía como mensaje al chat', async () => {
+    state.design = {
+      exists: true,
+      messages: [
+        {
+          role: 'agent',
+          text: '```proposal\n{"question":"¿ok?","options":[{"label":"Sí, seguí","reply":"dale, seguí con el footer"}]}\n```',
+        },
+      ],
+    };
+    api.designChat.mockClear();
+    await renderTab();
+    await act(async () => {
+      fireEvent.click(screen.getByText('Sí, seguí'));
+    });
+    expect(api.designChat).toHaveBeenCalledWith(
+      'dale, seguí con el footer',
+      expect.objectContaining({ onChunk: expect.any(Function) }),
+    );
+  });
+
+  it('opción con action desconocida → fallback reply con el label', async () => {
+    state.design = {
+      exists: true,
+      messages: [
+        {
+          role: 'agent',
+          text: '```proposal\n{"question":"¿ok?","options":[{"label":"Hacé la magia","action":"teleport"}]}\n```',
+        },
+      ],
+    };
+    api.designChat.mockClear();
+    await renderTab();
+    await act(async () => {
+      fireEvent.click(screen.getByText('Hacé la magia'));
+    });
+    expect(api.designChat).toHaveBeenCalledWith(
+      'Hacé la magia',
+      expect.objectContaining({ onChunk: expect.any(Function) }),
+    );
+  });
+
   it('descartar pide confirmación y recién ahí llama api.discardDesign', async () => {
     state.design = { exists: true, messages: [] };
     api.discardDesign.mockClear();

@@ -42,3 +42,27 @@ export function jobSummary(args = []) {
   const label = idea ? `"${idea.slice(0, 60)}${idea.length > 60 ? '…' : ''}"` : '(sin idea)';
   return `${label} ${rest.join(' ')}`.trim();
 }
+
+// Extrae el bloque fenced ```proposal de una respuesta del agente del
+// chat de diseño. Devuelve {text, proposal|null}: text sin el bloque
+// (lo que va al bubble) y proposal saneado — question + hasta 4
+// opciones con label. JSON malformado o sin opciones válidas → null
+// (degrada a texto plano; el bloque se oculta igual).
+export function parseProposal(text) {
+  const m = (text ?? '').match(/```proposal\s*\n([\s\S]*?)```/);
+  if (!m) return { text, proposal: null };
+  const clean = text.replace(m[0], '').trim();
+  try {
+    const p = JSON.parse(m[1]);
+    const options = (Array.isArray(p.options) ? p.options : [])
+      .filter((o) => o && typeof o.label === 'string' && o.label.trim())
+      .slice(0, 4);
+    if (!options.length) return { text: clean, proposal: null };
+    return {
+      text: clean,
+      proposal: { question: typeof p.question === 'string' ? p.question : '', options },
+    };
+  } catch {
+    return { text: clean, proposal: null };
+  }
+}

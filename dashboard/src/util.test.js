@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { jobSummary, statusMeta, timeAgo } from './util.js';
+import { jobSummary, parseProposal, statusMeta, timeAgo } from './util.js';
 
 describe('statusMeta', () => {
   it('conoce los estados del pipeline y tolera desconocidos', () => {
@@ -34,5 +34,44 @@ describe('jobSummary', () => {
   });
   it('tolera args vacíos', () => {
     expect(jobSummary([])).toBe('(sin idea)');
+  });
+});
+
+describe('parseProposal', () => {
+  const withProposal = (inner) => `Listo, quedó el hero.\n\n\`\`\`proposal\n${inner}\n\`\`\``;
+
+  it('sin bloque → proposal null y texto intacto', () => {
+    expect(parseProposal('hola')).toEqual({ text: 'hola', proposal: null });
+    expect(parseProposal(null)).toEqual({ text: null, proposal: null });
+  });
+
+  it('bloque válido → question + opciones, texto limpio', () => {
+    const { text, proposal } = parseProposal(
+      withProposal(
+        '{"question":"¿seguimos?","options":[{"label":"Guardar","action":"save"},{"label":"Iterar","reply":"seguí"}]}',
+      ),
+    );
+    expect(text).toBe('Listo, quedó el hero.');
+    expect(proposal.question).toBe('¿seguimos?');
+    expect(proposal.options).toHaveLength(2);
+    expect(proposal.options[0].action).toBe('save');
+  });
+
+  it('JSON malformado o sin opciones válidas → null', () => {
+    expect(parseProposal(withProposal('{roto')).proposal).toBeNull();
+    expect(parseProposal(withProposal('{"question":"x","options":[]}')).proposal).toBeNull();
+    // opciones sin label se filtran; si no queda ninguna → null
+    expect(
+      parseProposal(withProposal('{"options":[{"reply":"sin label"}]}')).proposal,
+    ).toBeNull();
+  });
+
+  it('clampa a 4 opciones y tolera question ausente', () => {
+    const inner = JSON.stringify({
+      options: [1, 2, 3, 4, 5].map((n) => ({ label: `op${n}` })),
+    });
+    const { proposal } = parseProposal(withProposal(inner));
+    expect(proposal.options).toHaveLength(4);
+    expect(proposal.question).toBe('');
   });
 });

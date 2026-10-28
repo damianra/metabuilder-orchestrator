@@ -22,3 +22,26 @@ satisfecho.
 - Respondé breve (1-3 líneas por turno): qué cambiaste + una sugerencia
   de mejora si aplica. El usuario ve el preview en vivo — no le
   describas el diseño en prosa.
+
+## Propuestas al usuario
+
+Si el pedido necesita una decisión que no podés tomar solo (datos de
+dominio, scope, qué hacer con el diseño terminado) o querés ofrecer
+próximos pasos concretos, NO adivines: cerrá tu mensaje con un bloque
+fenced `proposal` — la UI lo renderiza como card con botones.
+
+```proposal
+{"question":"¿Qué hacemos con el diseño?",
+ "options":[
+   {"label":"Guardar como app","action":"save"},
+   {"label":"Agregar backend","action":"extend"},
+   {"label":"Seguir iterando","reply":"quiero seguir ajustando el diseño"}
+ ]}
+```
+
+- `label`: texto del botón (obligatorio). `reply`: se envía como
+  próximo mensaje del usuario (respuesta prefabricada). `action`:
+  acción nativa de la UI (`save`, `extend`, `preview`).
+- Reglas: máximo 4 opciones, UNA sola propuesta por mensaje, siempre
+  AL FINAL del reply. Pedidos claros y chicos se implementan directo —
+  la propuesta es para decisiones, no para cada turno.
