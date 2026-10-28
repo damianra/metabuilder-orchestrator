@@ -314,6 +314,16 @@ describe('POST /api/projects/:slug/actions', () => {
     expect((await post('/api/design', { for: 'con-front' })).status).toBe(409);
     // slug inválido → 400
     expect((await post('/api/design', { for: 'Mi App!' })).status).toBe(400);
+  });
+
+  it('POST /api/backend/save: 400 slug inválido', async () => {
+    // Solo el rechazo 400 — un slug válido sin workspace podría mover
+    // un backend-work/ real del repo si el dev tiene uno vivo.
+    expect((await post('/api/backend/save', { slug: 'Mi App!' })).status).toBe(400);
+  });
+
+  it('GET /api/backend/probe solo acepta /api/*', async () => {
+    expect((await api('/api/backend/probe?path=/evil')).status).toBe(400);
     // 409 backend válido con job en curso (cubre la check de jobs)
     const ok = seedApp('back-ok');
     writeJson(join(ok, 'plan.json'), { projectName: 'back-ok', scope: 'backend', steps: [] });

@@ -32,6 +32,17 @@ import {
   discardDesign,
   saveDesign,
 } from '../design/session.js';
+import {
+  BACKEND_DIR,
+  backendChat,
+  backendDev,
+  backendIdleSweep,
+  backendStatus,
+  backendStopDev,
+  createBackend,
+  discardBackend,
+  saveBackend,
+} from '../design/backend-session.js';
 import { getVertical, listVerticals } from '../verticals/index.js';
 import { getStack, listStacks, resolveStacksSafe } from '../stacks/index.js';
 import { getEngine as getAgentEngine, listEngines } from '../engines/index.js';
@@ -900,6 +911,64 @@ export function createDashboardApp({
   });
   app.post('/api/design/stop-dev', (req, res) => res.json(designStopDev()));
 
+  // ---- Backend-work: chat experto sobre api-skeleton (v10) ----
+  // Mismo contrato que /api/design* pero el workspace es el
+  // api-skeleton y el "preview" es la API corriendo en :4000.
+  app.get('/api/backend', (req, res) => res.json(backendStatus()));
+
+  app.post('/api/backend', (req, res) => {
+    const r = createBackend();
+    res.status(r.ok ? 201 : 409).json(r);
+  });
+
+  app.delete('/api/backend', (req, res) => res.json(discardBackend()));
+
+  app.post('/api/backend/chat', async (req, res) => {
+    const text = String(req.body?.text ?? '').trim();
+    if (!text) return res.status(400).json({ error: 'text requerido' });
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    });
+    const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    const r = await backendChat(text, {
+      agent: req.body?.agent ?? '',
+      onChunk: (t) => send('chunk', { text: t }),
+      onActivity: (a) => send('activity', { text: a }),
+    });
+    send(r.ok ? 'done' : 'error', r.ok ? { text: r.text } : { error: r.error });
+    res.end();
+  });
+
+  app.post('/api/backend/dev', (req, res) => {
+    const r = backendDev();
+    res.status(r.ok ? 200 : 409).json(r);
+  });
+  app.post('/api/backend/stop-dev', (req, res) => res.json(backendStopDev()));
+
+  // Probe del workspace backend (mismo mecanismo que /:slug/probe —
+  // puerto fijo :4000, solo paths /api/*).
+  app.get('/api/backend/probe', async (req, res) => {
+    const path = String(req.query.path ?? '');
+    if (!path.startsWith('/api/')) return res.status(400).json({ error: 'path /api/* requerido' });
+    try {
+      const r = await fetch(`http://localhost:4000${path}`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      res.json({ status: r.status, body: (await r.text()).slice(0, 4000) });
+    } catch (e) {
+      res.json({ status: 'ERR', body: e.message });
+    }
+  });
+
+  app.post('/api/backend/save', (req, res) => {
+    const slug = String(req.body?.slug ?? '').trim();
+    if (!SLUG_RE.test(slug)) return res.status(400).json({ error: 'slug inválido (a-z0-9-)' });
+    const r = saveBackend(slug);
+    res.status(r.ok ? 201 : 409).json(r);
+  });
+
   app.post('/api/design/save', (req, res) => {
     const slug = String(req.body?.slug ?? '').trim();
     // Attach mode: el target es state.attachTo — slug del body no
@@ -1164,7 +1233,10 @@ const main = async () => {
   // vite dev de design-work/ cuando nadie interactúa hace
   // DESIGN_IDLE_MS (la tab cerrada deja de pollear → la actividad
   // vence). unref: el timer solo no sostiene el proceso vivo.
-  setInterval(() => designIdleSweep(), 60_000).unref();
+  setInterval(() => {
+    designIdleSweep();
+    backendIdleSweep();
+  }, 60_000).unref();
   // Import lazy: terminal.js carga ws (y node-pty on-demand) — si algo
   // falta, la API HTTP sigue sirviendo y solo la terminal falla.
   try {
