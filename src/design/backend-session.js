@@ -10,6 +10,7 @@ import { startInstall, awaitInstall, clearInstall } from '../tools/install.js';
 import { loadPrompt } from '../agents/common.js';
 import { startDevRun, stopDevRun } from '../dashboard/server.js';
 import { apiSurfaceFor } from '../tools/api-surface.js';
+import { copyApiSkeleton, writeAgentsMd } from '../agents/preflight.js';
 
 export const BACKEND_DIR = join(config.rootDir, 'backend-work');
 const statePath = join(BACKEND_DIR, 'backend-state.json');
@@ -71,22 +72,17 @@ export function backendStatus(dir = BACKEND_DIR) {
   return { exists: true, ...readState(join(dir, 'backend-state.json')), apiRunning, apiSurface: apiSurfaceFor(dir) };
 }
 
-// Crea el workspace copiando el api-skeleton — package.partial.json
-// se promueve a package.json (el workspace no tiene uno previo que
-// mergear, a diferencia del attach de un proyecto).
+// Crea el workspace copiando el api-skeleton — reuse de
+// copyApiSkeleton (preflight): promueve package.partial.json →
+// package.json y gitignore.partial → .gitignore (sin esto el publish
+// de la app guardada commitearía .env/*.sqlite/node_modules).
 export function createBackend() {
   touchActivity();
   if (existsSync(join(BACKEND_DIR, 'package.json'))) {
     return { ok: false, error: 'ya existe una sesión de backend — descartala o guardala' };
   }
   mkdirSync(BACKEND_DIR, { recursive: true });
-  cpSync(join(config.templatesDir, 'api-skeleton'), BACKEND_DIR, { recursive: true });
-  const partial = JSON.parse(readFileSync(join(BACKEND_DIR, 'package.partial.json'), 'utf8'));
-  writeFileSync(
-    join(BACKEND_DIR, 'package.json'),
-    JSON.stringify({ name: 'backend-work', ...partial }, null, 2) + '\n',
-  );
-  rmSync(join(BACKEND_DIR, 'package.partial.json'), { force: true });
+  copyApiSkeleton(BACKEND_DIR);
   writeState({ messages: [], created: new Date().toISOString() });
   startInstall(BACKEND_DIR);
   return { ok: true };
@@ -181,6 +177,19 @@ export function saveBackend(slug) {
       null,
       2,
     ),
+  );
+  // name del package + AGENTS.md por detección (scope backend →
+  // reglas de arquitectura + API surface; igual que el pipeline).
+  try {
+    const pkg = JSON.parse(readFileSync(join(dest, 'package.json'), 'utf8'));
+    pkg.name = slug;
+    writeFileSync(join(dest, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+  } catch {
+    /* package.json siempre existe en el workspace */
+  }
+  writeAgentsMd(
+    JSON.parse(readFileSync(join(dest, 'plan.json'), 'utf8')),
+    dest,
   );
   clearInstall(BACKEND_DIR);
   rmSync(BACKEND_DIR, { recursive: true, force: true });

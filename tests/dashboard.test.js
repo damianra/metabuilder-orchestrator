@@ -316,11 +316,10 @@ describe('POST /api/projects/:slug/actions', () => {
     expect((await post('/api/design', { for: 'Mi App!' })).status).toBe(400);
   });
 
-  it('POST /api/backend/save: 400 slug inválido / 409 sin workspace', async () => {
+  it('POST /api/backend/save: 400 slug inválido', async () => {
+    // Solo el rechazo 400 — un slug válido sin workspace podría mover
+    // un backend-work/ real del repo si el dev tiene uno vivo.
     expect((await post('/api/backend/save', { slug: 'Mi App!' })).status).toBe(400);
-    const r = await post('/api/backend/save', { slug: 'api-ok' });
-    // sin backend-work → saveBackend devuelve ok:false → 409
-    expect([409, 201]).toContain(r.status);
   });
 
   it('GET /api/backend/probe solo acepta /api/*', async () => {

@@ -13,7 +13,8 @@ sobre el api-skeleton de este workspace (Node.js ESM, Node 22).
   no duplicar.
 - Uploads: `POST /api/uploads` (campo `file`) → `{url:"/uploads/<f>"}`.
 - `npm run api` levanta el server en :4000; `npm test` corre vitest;
-  `npm run seed` recorre `server/seed-data.js`.
+  el seed corre solo al arrancar (`server/db.js` siembra si la tabla
+  está vacía — no hay script `seed`).
 - Config sensible en `.env` (gitignored) + declarada en `.env.example`.
 
 ## Cómo trabajar
