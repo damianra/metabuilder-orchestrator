@@ -1,13 +1,14 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 // Solo asserts de lectura sobre DESIGN_DIR real (apunta a
 // <repo>/design-work — create/discard podrían borrar una sesión real
 // en curso). Los casos que necesitan archivos usan el param `dir` con
-// un tmpdir propio.
-import { DESIGN_DIR, designStatus } from '../src/design/session.js';
+// un tmpdir propio, y el sweep recibe `stop`/`lastActivity` inyectados
+// para no frenar un dev run real.
+import { DESIGN_DIR, designIdleSweep, designStatus } from '../src/design/session.js';
 
 describe('design session', () => {
   it('designStatus responde el contrato exists/messages', () => {
@@ -45,6 +46,34 @@ describe('design session', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it('designIdleSweep frena el dev run solo cuando la actividad venció', () => {
+    const stop = vi.fn(() => ({ stopped: true }));
+    const T = 1_000_000;
+    // actividad reciente → no hay park ni llamada a stop
+    expect(
+      designIdleSweep({ now: T, idleMs: 60_000, lastActivity: T - 10_000, stop }),
+    ).toEqual({ parked: false });
+    expect(stop).not.toHaveBeenCalled();
+    // actividad vencida → park
+    expect(
+      designIdleSweep({ now: T, idleMs: 60_000, lastActivity: T - 61_000, stop }),
+    ).toEqual({ parked: true });
+    expect(stop).toHaveBeenCalledTimes(1);
+    // stop sin nada vivo (stopped:false) → no cuenta como park
+    expect(
+      designIdleSweep({
+        now: T,
+        idleMs: 60_000,
+        lastActivity: T - 61_000,
+        stop: () => ({ stopped: false }),
+      }),
+    ).toEqual({ parked: false });
+    // idleMs 0 = feature apagada
+    expect(
+      designIdleSweep({ now: T, idleMs: 0, lastActivity: 0, stop }),
+    ).toEqual({ parked: false });
   });
 });
 

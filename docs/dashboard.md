@@ -187,3 +187,13 @@ para cambiarlo en cualquier momento (`POST /api/settings`).
 - `POST /api/design/save` — `{slug}` → mueve el workspace a
   `generated-apps/<slug>` con plan.json sintético (sin node_modules ni
   state files) → todas las acciones de proyecto quedan habilitadas.
+
+Idle-parking: `designIdleSweep()` corre en un `setInterval` (60s,
+`unref`) en `main()` — frena el vite dev del workspace cuando la
+actividad supera `DESIGN_IDLE_MS` (default 15 min). La "actividad" la
+toca cada llamada a `designStatus`/`designChat`/`designDev`/
+`createDesign`: como DesignTab pollea status cada 3s, el preview solo
+se apaga cuando nadie tiene la tab abierta (de ahí que el sweep corra
+por timer y no lazy — con la tab cerrada nadie llama a la API, que es
+justo el caso a cubrir). `designStatus` además gatea `urls` por
+`dev-run.json` vivo: un run `stopped` no reporta URL stale.

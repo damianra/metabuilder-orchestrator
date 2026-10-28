@@ -13,6 +13,34 @@ import { startDevRun, stopDevRun } from '../dashboard/server.js';
 export const DESIGN_DIR = join(config.rootDir, 'design-work');
 const statePath = join(DESIGN_DIR, 'design-state.json');
 
+// Idle-parking: el vite dev del workspace se frena solo tras
+// config.designIdleMs sin actividad. El poll de designStatus (cada 3s
+// desde DesignTab) ES la señal de presencia — tab abierta = alguien
+// mirando; al cerrarla el timer vence y el sweeper apaga el preview.
+// Inicializado al cargar el módulo: tras un restart de la API un dev
+// run huérfano tiene un grace period completo antes del park.
+let lastActivityAt = Date.now();
+const touchActivity = () => {
+  lastActivityAt = Date.now();
+};
+
+// Barrido llamado por el setInterval de main() (no por requests: con
+// la tab cerrada nadie llama designStatus, que es justo cuando hay
+// que frenar). Params inyectables para tests — tocar DESIGN_DIR real
+// o el dev run de una sesión viva sería destructivo.
+export function designIdleSweep({
+  now = Date.now(),
+  idleMs = config.designIdleMs,
+  lastActivity = lastActivityAt,
+  stop = designStopDev,
+} = {}) {
+  if (idleMs <= 0 || now - lastActivity < idleMs) return { parked: false };
+  const r = stop();
+  if (!r?.stopped) return { parked: false };
+  lastActivityAt = now; // ya frenó — el próximo barrido no reprocesa
+  return { parked: true };
+}
+
 const readState = (p = statePath) => {
   try {
     return JSON.parse(readFileSync(p, 'utf8'));
@@ -37,6 +65,7 @@ const pidAlive = (pid) => {
 };
 
 export function designStatus(dir = DESIGN_DIR) {
+  touchActivity();
   if (!existsSync(join(dir, 'package.json'))) return { exists: false, messages: [] };
   // URLs solo con el run vivo: dev-run.log es append-only y tras
   // stop-dev seguiría reportando la URL vieja con el iframe muerto
@@ -63,6 +92,7 @@ export function designStatus(dir = DESIGN_DIR) {
 // Crea el workspace copiando el app-skeleton (mismo contrato que
 // preflight: agente nunca hace scaffolding desde cero).
 export function createDesign() {
+  touchActivity();
   if (existsSync(join(DESIGN_DIR, 'package.json'))) return { ok: false, error: 'ya existe un diseño en curso — descartalo o guardalo' };
   mkdirSync(DESIGN_DIR, { recursive: true });
   cpSync(join(config.templatesDir, 'app-skeleton'), DESIGN_DIR, { recursive: true });
@@ -84,6 +114,7 @@ export function createDesign() {
 // lo convierte en SSE. `agent` resuelve como el resto del sistema
 // (settings/env > default).
 export async function designChat(text, { agent = '', onChunk = () => {}, onActivity = () => {} } = {}) {
+  touchActivity();
   if (!existsSync(join(DESIGN_DIR, 'package.json'))) return { ok: false, error: 'no hay diseño — crealo primero' };
   const install = await awaitInstall(DESIGN_DIR);
   if (!install?.ok) return { ok: false, error: `npm install falló: ${install?.stderr?.slice(-200) ?? ''}` };
@@ -112,6 +143,7 @@ export async function designChat(text, { agent = '', onChunk = () => {}, onActiv
 }
 
 export const designDev = () => {
+  touchActivity();
   if (!existsSync(join(DESIGN_DIR, 'package.json'))) {
     return { ok: false, error: 'no hay diseño — crealo primero' };
   }

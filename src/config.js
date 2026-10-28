@@ -58,4 +58,9 @@ export const config = {
 
   // Timeout para comandos verify dentro de la app generada
   verifyTimeoutMs: int('VERIFY_TIMEOUT_MS', 5 * 60 * 1000),
+
+  // Idle-parking del preview de diseño: tras este tiempo sin actividad
+  // (el poll de GET /api/design cuenta — tab abierta = alguien mirando)
+  // el sweeper del dashboard frena el vite dev de design-work/.
+  designIdleMs: int('DESIGN_IDLE_MS', 15 * 60 * 1000),
 };
