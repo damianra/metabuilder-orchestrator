@@ -38,7 +38,7 @@ del `src/templates/AGENTS.md` y la sección legal del README generado.
 `src/stacks/` declara cada stack como datos (un archivo por stack +
 `index.js` con el registro): `id`, `kind` (frontend|backend), `label`,
 `skeletonDir`, `buildDir` (dir de salida del build: `dist`/`out`),
-`skeletonDesc`/`agentsStack` (texto para planes y AGENTS.md de la app),
+`skeletonDesc`/`agentsStack`/`agentsDb` (texto para planes y AGENTS.md de la app),
 `pagesBaseEnv` (env var para re-build con basePath en Pages; solo
 stacks que lo necesitan), `verify` (comandos de finalVerify),
 `requirements` (reglas declarativas de validatePlan con `error` +

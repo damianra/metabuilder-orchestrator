@@ -9,7 +9,8 @@ import { runAgentPrompt } from '../tools/acp.js';
 import { startInstall, awaitInstall, clearInstall } from '../tools/install.js';
 import { loadPrompt } from '../agents/common.js';
 import { startDevRun, stopDevRun } from '../dashboard/server.js';
-import { apiSurfaceFor } from '../tools/api-surface.js';
+import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
+import { detectBackendStackId } from '../tools/docker.js';
 import { writeAgentsMd } from '../agents/preflight.js';
 import { resolveArchSafe } from '../arch/index.js';
 import { getStack } from '../stacks/index.js';
@@ -106,7 +107,11 @@ export function createDesign({ attachTo = null } = {}) {
   const agentsSrc = readFileSync(join(config.templatesDir, 'AGENTS.md'), 'utf8');
   writeFileSync(
     join(DESIGN_DIR, 'AGENTS.md'),
-    agentsSrc.replaceAll('{{frontendStack}}', 'Vite + React + Tailwind'),
+    agentsSrc
+      .replaceAll('{{frontendStack}}', 'Vite + React + Tailwind')
+      // El design-work no tiene backend — defaults de writeAgentsMd.
+      .replaceAll('{{backendFramework}}', 'Node.js + Express')
+      .replaceAll('{{backendDb}}', 'SQLite (archivo local, sin servidores externos)'),
   );
   for (const f of ['package.json', 'index.html', 'src/App.jsx']) {
     const p = join(DESIGN_DIR, f);
@@ -159,7 +164,9 @@ export async function designChat(text, { agent = '', onChunk = () => {}, onActiv
 // no expone routes escaneables.
 export function apiContextBlock(attachTo, appsDir = config.generatedAppsDir) {
   if (!attachTo) return '';
-  const eps = apiSurfaceFor(join(appsDir, attachTo));
+  const eps = apiSurfaceFor(join(appsDir, attachTo), {
+    kind: apiSurfaceKindOf(detectBackendStackId(join(appsDir, attachTo))),
+  });
   if (!eps.length) return '';
   return (
     `\n\n## API real del backend "${attachTo}"\n\n` +
@@ -268,6 +275,7 @@ function saveDesignAttach(slug) {
     withBackend: true,
     arch: resolveArchSafe(plan.arch, 'flat'),
     frontendStack: getStack('vite-react'),
+    backendStack: getStack(plan.stacks?.backend ?? detectBackendStackId(dest)),
   });
   clearInstall(DESIGN_DIR);
   rmSync(DESIGN_DIR, { recursive: true, force: true });

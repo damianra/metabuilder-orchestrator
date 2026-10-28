@@ -7,6 +7,8 @@ export default {
   id: 'express-mongo',
   kind: 'backend',
   label: 'Express + MongoDB',
+  agentsStack: 'Node.js + Express',
+  agentsDb: 'MongoDB (vía MONGO_URI en .env — document store)',
   skeletonDir: 'api-skeleton-mongo',
 
   verify: {

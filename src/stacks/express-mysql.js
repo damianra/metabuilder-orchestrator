@@ -7,6 +7,8 @@ export default {
   id: 'express-mysql',
   kind: 'backend',
   label: 'Express + MySQL',
+  agentsStack: 'Node.js + Express',
+  agentsDb: 'MySQL/MariaDB (vía DB_* en .env)',
   skeletonDir: 'api-skeleton-sql',
 
   verify: {

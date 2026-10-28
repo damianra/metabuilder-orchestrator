@@ -3,8 +3,8 @@
 Este proyecto fue generado por MetaBuilder. Stack esperado:
 
 - **Frontend**: {{frontendStack}} (si aplica)
-- **Backend**: Node.js + Express (si aplica)
-- **Base de datos**: SQLite (archivo local, sin servidores externos) (si aplica)
+- **Backend**: {{backendFramework}} (si aplica)
+- **Base de datos**: {{backendDb}} (si aplica)
 - **Testing**: Vitest (unit/integración), Playwright + Chromium (E2E, si hay frontend)
 
 ## Reglas de UI obligatorias (React + Tailwind)

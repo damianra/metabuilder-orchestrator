@@ -2,12 +2,48 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { writeDockerFiles } from '../src/tools/docker.js';
+import { detectBackendStackId, writeDockerFiles } from '../src/tools/docker.js';
+import { apiSurfaceFor, apiSurfaceKindOf } from '../src/tools/api-surface.js';
+import { writeFileSync, mkdirSync } from 'node:fs';
 
 let dir;
 afterEach(() => dir && rmSync(dir, { recursive: true, force: true }));
 
 const tmp = () => (dir = mkdtempSync(join(tmpdir(), 'mb-docker-')));
+
+describe('detectBackendStackId + apiSurface por stack (v11 #3)', () => {
+  const withPkg = (deps) => {
+    const d = tmp();
+    writeFileSync(join(d, 'package.json'), JSON.stringify({ dependencies: deps }));
+    return d;
+  };
+
+  it('detecta el stack backend por deps (+ .env DB_DRIVER)', () => {
+    expect(detectBackendStackId(withPkg({ 'better-sqlite3': '^12' }))).toBe('express-sqlite');
+    expect(detectBackendStackId(withPkg({ mongodb: '^6' }))).toBe('express-mongo');
+    expect(detectBackendStackId(withPkg({ '@nestjs/core': '^10' }))).toBe('nest-typeorm');
+    expect(detectBackendStackId(withPkg({ pg: '^8', mysql2: '^3' }))).toBe('express-postgres');
+    const d = withPkg({ pg: '^8', mysql2: '^3' });
+    writeFileSync(join(d, '.env'), 'DB_DRIVER=mysql\n');
+    expect(detectBackendStackId(d)).toBe('express-mysql');
+    expect(detectBackendStackId(mkdtempSync(join(tmpdir(), 'mb-none-')))).toBeNull();
+  });
+
+  it('apiSurfaceFor kind nest-controllers escanea *.controller.ts', () => {
+    const d = tmp();
+    mkdirSync(join(d, 'src', 'items'), { recursive: true });
+    writeFileSync(
+      join(d, 'src', 'items', 'items.controller.ts'),
+      "@Controller('api/items')\nexport class I {\n @Get('') l() {}\n @Post('nuevo') c() {}\n}\n",
+    );
+    const eps = apiSurfaceFor(d, { kind: apiSurfaceKindOf('nest-typeorm') });
+    expect(eps).toEqual([
+      { method: 'GET', path: '/api/items/', file: 'items.controller.ts' },
+      { method: 'POST', path: '/api/items/nuevo', file: 'items.controller.ts' },
+    ]);
+    expect(apiSurfaceKindOf('express-sqlite')).toBe('express-routes');
+  });
+});
 
 describe('writeDockerFiles', () => {
   it('fullstack: deps → build → runtime slim, sirve API + dist', () => {

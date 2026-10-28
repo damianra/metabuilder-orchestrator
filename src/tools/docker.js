@@ -43,3 +43,32 @@ export const detectStackId = (dir) => {
   const outDir = detectOutDir(dir);
   return outDir === 'out' ? 'nextjs' : outDir === 'dist' ? 'vite-react' : null;
 };
+
+// Id del stack backend por las deps del package.json (para apps sin
+// plan.stacks y workspaces): better-sqlite3 → express-sqlite,
+// mongodb → express-mongo, nest → nest-typeorm, pg/mysql2 → sql
+// (el skeleton-sql instala ambos drivers — .env DB_DRIVER desempata,
+// default pg como en server/db.js).
+export const detectBackendStackId = (dir) => {
+  let pkg;
+  try {
+    pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  } catch {
+    return null;
+  }
+  const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  if (deps['better-sqlite3']) return 'express-sqlite';
+  if (deps.mongodb) return 'express-mongo';
+  if (deps['@nestjs/core'] || existsSync(join(dir, 'nest-cli.json'))) return 'nest-typeorm';
+  if (deps.pg || deps.mysql2) {
+    try {
+      const d = readFileSync(join(dir, '.env'), 'utf8').match(/^DB_DRIVER=(\w+)/m)?.[1];
+      if (d === 'mysql') return 'express-mysql';
+      if (d === 'pg') return 'express-postgres';
+    } catch {
+      /* sin .env → default del skeleton */
+    }
+    return 'express-postgres';
+  }
+  return null;
+};
