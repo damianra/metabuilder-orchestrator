@@ -32,7 +32,7 @@ describe('validatePlan — reglas de schema', () => {
 describe('validatePlan — restricciones de scope', () => {
   const okSteps = [
     { ...baseStep, id: 1, description: 'init con vite' },
-    { ...baseStep, id: 2, type: 'frontend', description: 'UI con reglas de ui' },
+    { ...baseStep, id: 2, type: 'frontend', description: 'UI con reglas de ui + privacidad y consentimiento' },
     { ...baseStep, id: 3, type: 'test', description: 'tests con vitest', verify: 'npx vitest run' },
     { ...baseStep, id: 4, type: 'e2e', description: 'specs playwright', verify: 'npm run test:e2e' },
   ];
