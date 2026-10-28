@@ -11,9 +11,22 @@ import { config } from '../config.js';
  * `outDir` = directorio de build del stack frontend ('dist' en Vite,
  * 'out' en Next export) — los templates llevan @OUT_DIR@.
  */
-export function writeDockerFiles(dir, { frontend, backend, outDir }) {
+// Detección de backend por carpeta: express skeletons usan server/,
+// el nest-skeleton usa src/ + nest-cli.json.
+export const hasBackendDir = (dir) =>
+  existsSync(join(dir, 'server')) || existsSync(join(dir, 'nest-cli.json'));
+
+export function writeDockerFiles(dir, { frontend, backend, outDir, backendStackId }) {
   const tdir = join(config.templatesDir, 'docker');
-  const variant = frontend && backend ? 'fullstack' : backend ? 'backend' : 'frontend';
+  // Backend TypeScript (nest) necesita build stage tsc + dist/ —
+  // Dockerfile.backend-ts; los express skeletons usan server/index.js.
+  const variant = frontend && backend
+    ? 'fullstack'
+    : backend
+      ? (backendStackId ?? detectBackendStackId(dir)) === 'nest-typeorm'
+        ? 'backend-ts'
+        : 'backend'
+      : 'frontend';
   const tpl = readFileSync(join(tdir, `Dockerfile.${variant}`), 'utf8');
   writeFileSync(join(dir, 'Dockerfile'), tpl.replaceAll('@OUT_DIR@', outDir ?? 'dist'));
   copyFileSync(join(tdir, '.dockerignore'), join(dir, '.dockerignore'));
@@ -57,9 +70,11 @@ export const detectBackendStackId = (dir) => {
     return null;
   }
   const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  // nest primero: el nest-skeleton trae `mongodb` como dep — si se
+  // chequea mongo antes, un app nest se detecta como express-mongo.
+  if (deps['@nestjs/core'] || existsSync(join(dir, 'nest-cli.json'))) return 'nest-typeorm';
   if (deps['better-sqlite3']) return 'express-sqlite';
   if (deps.mongodb) return 'express-mongo';
-  if (deps['@nestjs/core'] || existsSync(join(dir, 'nest-cli.json'))) return 'nest-typeorm';
   if (deps.pg || deps.mysql2) {
     try {
       const d = readFileSync(join(dir, '.env'), 'utf8').match(/^DB_DRIVER=(\w+)/m)?.[1];

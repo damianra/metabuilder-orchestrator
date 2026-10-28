@@ -47,6 +47,7 @@ describe('resolveStacks', () => {
       ['express-postgres', 'api-skeleton-sql', 'postgres'],
       ['express-mysql', 'api-skeleton-sql', 'mysql'],
       ['express-mongo', 'api-skeleton-mongo', 'mongodb'],
+      ['nest-typeorm', 'nest-skeleton', 'nestjs'],
     ];
     for (const [id, skel, kwStack] of expected) {
       const s = getStack(id);
@@ -64,6 +65,7 @@ describe('resolveStacks', () => {
       'express-postgres',
       'express-mysql',
       'express-mongo',
+      'nest-typeorm',
     ]);
   });
 
@@ -86,6 +88,7 @@ describe('listStacks/getStack', () => {
       'express-postgres',
       'express-mysql',
       'express-mongo',
+      'nest-typeorm',
     ]);
     expect(getStack('vite-react').kind).toBe('frontend');
     expect(getStack('nope')).toBeNull();

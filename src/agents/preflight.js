@@ -22,7 +22,7 @@ import { checkEngineAuth } from '../tools/acp.js';
 import { getEngine, resolveEngineAuto, resolveEngineId } from '../engines/index.js';
 import { startInstall } from '../tools/install.js';
 import { ensureProjectDir } from '../tools/slug.js';
-import { writeDockerFiles, detectFrontend, detectStackId, detectOutDir } from '../tools/docker.js';
+import { writeDockerFiles, detectFrontend, detectStackId, detectOutDir, hasBackendDir } from '../tools/docker.js';
 import { resolveArch, resolveArchSafe } from '../arch/index.js';
 import { resolveStacks, resolveStacksSafe } from '../stacks/index.js';
 import { getVertical } from '../verticals/index.js';
@@ -185,13 +185,13 @@ export async function preflightNode(state) {
     // --extend: el proyecto es frontend-only → el api-skeleton entra
     // ANTES de writeAgentsMd/writeDockerFiles para que la detección de
     // server/ ya vea el backend (mergea package.json, nunca pisa).
-    if (state.extend && !existsSync(join(dir, 'server'))) {
+    if (state.extend && !hasBackendDir(dir)) {
       copyApiSkeleton(dir, resumeStacks.backend?.skeletonDir ?? 'api-skeleton');
       history.push(log('preflight', 'api-skeleton copiado (extend → fullstack)'));
       activity('api-skeleton copiado');
     }
     writeAgentsMd(dir, {
-      withBackend: existsSync(join(dir, 'server')),
+      withBackend: hasBackendDir(dir),
       arch: resolveArchSafe(planArch, state.arch),
       frontendStack: resumeStacks.frontend,
       backendStack: resumeStacks.backend,
@@ -200,7 +200,8 @@ export async function preflightNode(state) {
     // (apps pre-docker lo reciben al resumir).
     const dockerVariant = writeDockerFiles(dir, {
       frontend: detectFrontend(dir),
-      backend: existsSync(join(dir, 'server')),
+      backend: hasBackendDir(dir),
+      backendStackId: resumeStacks.backend?.id,
       outDir: detectOutDir(dir),
     });
     history.push(log('preflight', `Dockerfile escrito (${dockerVariant})`));
@@ -254,6 +255,7 @@ export async function preflightNode(state) {
   const dockerVariant = writeDockerFiles(dir, {
     frontend: state.scope !== 'backend',
     backend: state.scope !== 'frontend',
+    backendStackId: stacks.backend?.id,
     outDir: stacks.frontend?.buildDir ?? 'dist',
   });
   history.push(log('preflight', `Dockerfile escrito (${dockerVariant})`));

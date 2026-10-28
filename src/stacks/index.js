@@ -3,10 +3,11 @@ import expressSqlite from './express-sqlite.js';
 import expressPostgres from './express-postgres.js';
 import expressMysql from './express-mysql.js';
 import expressMongo from './express-mongo.js';
+import nestTypeorm from './nest-typeorm.js';
 import nextjs from './nextjs.js';
 
 const STACKS = new Map(
-  [viteReact, expressSqlite, expressPostgres, expressMysql, expressMongo, nextjs].map(
+  [viteReact, expressSqlite, expressPostgres, expressMysql, expressMongo, nestTypeorm, nextjs].map(
     (s) => [s.id, s],
   ),
 );

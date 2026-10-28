@@ -18,7 +18,7 @@ import { run } from '../tools/shell.js';
 import { addJob, cancelJob, clearJobs, jobsDir, readJobs, readWorker } from '../queue.js';
 import { slugify } from '../tools/slug.js';
 import { buildReport, resolveRunId } from '../report.js';
-import { writeDockerFiles, detectFrontend, detectOutDir, detectBackendStackId } from '../tools/docker.js';
+import { writeDockerFiles, detectFrontend, detectOutDir, detectBackendStackId, hasBackendDir } from '../tools/docker.js';
 import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
 import { listArchs } from '../arch/index.js';
 import { getCompliance, listCompliance } from '../compliance/index.js';
@@ -363,7 +363,7 @@ function projectSummary(dir, slug) {
 
 const detectVariant = (dir) => ({
   frontend: detectFrontend(dir),
-  backend: existsSync(join(dir, 'server')),
+  backend: hasBackendDir(dir),
   outDir: detectOutDir(dir),
 });
 
@@ -810,6 +810,11 @@ export function createDashboardApp({
     // Los verticales (orders/blog overlays) son express+sqlite-only:
     // con otro stack backend se exige custom explícito; si vino auto
     // (''), se fuerza custom para que la inferencia no elija uno.
+    if (b.stackBackend === 'nest-typeorm' && (b.scope ?? 'fullstack') !== 'backend') {
+      return res.status(400).json({
+        error: 'nest-typeorm es backend-only — usar scope backend (fullstack+nest no está soportado: dist/ colisiona y no hay Dockerfile TS fullstack)',
+      });
+    }
     if (b.stackBackend && b.stackBackend !== 'express-sqlite') {
       if (b.appType && b.appType !== 'custom') {
         return res.status(400).json({
@@ -1019,7 +1024,7 @@ export function createDashboardApp({
     // --extend: appendea pasos backend al plan de un proyecto
     // frontend-only → el mismo job lo construye a fullstack.
     if (action === 'add-backend') {
-      if (existsSync(join(dir, 'server'))) {
+      if (hasBackendDir(dir)) {
         return res.status(409).json({ error: 'el proyecto ya tiene backend (server/)' });
       }
       const args = ['--extend', slug, '--yes'];

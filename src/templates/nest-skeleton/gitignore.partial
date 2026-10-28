@@ -1,0 +1,5 @@
+# nest-skeleton
+node_modules/
+dist/
+.env
+*.log
