@@ -988,6 +988,16 @@ export function createDashboardApp({
 const main = async () => {
   const port = Number(process.env.DASHBOARD_PORT ?? 4100);
   const host = process.env.DASHBOARD_HOST ?? '127.0.0.1';
+  // La API ejecuta código arbitrario (encolar generaciones, builds,
+  // kill de procesos, delete de dirs) sin auth — loopback ES la
+  // frontera de seguridad. Exponerla fuera de localhost abre RCE a
+  // cualquiera que alcance el puerto.
+  if (host !== '127.0.0.1' && host !== 'localhost' && host !== '::1') {
+    console.warn(
+      `⚠ DASHBOARD_HOST=${host} expone la API fuera de localhost — ` +
+        'sin auth, cualquiera en la red puede encolar generaciones y ejecutar builds',
+    );
+  }
   // La terminal se attachea después de crear la app — el ref deja que
   // la acción delete cierre la sesión Devin del proyecto borrado.
   const terminalRef = {};

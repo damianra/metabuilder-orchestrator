@@ -1,7 +1,11 @@
 # Dashboard — API, UI y terminal
 
 Express local (127.0.0.1:4100, `DASHBOARD_PORT`/`DASHBOARD_HOST`) en
-`src/dashboard/server.js` — capa fina sobre la infra existente:
+`src/dashboard/server.js` — capa fina sobre la infra existente.
+**Boundary de seguridad**: la API ejecuta código arbitrario sin auth
+(encolar ideas → el agente escribe/corre builds; kill de procesos;
+delete de dirs) — el bind loopback ES la frontera. Si `DASHBOARD_HOST`
+no es loopback, `main()` loguea un warning explícito al arrancar.
 
 ## Endpoints
 
