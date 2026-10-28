@@ -25,6 +25,7 @@ import {
   createDesign,
   designChat,
   designDev,
+  designIdleSweep,
   designStatus,
   designStopDev,
   discardDesign,
@@ -1069,6 +1070,11 @@ const main = async () => {
   }).listen(port, host, () =>
     console.log(`dashboard api en http://${host}:${port}`),
   );
+  // Idle-parking del preview de diseño: barre cada minuto y frena el
+  // vite dev de design-work/ cuando nadie interactúa hace
+  // DESIGN_IDLE_MS (la tab cerrada deja de pollear → la actividad
+  // vence). unref: el timer solo no sostiene el proceso vivo.
+  setInterval(() => designIdleSweep(), 60_000).unref();
   // Import lazy: terminal.js carga ws (y node-pty on-demand) — si algo
   // falta, la API HTTP sigue sirviendo y solo la terminal falla.
   try {
