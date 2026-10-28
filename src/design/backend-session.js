@@ -11,6 +11,7 @@ import { loadPrompt } from '../agents/common.js';
 import { startDevRun, stopDevRun } from '../dashboard/server.js';
 import { apiSurfaceFor } from '../tools/api-surface.js';
 import { copyApiSkeleton, writeAgentsMd } from '../agents/preflight.js';
+import { resolveArchSafe } from '../arch/index.js';
 
 export const BACKEND_DIR = join(config.rootDir, 'backend-work');
 const statePath = join(BACKEND_DIR, 'backend-state.json');
@@ -138,7 +139,14 @@ export const backendStopDev = () => stopDevRun(BACKEND_DIR);
 // Guardar como app real: mueve el workspace a generated-apps/<slug>
 // con plan.json sintético scope:backend (mismo contrato que
 // saveDesign — dockerize/publish/resume quedan habilitadas).
-const SAVE_EXCLUDE = new Set(['node_modules', 'backend-state.json', 'dev-run.json', 'dev-run.log']);
+const SAVE_EXCLUDE = new Set([
+  'node_modules',
+  'backend-state.json',
+  'dev-run.json',
+  'dev-run.log',
+  '.env', // secrets del workspace nunca van a la app guardada
+]);
+const SAVE_SKIP = (src) => src.endsWith('.sqlite'); // dbs de prueba del dev-run
 
 export function saveBackend(slug) {
   if (!existsSync(join(BACKEND_DIR, 'package.json'))) return { ok: false, error: 'no hay sesión para guardar' };
@@ -148,7 +156,7 @@ export function saveBackend(slug) {
   mkdirSync(config.generatedAppsDir, { recursive: true });
   cpSync(BACKEND_DIR, dest, {
     recursive: true,
-    filter: (src) => !SAVE_EXCLUDE.has(basename(src)),
+    filter: (src) => !SAVE_EXCLUDE.has(basename(src)) && !SAVE_SKIP(src),
   });
   rmSync(statePath, { force: true });
   writeFileSync(
@@ -187,10 +195,19 @@ export function saveBackend(slug) {
   } catch {
     /* package.json siempre existe en el workspace */
   }
-  writeAgentsMd(
-    JSON.parse(readFileSync(join(dest, 'plan.json'), 'utf8')),
-    dest,
-  );
+  // writeAgentsMd(dir, {withBackend, arch, frontendStack}) — envuelto
+  // en try: AGENTS.md es nice-to-have, no debe dejar estado
+  // inconsistente (dest creado + workspace intacto → retry 409).
+  try {
+    const savedPlan = JSON.parse(readFileSync(join(dest, 'plan.json'), 'utf8'));
+    writeAgentsMd(dest, {
+      withBackend: true,
+      arch: resolveArchSafe(savedPlan.arch, 'flat'),
+      frontendStack: undefined,
+    });
+  } catch {
+    /* AGENTS.md falló — el guardado sigue siendo válido */
+  }
   clearInstall(BACKEND_DIR);
   rmSync(BACKEND_DIR, { recursive: true, force: true });
   return { ok: true, slug };
