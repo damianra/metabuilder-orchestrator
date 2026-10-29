@@ -187,6 +187,31 @@ describe('smokeApp', () => {
     expect(r.checks.find((c) => c.name === 'boot').status).toBe('fail');
   });
 
+  it('uvicorn ENOENT (error→close -2, orden real) → retry python3 -m uvicorn', async () => {
+    const port = await freePort();
+    const dir = apiDir();
+    const stack = stackWith(getStack('fastapi'), port); // devCmd real 'uvicorn ...'
+    const spawnFn = (bin) => {
+      if (bin === 'uvicorn') {
+        const c = new EventEmitter();
+        c.stdout = new EventEmitter();
+        c.stderr = new EventEmitter();
+        c.pid = 1;
+        // Orden real de Node en ENOENT: error primero, close(-2) después.
+        setImmediate(() => {
+          c.emit('error', new Error('spawn uvicorn ENOENT'));
+          c.emit('close', -2);
+        });
+        return c;
+      }
+      return fakeSpawn(contract(), { port })();
+    };
+    const r = await smokeApp(dir, stack, { spawnFn, killGroup: killNoop });
+    cleanup();
+    expect(r.ok).toBe(true);
+    expect(r.checks.find((c) => c.name === 'GET /api/health').status).toBe('pass');
+  });
+
   it('puerto ocupado por otro proceso → skip seguro', async () => {
     const port = await freePort();
     const foreign = createServer((req, res) => res.writeHead(200).end()).listen(port, '127.0.0.1');

@@ -99,8 +99,11 @@ export async function smokeApp(dir, stack, {
     child = spawnFn(bin, args, { cwd: dir, detached: true, env: process.env });
     child.stdout?.on('data', (d) => { tail = (tail + d).slice(-4096); });
     child.stderr?.on('data', (d) => { tail = (tail + d).slice(-4096); });
-    child.on('close', (code) => { died = code ?? 1; });
+    // ENOENT emite error→died=127 y DESPUÉS close con code -2 — no
+    // pisar died si error ya lo marcó (sino el retry de uvicorn
+    // queda muerto: 127 → -2 antes del check).
     child.on('error', () => { died = 127; });
+    child.on('close', (code) => { died = died ?? code ?? 1; });
     return child;
   };
   try {
