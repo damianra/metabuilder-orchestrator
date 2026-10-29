@@ -4,6 +4,7 @@
     "moduleResolution": "NodeNext",
     "target": "ES2022",
     "outDir": "dist",
+    "rootDir": "src",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "strict": false,
