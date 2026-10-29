@@ -12,5 +12,6 @@
     "skipLibCheck": true,
     "sourceMap": false
   },
-  "include": ["server/**/*.ts"]
+  "include": ["server/**/*.ts"],
+  "exclude": ["server/**/*.test.ts"]
 }

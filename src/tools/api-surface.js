@@ -64,7 +64,7 @@ function fastapiSurface(dir) {
   return endpoints;
 }
 
-// NestJS: src/**/*.controller.ts → @Controller('api/items') +
+// NestJS: server/**/*.controller.ts (src/ en apps legacy) → @Controller('api/items') +
 // @(Get|Post|Put|Patch|Delete)('sub') → path = /<base>/<sub>.
 function nestSurface(dir) {
   // El código backend vive en server/ (fullstack + backend-only desde

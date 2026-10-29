@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import 'dotenv/config';
 import express from 'express';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
@@ -14,7 +15,8 @@ const app = await NestFactory.create(AppModule, { logger: ['error', 'warn', 'log
 // @Controller('api/...'): un controller fuera de /api quedaría
 // sombreado por el catchall. dist/ solo existe en apps fullstack.
 const http = app.getHttpAdapter().getInstance();
-const DIST = join(process.cwd(), 'dist');
+// buildDir del front: vite → dist/, nextjs → out/ (stack.buildDir).
+const DIST = ['dist', 'out'].map((d) => join(process.cwd(), d)).find((d) => existsSync(join(d, 'index.html'))) ?? join(process.cwd(), 'dist');
 http.use(express.static(DIST));
 http.use((req, res, next) =>
   req.method === 'GET' && !req.path.startsWith('/api')
