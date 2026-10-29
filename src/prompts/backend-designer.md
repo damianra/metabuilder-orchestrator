@@ -22,14 +22,18 @@ seguridad y protección de datos):
   `.env.example` con placeholder) — NUNCA hardcodeados ni commiteados.
   Firmá solo `{sub, email}` — nada de datos sensibles en el payload.
 - **Transporte**: el token viaja en **cookie httpOnly + SameSite +
-  Secure** (`res.cookie('auth', token, {httpOnly, secure, sameSite:'strict'})`;
-  en nest `@Res({passthrough:true})` o interceptor) — cumple el perfil
+  Secure** — `res.cookie('auth', token, { httpOnly: true,
+  sameSite: 'strict', secure: process.env.NODE_ENV === 'production' })`
+  (en nest `@Res({passthrough:true})` o interceptor) — cumple el perfil
   compliance `auth` del sistema, que se activa solo en dominios de
   usuarios y exige cookies (NO devolver el token en el body ni usar
   localStorage). `Authorization: Bearer` solo si el consumidor es una
   API/SPA externa — y en ese caso justificarlo.
+- **CSRF**: al viajar en cookie, los forms autenticados del front llevan
+  token CSRF (`csrf-csrf`/`csurf` o header `x-csrf-token` validado en el
+  guard) — el perfil `auth` lo exige.
 - **Deps**: declará en package.json `jsonwebtoken` + `bcryptjs` +
-  `cookie-parser` (express) o `@nestjs/jwt` + `bcryptjs` (nest) — instalalos con `npm install` en el
+  `cookie-parser` (express) o `@nestjs/jwt` + `bcryptjs` + `cookie-parser` (nest); para los tests de flujo también `@nestjs/testing` + `supertest` en devDeps (express ya trae supertest) — instalalos con `npm install` en el
   workspace y dejalos declarados en `package.json` — el pipeline verifica
   `npm test`, así que sin la dep real los tests de auth fallan.
 - **Endpoints**: `POST /api/auth/register` (valida email formato +
