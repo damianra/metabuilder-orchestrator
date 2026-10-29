@@ -849,7 +849,7 @@ export default function ProjectDetail({ slug, onChanged }) {
 
       {backendOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 p-4 pt-24"
           onClick={() => setBackendOpen(false)}
         >
           <div
@@ -938,7 +938,7 @@ export default function ProjectDetail({ slug, onChanged }) {
 function DeleteConfirmModal({ slug, busy, spin, onCancel, onConfirm }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 p-4 pt-24"
           data-testid="delete-confirm-modal"
           onClick={() => busy !== 'delete' && onCancel()}
         >
