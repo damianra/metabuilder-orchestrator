@@ -13,6 +13,8 @@ export default {
   agentsStack: 'Node.js + Express',
   agentsDb: 'PostgreSQL (vía DB_* en .env)',
   skeletonDir: 'api-skeleton-sql',
+  framework: 'express',
+  dbs: ['postgres'],
 
   toolchain: {
     manifest: 'package.json',

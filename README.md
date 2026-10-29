@@ -74,7 +74,7 @@ Un **stack** es un paquete cerrado de tecnologías — se elige entero, no por p
 | `nest-typeorm` | backend | NestJS 10 + TypeORM (TS) — `DB_TYPE=postgres\|mysql\|mongodb` en `.env` (mongo registra la entity `@ObjectIdColumn` automática) — **backend-only** (`--scope backend`; el form no lo ofrece) | — |
 | `fastapi` | backend | **Python** FastAPI + SQLAlchemy — `DATABASE_URL` en `.env` (sqlite local default; postgres/mysql por URL) — toolchain pip/pytest/uvicorn sobre `requirements.txt`, API en :4000 con auto-mount `app/routers/` | — |
 
-Los stacks están declarados como datos en `src/stacks/` — agregar uno nuevo (ej. Vue, Fastify) = nuevo archivo de definición + skeleton en `src/templates/`; aparece solo en el CLI y el dashboard. Cada def declara su `toolchain` (`manifest`/`installCmd`/`buildCmd`/`testCmd`/`e2eCmd`/`devCmd`/`devPort`/`dockerfile`) y su `detect`/`detectPriority` — así preflight, verify, dev-run, Docker y la detección en resume nunca asumen npm ni `package.json` (habilita stacks no-Node; ver `docs/generation.md`).
+Los stacks están declarados como datos en `src/stacks/` — agregar uno nuevo (ej. Vue, Fastify) = nuevo archivo de definición + skeleton en `src/templates/`; aparece solo en el CLI y el dashboard. El backend se elige como **framework × DB** en el dashboard (2 selects filtrados por compat — `resolveBackendStackId(fw,db) → stackId`); el CLI sigue aceptando el stackId cerrado por back-compat. Cada def declara su `toolchain` (`manifest`/`installCmd`/`buildCmd`/`testCmd`/`e2eCmd`/`devCmd`/`devPort`/`dockerfile`) y su `detect`/`detectPriority` — así preflight, verify, dev-run, Docker y la detección en resume nunca asumen npm ni `package.json` (habilita stacks no-Node; ver `docs/generation.md`).
 
 Ejemplos de contexto inicial:
 

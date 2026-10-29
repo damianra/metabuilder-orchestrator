@@ -13,6 +13,8 @@ export default {
   kind: 'backend',
   label: 'NestJS + TypeORM',
   skeletonDir: 'nest-skeleton',
+  framework: 'nest',
+  dbs: ['postgres', 'mysql', 'mongo'],
   agentsStack: 'Node.js + NestJS (TypeScript, decorators + DI)',
   agentsDb: 'TypeORM con DataSource por DB_TYPE (postgres|mysql|mongodb) en .env — entities TypeORM (mongo via @ObjectIdColumn), synchronize en dev',
   apiSurface: 'nest-controllers',

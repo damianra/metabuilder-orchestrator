@@ -12,6 +12,8 @@ export default {
   agentsStack: 'Node.js + Express',
   agentsDb: 'MySQL/MariaDB (vía DB_* en .env)',
   skeletonDir: 'api-skeleton-sql',
+  framework: 'express',
+  dbs: ['mysql'],
 
   toolchain: {
     manifest: 'package.json',

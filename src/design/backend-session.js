@@ -12,7 +12,7 @@ import { startDevRun, stopDevRun } from '../dashboard/server.js';
 import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
 import { anyBackendManifest, detectBackendStackId } from '../tools/docker.js';
 import { copyApiSkeleton, writeAgentsMd } from '../agents/preflight.js';
-import { getStack } from '../stacks/index.js';
+import { getStack, resolveBackendStackId } from '../stacks/index.js';
 import { resolveArchSafe } from '../arch/index.js';
 
 export const BACKEND_DIR = join(config.rootDir, 'backend-work');
@@ -81,18 +81,27 @@ export function backendStatus(dir = BACKEND_DIR) {
 // copyApiSkeleton (preflight): promueve package.partial.json →
 // package.json y gitignore.partial → .gitignore (sin esto el publish
 // de la app guardada commitearía .env/*.sqlite/node_modules).
-export function createBackend(stackId = 'express-sqlite') {
+export function createBackend(framework = 'express', db = 'sqlite', stackId = null) {
   touchActivity();
   if (anyBackendManifest(BACKEND_DIR)) {
     return { ok: false, error: 'ya existe una sesión de backend — descartala o guardala' };
   }
-  const stack = getStack(stackId);
+  // Dimensiones sueltas (picker framework × db) o stackId directo
+  // (back-compat) — el registry resuelve el stack.
+  const id = stackId ?? resolveBackendStackId(framework, db);
+  const stack = getStack(id);
   if (stack?.kind !== 'backend') {
-    return { ok: false, error: `stack backend inválido "${stackId}"` };
+    return { ok: false, error: `combo backend inválido "${framework}+${db}${stackId ? ` / stack "${stackId}"` : ''}"` };
   }
   mkdirSync(BACKEND_DIR, { recursive: true });
   copyApiSkeleton(BACKEND_DIR, stack.skeletonDir);
-  writeState({ messages: [], created: new Date().toISOString(), stackId: stack.id });
+  writeState({
+    messages: [],
+    created: new Date().toISOString(),
+    stackId: stack.id,
+    framework,
+    db,
+  });
   startInstall(BACKEND_DIR, stack.toolchain?.installCmd ?? 'npm install');
   return { ok: true };
 }

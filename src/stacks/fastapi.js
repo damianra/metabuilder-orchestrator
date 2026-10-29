@@ -14,6 +14,8 @@ export default {
   kind: 'backend',
   label: 'FastAPI + SQLAlchemy',
   skeletonDir: 'fastapi-skeleton',
+  framework: 'fastapi',
+  dbs: ['sqlite', 'postgres', 'mysql'],
   agentsStack: 'Python + FastAPI',
   agentsDb:
     'SQLAlchemy via DATABASE_URL en .env (sqlite local default; postgres/mysql por URL + driver pip)',
