@@ -250,7 +250,7 @@ cp .env.example .env
 - `runs/` — logs JSON-RPC de cada sesión Devin (**gitignored**). `npm run report -- <runId|slug>` los resume en markdown (pasos, intentos, duración por sesión, totales) y lo guarda en `runs/<runId>/report.md`; sin args lista los runs recientes.
 - `tests/` — suite Vitest del orquestador (`npm test`): validator+verticales, slug, shell, install lazy, semáforo Devin, copyApiSkeleton, ghAuthArgs/sanitize/commit idempotente, parseo del reviewer, serialización ACP (stub `devin` en `tests/fixtures/`), resume. Corre en CI (`.github/workflows/test.yml`) en cada PR y push a main.
 - `.github/workflows/test.yml` — CI: `npm audit --audit-level=critical` + `npm test` en PRs y main (Node 22, sin Devin ni secrets).
-- `ROADMAP.md` — roadmap vigente (v11: backend multi-DB — Postgres/MySQL/Mongo — y multi-framework — NestJS; conexiones via `.env` + CRUD de muestra). Histórico en `docs/archive/` (v1–v10 completas).
+- `ROADMAP.md` — roadmap vigente (v12: toolchain por stack — enabler no-Node — + FastAPI como backend + selector framework×DB separado en Fullstack y Backend tab). Histórico en `docs/archive/` (v1–v11 completas).
 - `docs/` — documentación por dominio del orquestador (`pipeline.md`, `generation.md`, `engines.md`, `dashboard.md`); `AGENTS.md` raíz es el índice + reglas operativas.
 
 ## Qué contiene cada app generada
