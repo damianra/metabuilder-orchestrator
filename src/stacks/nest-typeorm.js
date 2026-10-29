@@ -25,8 +25,10 @@ export default {
     testCmd: 'npx vitest run',
     devCmd: 'npm run api',
     devPort: 4000,
-    // Backend TS: build stage tsc + dist/ → Dockerfile.backend-ts.
+    // Backend TS: build stage tsc → Dockerfile.backend-ts;
+    // fullstack-ts para apps con front (vite dist/ + tsc dist-server/).
     dockerfile: 'backend-ts',
+    dockerfileFullstack: 'fullstack-ts',
     markers: ['nest-cli.json'],
   },
 
@@ -42,7 +44,7 @@ export default {
       keywords: ['nestjs'],
       error: 'falta paso de NestJS',
       prompt:
-        'Si incluye backend: NestJS en `src/` — el nest-skeleton ya está instalado (TypeORM + items CRUD de muestra); el paso agrega entities/services/controllers, no scaffold desde cero.',
+        'Si incluye backend: NestJS en `server/` — el nest-skeleton ya está instalado (TypeORM + items CRUD de muestra); el paso agrega entities/services/controllers, no scaffold desde cero.',
     },
     {
       check: 'some',
@@ -50,7 +52,7 @@ export default {
       keywords: ['typeorm'],
       error: 'falta paso de TypeORM',
       prompt:
-        'La capa de datos es TypeORM con `DB_TYPE=postgres|mysql|mongodb` en .env — `src/database.module.ts` arma el DataSource; agregar entidades al array `entities` + registrar el módulo.',
+        'La capa de datos es TypeORM con `DB_TYPE=postgres|mysql|mongodb` en .env — `server/database.module.ts` arma el DataSource; agregar entidades al array `entities` + registrar el módulo.',
     },
     {
       check: 'some',

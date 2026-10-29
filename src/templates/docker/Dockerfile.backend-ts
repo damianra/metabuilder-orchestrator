@@ -1,12 +1,13 @@
 # Backend-only TypeScript (NestJS + TypeORM): build tsc en stage deps,
-# runtime slim con prod deps + dist/. Sin vite build — el stack es
-# backend-only por ahora (fullstack nest queda para cuando haya front).
+# runtime slim con prod deps + dist-server/. El código backend vive en
+# server/ (en fullstack comparte root con el front: dist/ = vite build,
+# dist-server/ = tsc).
 FROM docker.io/library/node:22 AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY tsconfig.json nest-cli.json ./
-COPY src ./src
+COPY server ./server
 RUN npm run build && npm prune --omit=dev
 
 FROM docker.io/library/node:22-slim
@@ -14,7 +15,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package*.json ./
-COPY --from=deps /app/dist ./dist
+COPY --from=deps /app/dist-server ./dist-server
 
 EXPOSE 4000
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist-server/main.js"]

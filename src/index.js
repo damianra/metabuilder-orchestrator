@@ -210,10 +210,6 @@ for (const [flag, kind] of [
 }
 // Los verticales son overlays express+sqlite — con otro stack backend
 // el vertical explícito es error y la inferencia queda en custom.
-  if (args.stackBackend === 'nest-typeorm' && args.scope !== 'backend') {
-    console.error('--stack-backend nest-typeorm es backend-only — usar --scope backend (el combo fullstack+nest choca en dist/ y el Dockerfile TS).');
-    process.exit(2);
-  }
   if (args.stackBackend && args.stackBackend !== 'express-sqlite') {
   if (args.appType && args.appType !== 'custom') {
     console.error(

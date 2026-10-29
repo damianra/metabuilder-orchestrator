@@ -124,10 +124,10 @@ const CONVENTIONS = {
 - Document store: \`col(name)\` de \`server/db.js\` (driver \`mongodb\` nativo, \`MONGO_URI\`/\`MONGO_DB\` en \`.env\`); \`seed-data.js\` por colección via \`seedIfEmpty\` — schemaless, NO hay \`schema.sql\`.
 - Ids \`ObjectId\` en path params (400 si inválido); sin prepared statements — filtrar con objetos del driver.
 - Uploads + security pack ya incluidos. \`npm run api\` :4000; \`npm test\` vitest; la DB viva la aporta el usuario.`,
-  'nest-typeorm': `- TypeScript + NestJS: recurso nuevo = entity + service + controller + módulo en \`src/\` (registrar el módulo en \`app.module\`).
+  'nest-typeorm': `- TypeScript + NestJS: recurso nuevo = entity + service + controller + módulo en \`server/\` (registrar el módulo en \`app.module\`).
 - Controllers \`*.controller.ts\`: \`@Controller('api/<name>')\` + \`@Get/@Post/@Put/@Delete\` — el api-surface los escanea.
-- TypeORM: \`src/database.module.ts\` arma el DataSource por \`DB_TYPE=postgres|mysql\` en \`.env\` — agregar entities al array \`entities\`.
-- \`npm run api\` = \`tsc\` + \`node dist/main.js\` en :4000; \`npm test\` vitest (sin DB viva — stubear el repository).
+- TypeORM: \`server/database.module.ts\` arma el DataSource por \`DB_TYPE=postgres|mysql|mongodb\` en \`.env\` — agregar entities al array \`entities\`.
+- \`npm run api\` = \`build:api\` (tsc → dist-server/) + \`node dist-server/main.js\` en :4000; \`npm test\` vitest (sin DB viva — stubear el repository).
 - Sin uploads ni security pack en el skeleton — agregar como middleware/controller propios si hacen falta.`,
 };
 CONVENTIONS['express-postgres'] = CONVENTIONS['express-mysql'] =

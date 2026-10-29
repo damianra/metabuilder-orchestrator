@@ -14,7 +14,7 @@ import { api } from '../api.js';
 // default = engine configurado del dashboard.
 
 const btn =
-  'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ring-1 ring-accent-500/50 bg-slate-900 hover:bg-slate-950 disabled:opacity-40 disabled:cursor-not-allowed';
+  'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-accent-500/50 bg-slate-900 hover:bg-slate-950 disabled:text-slate-500 disabled:opacity-60 disabled:cursor-not-allowed';
 const select =
   'rounded-lg bg-slate-900 px-2 py-1 text-xs font-semibold text-slate-300 ring-1 ring-accent-500/50 outline-none';
 

@@ -8,7 +8,7 @@ import { timeAgo } from '../util.js';
 const TerminalPanel = lazy(() => import('./TerminalPanel.jsx'));
 
 const btn =
-  'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ring-1 ring-accent-500/50 bg-slate-900 hover:bg-slate-950 disabled:opacity-40 disabled:cursor-not-allowed';
+  'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-accent-500/50 bg-slate-900 hover:bg-slate-950 disabled:text-slate-500 disabled:opacity-60 disabled:cursor-not-allowed';
 
 export default function ProjectDetail({ slug, onChanged }) {
   const [project, setProject] = useState(null);
@@ -199,7 +199,7 @@ export default function ProjectDetail({ slug, onChanged }) {
   if (error) {
     return (
       <div className="space-y-4">
-        <a href="#/backend" className="inline-flex items-center gap-1.5 text-sm text-accent-300 hover:underline">
+        <a href="#/proyectos" className="inline-flex items-center gap-1.5 text-sm text-accent-300 hover:underline">
           <ArrowLeft size={15} /> proyectos
         </a>
         <p className="text-sm text-red-300">error: {error}</p>
@@ -257,7 +257,7 @@ export default function ProjectDetail({ slug, onChanged }) {
 
   return (
     <div className="space-y-4">
-      <a href="#/backend" className="inline-flex items-center gap-1.5 text-sm text-accent-300 hover:underline">
+      <a href="#/proyectos" className="inline-flex items-center gap-1.5 text-sm text-accent-300 hover:underline">
         <ArrowLeft size={15} /> proyectos
       </a>
 
@@ -536,7 +536,7 @@ export default function ProjectDetail({ slug, onChanged }) {
               placeholder={String(suggestedPort)}
               value={hostPort}
               onChange={(e) => setHostPort(e.target.value)}
-              className="w-24 rounded-lg px-2 py-1.5 text-sm ring-1 ring-accent-500/50"
+              className="w-24 rounded-lg border border-accent-500/40 bg-slate-900 text-slate-200 placeholder:text-slate-500 px-2 py-1.5 text-sm outline-none ring-1 ring-accent-500/50"
               title="Puerto host (default sugerido según la variante)"
             />
             <button

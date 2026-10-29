@@ -14,7 +14,7 @@ import { getStack } from '../stacks/index.js';
 export const apiSurfaceKindOf = (stackId) => getStack(stackId)?.apiSurface ?? 'express-routes';
 
 // kind: 'express-routes' (server/routes auto-mount, default) o
-// 'nest-controllers' (src/**/*.controller.ts con @Controller +
+// 'nest-controllers' (server/**/*.controller.ts — src/ en apps legacy — con @Controller +
 // @Get/@Post/...). El kind sale del stack backend detectado.
 export function apiSurfaceFor(dir, { kind = 'express-routes' } = {}) {
   if (kind === 'nest-controllers') return nestSurface(dir);
@@ -64,17 +64,19 @@ function fastapiSurface(dir) {
   return endpoints;
 }
 
-// NestJS: src/**/*.controller.ts → @Controller('api/items') +
+// NestJS: server/**/*.controller.ts (src/ en apps legacy) → @Controller('api/items') +
 // @(Get|Post|Put|Patch|Delete)('sub') → path = /<base>/<sub>.
 function nestSurface(dir) {
-  const srcDir = join(dir, 'src');
+  // El código backend vive en server/ (fullstack + backend-only desde
+  // la reestructura); src/ por apps nest legacy pre-restructure.
   const endpoints = [];
-  if (!existsSync(srcDir)) return endpoints;
+  for (const srcDir of [join(dir, 'server'), join(dir, 'src')]) {
+  if (!existsSync(srcDir)) continue;
   let files = [];
   try {
     files = readdirSync(srcDir, { recursive: true }).sort();
   } catch {
-    return endpoints;
+    continue;
   }
   for (const f of files) {
     const rel = String(f);
@@ -93,6 +95,7 @@ function nestSurface(dir) {
       const path = `/${base}/${sub}`.replace(/\/+/g, '/');
       endpoints.push({ method: m[1].toUpperCase(), path, file: rel.split('/').pop() });
     }
+  }
   }
   return endpoints;
 }
