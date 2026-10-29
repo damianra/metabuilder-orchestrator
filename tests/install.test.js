@@ -30,11 +30,24 @@ describe('install lazy registry', () => {
     expect((await awaitInstall(dir)).ok).toBe(false);
   });
 
-  it('no duplica installs en el mismo dir', async () => {
+  it('dedup por (dir, cmd): mismo comando no repite, distinto corre en paralelo', async () => {
     const dir = tmp();
     const p1 = startInstall(dir, 'echo uno');
-    const p2 = startInstall(dir, 'echo dos');
+    const p2 = startInstall(dir, 'echo uno');
+    const p3 = startInstall(dir, 'echo dos');
     expect(p1).toBe(p2);
-    await p1;
+    expect(p3).not.toBe(p1);
+    // awaitInstall agrega ambos comandos del mismo dir
+    expect((await awaitInstall(dir)).ok).toBe(true);
+    expect(isInstalling(dir)).toBe(false);
+  });
+
+  it('multi-cmd: un install fallido ensucia el agregado con su comando', async () => {
+    const dir = tmp();
+    startInstall(dir, 'echo ok');
+    startInstall(dir, 'echo mal && exit 3');
+    const res = await awaitInstall(dir);
+    expect(res.ok).toBe(false);
+    expect(res.stderr).toContain('[echo mal && exit 3]');
   });
 });

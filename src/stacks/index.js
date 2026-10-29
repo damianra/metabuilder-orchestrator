@@ -85,12 +85,15 @@ export function planRequirements(stacks) {
 
 /**
  * Comandos de finalVerify en orden build → test → e2e por stack
- * (frontend primero), deduplicados por comando.
+ * (frontend primero), deduplicados por comando. Salen del
+ * `toolchain` del stack — así un stack no-Node (pytest, uvicorn)
+ * aporta los suyos sin tocar el finalizer.
  */
 export function finalCheckCommands(stacks) {
   const cmds = [];
   for (const s of active(stacks)) {
-    for (const cmd of [s.verify.build, s.verify.test, s.verify.e2e].filter(Boolean)) {
+    const tc = s.toolchain ?? {};
+    for (const cmd of [tc.buildCmd, tc.testCmd, tc.e2eCmd].filter(Boolean)) {
       if (!cmds.includes(cmd)) cmds.push(cmd);
     }
   }

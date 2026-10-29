@@ -10,7 +10,7 @@ import { startInstall, awaitInstall, clearInstall } from '../tools/install.js';
 import { loadPrompt } from '../agents/common.js';
 import { startDevRun, stopDevRun } from '../dashboard/server.js';
 import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
-import { detectBackendStackId } from '../tools/docker.js';
+import { anyBackendManifest, detectBackendStackId } from '../tools/docker.js';
 import { copyApiSkeleton, writeAgentsMd } from '../agents/preflight.js';
 import { getStack } from '../stacks/index.js';
 import { resolveArchSafe } from '../arch/index.js';
@@ -64,7 +64,7 @@ const pidAlive = (pid) => {
 
 export function backendStatus(dir = BACKEND_DIR) {
   touchActivity();
-  if (!existsSync(join(dir, 'package.json'))) return { exists: false, messages: [] };
+  if (!anyBackendManifest(dir)) return { exists: false, messages: [] };
   let apiRunning = false;
   try {
     const st = JSON.parse(readFileSync(join(dir, 'dev-run.json'), 'utf8'));
@@ -83,7 +83,7 @@ export function backendStatus(dir = BACKEND_DIR) {
 // de la app guardada commitearía .env/*.sqlite/node_modules).
 export function createBackend(stackId = 'express-sqlite') {
   touchActivity();
-  if (existsSync(join(BACKEND_DIR, 'package.json'))) {
+  if (anyBackendManifest(BACKEND_DIR)) {
     return { ok: false, error: 'ya existe una sesión de backend — descartala o guardala' };
   }
   const stack = getStack(stackId);
@@ -93,7 +93,7 @@ export function createBackend(stackId = 'express-sqlite') {
   mkdirSync(BACKEND_DIR, { recursive: true });
   copyApiSkeleton(BACKEND_DIR, stack.skeletonDir);
   writeState({ messages: [], created: new Date().toISOString(), stackId: stack.id });
-  startInstall(BACKEND_DIR);
+  startInstall(BACKEND_DIR, stack.toolchain?.installCmd ?? 'npm install');
   return { ok: true };
 }
 
@@ -127,9 +127,9 @@ CONVENTIONS['express-postgres'] = CONVENTIONS['express-mysql'] =
 
 export async function backendChat(text, { agent = '', onChunk = () => {}, onActivity = () => {} } = {}) {
   touchActivity();
-  if (!existsSync(join(BACKEND_DIR, 'package.json'))) return { ok: false, error: 'no hay sesión — creala primero' };
+  if (!anyBackendManifest(BACKEND_DIR)) return { ok: false, error: 'no hay sesión — creala primero' };
   const install = await awaitInstall(BACKEND_DIR);
-  if (!install?.ok) return { ok: false, error: `npm install falló: ${install?.stderr?.slice(-200) ?? ''}` };
+  if (!install?.ok) return { ok: false, error: `install falló: ${install?.stderr?.slice(-200) ?? ''}` };
   const state = readState();
   const history = state.messages
     .map((m) => `${m.role === 'user' ? 'Usuario' : 'Experto'}: ${m.text}`)
@@ -160,7 +160,7 @@ export async function backendChat(text, { agent = '', onChunk = () => {}, onActi
 
 export const backendDev = () => {
   touchActivity();
-  if (!existsSync(join(BACKEND_DIR, 'package.json'))) {
+  if (!anyBackendManifest(BACKEND_DIR)) {
     return { ok: false, error: 'no hay sesión — creala primero' };
   }
   try {
@@ -189,7 +189,7 @@ const SAVE_EXCLUDE = new Set([
 const SAVE_SKIP = (src) => src.endsWith('.sqlite'); // dbs de prueba del dev-run
 
 export function saveBackend(slug) {
-  if (!existsSync(join(BACKEND_DIR, 'package.json'))) return { ok: false, error: 'no hay sesión para guardar' };
+  if (!anyBackendManifest(BACKEND_DIR)) return { ok: false, error: 'no hay sesión para guardar' };
   const dest = join(config.generatedAppsDir, slug);
   if (existsSync(dest)) return { ok: false, error: `ya existe ${slug}` };
   stopDevRun(BACKEND_DIR);
@@ -199,6 +199,7 @@ export function saveBackend(slug) {
     filter: (src) => !SAVE_EXCLUDE.has(basename(src)) && !SAVE_SKIP(src),
   });
   rmSync(statePath, { force: true });
+  const savedStack = getStack(detectBackendStackId(BACKEND_DIR)) ?? getStack('express-sqlite');
   writeFileSync(
     join(dest, 'plan.json'),
     JSON.stringify(
@@ -208,15 +209,15 @@ export function saveBackend(slug) {
         appType: 'custom',
         arch: 'flat',
         idea: 'api creada en la pestaña Backend (chat experto)',
-        stacks: { backend: detectBackendStackId(BACKEND_DIR) ?? 'express-sqlite' },
+        stacks: { backend: savedStack.id },
         validated: true,
         steps: [
           {
             id: 1,
             type: 'backend',
             description:
-              'API implementada iterando en chat de backend — Express + SQLite sobre api-skeleton con arquitectura flat',
-            verify: 'npm test',
+              `API implementada iterando en chat de backend — ${savedStack.label} sobre su skeleton con arquitectura flat`,
+            verify: savedStack.toolchain?.testCmd ?? 'npm test',
             status: 'done',
             attempts: 1,
           },
@@ -228,12 +229,16 @@ export function saveBackend(slug) {
   );
   // name del package + AGENTS.md por detección (scope backend →
   // reglas de arquitectura + API surface; igual que el pipeline).
+  // El rename aplica solo si el toolchain del stack usa package.json.
   try {
-    const pkg = JSON.parse(readFileSync(join(dest, 'package.json'), 'utf8'));
-    pkg.name = slug;
-    writeFileSync(join(dest, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+    const pkgPath = join(dest, 'package.json');
+    if (existsSync(pkgPath)) {
+      const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+      pkg.name = slug;
+      writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+    }
   } catch {
-    /* package.json siempre existe en el workspace */
+    /* manifest ilegible — el guardado sigue siendo válido */
   }
   // writeAgentsMd(dir, {withBackend, arch, frontendStack}) — envuelto
   // en try: AGENTS.md es nice-to-have, no debe dejar estado

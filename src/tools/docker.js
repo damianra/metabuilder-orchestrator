@@ -1,6 +1,8 @@
-import { copyFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { config } from '../config.js';
+import { getStack, listStacks } from '../stacks/index.js';
+import { hasMarker } from '../stacks/helpers.js';
 
 /**
  * Dockerfile + .dockerignore determinísticos en la app generada —
@@ -11,21 +13,55 @@ import { config } from '../config.js';
  * `outDir` = directorio de build del stack frontend ('dist' en Vite,
  * 'out' en Next export) — los templates llevan @OUT_DIR@.
  */
-// Detección de backend por carpeta: express skeletons usan server/,
-// el nest-skeleton usa src/ + nest-cli.json.
+
+// --- Detección por stack defs ---
+// La identificación de stacks vive en cada def (`detect`, `detectPriority`,
+// `toolchain.markers`) — este módulo solo orquesta: agregar un stack
+// (incluido uno no-Node) nunca toca estas funciones.
+
+const byPriority = (a, b) => (a.detectPriority ?? 100) - (b.detectPriority ?? 100);
+
+// ¿El proyecto tiene backend? Al menos un marker declarado por los
+// stacks backend (express* → server/, nest → nest-cli.json).
 export const hasBackendDir = (dir) =>
-  existsSync(join(dir, 'server')) || existsSync(join(dir, 'nest-cli.json'));
+  listStacks('backend').some((s) => (s.toolchain?.markers ?? []).some((m) => hasMarker(dir, m)));
+
+// ¿El manifest de este stack está en el dir? (package.json, requirements.txt…)
+export const manifestExists = (dir, stack) =>
+  Boolean(stack?.toolchain?.manifest) && existsSync(join(dir, stack.toolchain.manifest));
+
+// ¿Al menos un stack activo tiene su manifest en el dir?
+export const anyManifest = (dir, stacks) =>
+  [stacks.frontend, stacks.backend].some((s) => manifestExists(dir, s));
+
+// ¿Algún manifest de stack backend? (workspace backend-work: la sesión
+// existe si hay manifest, cualquiera sea el stack elegido).
+export const anyBackendManifest = (dir) =>
+  listStacks('backend').some((s) => manifestExists(dir, s));
+
+// Comandos de install a lanzar: por cada stack activo cuyo manifest
+// existe, su `toolchain.installCmd` — dedup por comando (front+back
+// Node comparten 'npm install').
+export const installCommands = (dir, stacks) => {
+  const cmds = [];
+  for (const s of [stacks.frontend, stacks.backend].filter(Boolean)) {
+    const { manifest, installCmd } = s.toolchain ?? {};
+    if (manifest && installCmd && existsSync(join(dir, manifest)) && !cmds.includes(installCmd)) {
+      cmds.push(installCmd);
+    }
+  }
+  return cmds;
+};
 
 export function writeDockerFiles(dir, { frontend, backend, outDir, backendStackId }) {
   const tdir = join(config.templatesDir, 'docker');
-  // Backend TypeScript (nest) necesita build stage tsc + dist/ —
-  // Dockerfile.backend-ts; los express skeletons usan server/index.js.
+  // El template de la variante backend lo declara el stack
+  // (`toolchain.dockerfile`): express → 'backend' (node slim, corre
+  // server/index.js), nest → 'backend-ts' (stage tsc + dist/).
   const variant = frontend && backend
     ? 'fullstack'
     : backend
-      ? (backendStackId ?? detectBackendStackId(dir)) === 'nest-typeorm'
-        ? 'backend-ts'
-        : 'backend'
+      ? getStack(backendStackId ?? detectBackendStackId(dir))?.toolchain?.dockerfile ?? 'backend'
       : 'frontend';
   const tpl = readFileSync(join(tdir, `Dockerfile.${variant}`), 'utf8');
   writeFileSync(join(dir, 'Dockerfile'), tpl.replaceAll('@OUT_DIR@', outDir ?? 'dist'));
@@ -36,54 +72,28 @@ export function writeDockerFiles(dir, { frontend, backend, outDir, backendStackI
   return variant;
 }
 
-const hasFile = (dir, re) => readdirSync(dir).some((f) => re.test(f));
+// Primer stack frontend cuyo `detect` matchea (por detectPriority —
+// next.config.* le gana a vite.config si hay ambos).
+const detectFrontendStack = (dir) =>
+  [...listStacks('frontend')].sort(byPriority).find((s) => s.detect?.(dir)) ?? null;
 
-// ¿El proyecto tiene frontend? Vite o Next config en la raíz.
-export const detectFrontend = (dir) =>
-  existsSync(join(dir, 'vite.config.js')) ||
-  existsSync(join(dir, 'vite.config.mjs')) ||
-  hasFile(dir, /^next\.config\.(m?js|ts)$/);
+// ¿El proyecto tiene frontend? Lo decide el `detect` de los stacks
+// frontend (vite.config.* / next.config.* hoy).
+export const detectFrontend = (dir) => detectFrontendStack(dir) !== null;
 
-// Directorio de build del frontend: Next exporta a out/, Vite a dist/.
-// null si el proyecto no tiene frontend detectable.
-export const detectOutDir = (dir) =>
-  !detectFrontend(dir) ? null : hasFile(dir, /^next\.config\.(m?js|ts)$/) ? 'out' : 'dist';
+// Directorio de build del frontend detectado (`buildDir` del stack:
+// Next exporta a out/, Vite a dist/). null si no hay frontend.
+export const detectOutDir = (dir) => detectFrontendStack(dir)?.buildDir ?? null;
 
 // Id del stack frontend según los archivos (para resume de apps sin
 // plan.stacks): next.config.* → 'nextjs', vite.config.* → 'vite-react',
 // sin frontend → null.
-export const detectStackId = (dir) => {
-  const outDir = detectOutDir(dir);
-  return outDir === 'out' ? 'nextjs' : outDir === 'dist' ? 'vite-react' : null;
-};
+export const detectStackId = (dir) => detectFrontendStack(dir)?.id ?? null;
 
-// Id del stack backend por las deps del package.json (para apps sin
-// plan.stacks y workspaces): better-sqlite3 → express-sqlite,
-// mongodb → express-mongo, nest → nest-typeorm, pg/mysql2 → sql
-// (el skeleton-sql instala ambos drivers — .env DB_DRIVER desempata,
-// default pg como en server/db.js).
-export const detectBackendStackId = (dir) => {
-  let pkg;
-  try {
-    pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-  } catch {
-    return null;
-  }
-  const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-  // nest primero: el nest-skeleton trae `mongodb` como dep — si se
-  // chequea mongo antes, un app nest se detecta como express-mongo.
-  if (deps['@nestjs/core'] || existsSync(join(dir, 'nest-cli.json'))) return 'nest-typeorm';
-  if (deps['better-sqlite3']) return 'express-sqlite';
-  if (deps.mongodb) return 'express-mongo';
-  if (deps.pg || deps.mysql2) {
-    try {
-      const d = readFileSync(join(dir, '.env'), 'utf8').match(/^DB_DRIVER=(\w+)/m)?.[1];
-      if (d === 'mysql') return 'express-mysql';
-      if (d === 'pg') return 'express-postgres';
-    } catch {
-      /* sin .env → default del skeleton */
-    }
-    return 'express-postgres';
-  }
-  return null;
-};
+// Id del stack backend: primer `detect` que matchea, por
+// `detectPriority` (nest primero — trae `mongodb` como dep y le
+// ganaría a express-mongo; mysql/postgres se desempatan por
+// DB_DRIVER en .env dentro de sus propios detect). Para apps sin
+// plan.stacks y workspaces.
+export const detectBackendStackId = (dir) =>
+  [...listStacks('backend')].sort(byPriority).find((s) => s.detect?.(dir))?.id ?? null;

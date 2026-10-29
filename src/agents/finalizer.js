@@ -51,13 +51,13 @@ export async function enablePagesWithRetry(
  * Un fallo → lastError → loop fix (finalRetries) → fail.
  */
 export async function finalVerifyNode(state) {
-  if (isInstalling(state.projectDir)) activity('esperando npm install…');
+  if (isInstalling(state.projectDir)) activity('esperando install de dependencias…');
   const install = await awaitInstall(state.projectDir);
   if (!install.ok) {
     return {
       verifying: 'final',
-      lastError: `npm install falló: ${install.stderr.slice(-500)}`,
-      history: [log('finalVerify', 'FAIL: npm install')],
+      lastError: `install del proyecto falló: ${install.stderr.slice(-500)}`,
+      history: [log('finalVerify', 'FAIL: install del proyecto')],
     };
   }
 
@@ -135,8 +135,16 @@ export function writeReadme(state, { screenshot = null } = {}) {
 
   const devCommands = [frontend?.readme.dev, backend?.readme.dev].filter(Boolean).join('\n');
 
+  // Comandos de test del README: el testCmd de cada toolchain activo
+  // (dedup — los stacks node comparten 'npx vitest run') + los extras
+  // declarados en readme.tests (p.ej. e2e Playwright del frontend).
   const testCommands = [
-    'npm test           # suite Vitest',
+    ...[...new Set(
+      [frontend, backend]
+        .map((s) => s?.toolchain?.testCmd)
+        .filter(Boolean)
+        .map((c) => `${c}   # tests`),
+    )],
     ...(frontend?.readme.tests ?? []),
   ].join('\n');
 

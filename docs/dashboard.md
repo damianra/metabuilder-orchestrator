@@ -17,8 +17,10 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
   plan.stacks, `scripts` del package.json de la app, test-run.json,
   `devRun` (dev-run.json enriquecido con alive por pid + `stale`),
   `publish` (publish.json: running/done/failed + repoUrl/pagesUrl) y
-  `devTargets` (scripts dev/api disponibles → puerto esperado:
-  dev→5173 Vite / 3000 Next según `next.config.*`, api→4000).
+  `devTargets` (devCmd/devPort del toolchain de cada stack detectado
+  → comando a correr: `npm run dev` →5173 Vite / :3000 Next,
+  `npm run api` →4000; fallback legacy a scripts npm `dev`/`api`
+  cuando no hay stack detectable).
 - `GET /api/projects/:slug/test-log` — tail del `test-run.log` de la
   app + el estado del último test run (mismo formato que el log de job).
 - `GET /api/projects/:slug/publish-log` — tail del `publish.log` +
@@ -89,21 +91,23 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
   filesystem + `<engine> build` async si hay engine (docker o podman)
   → estado en docker-build.json, log en docker-build.log; sin engine →
   skipped),
-  `test` (corre `npm test` [+ `npm run test:e2e` si `e2e:true`] async →
-  test-run.json/test-run.log en la app; 400 si faltan los scripts, 409
-  si hay un run en curso **con pid vivo** — un `running` con pid muerto
-  es stale (dashboard caído a mitad) y no bloquea el relanzamiento),
+  `test` (corre el `testCmd` del toolchain detectado [+ `e2eCmd` si
+  `e2e:true`] async → test-run.json/test-run.log en la app; fallback a
+  scripts npm `test`/`test:e2e` sin stack detectable; 400 si no hay
+  comando, 409 si hay un run en curso **con pid vivo** — un `running`
+  con pid muerto es stale (dashboard caído a mitad) y no bloquea el
+  relanzamiento),
   `open-repo` (devuelve la URL https del
   remote para que la UI la abra), `run-container` (`<engine> run -d
   --name <slug> -p <host>:<container>` — containerPort 4000 si hay
   backend, 80 si es frontend-only/nginx; `port` opcional para el host,
   default sugerido por variante; 503 sin engine, 400 si no existe la
   imagen `<slug>:local`, rm -f previo para reemplazo idempotente),
-  `stop-container` (`<engine> rm -f <slug>`), `run-dev` (spawnea
-  `npm run dev`/`npm run api` según los scripts de la app — childs
+  `stop-container` (`<engine> rm -f <slug>`), `run-dev` (spawnea el
+  `devCmd` del toolchain por target — childs
   `detached` con pids en dev-run.json y output compartido en
-  dev-run.log; 400 si la app no tiene scripts dev/api, 409 si hay un
-  run con pids vivos — `running` con pids muertos es stale y no
+  dev-run.log; 400 si la app no tiene comando dev/api detectable, 409 si
+  hay un run con pids vivos — `running` con pids muertos es stale y no
   bloquea), `stop-dev` (`kill(-pid)` SIGTERM al process group de cada
   proc → cubre npm + vite/next + descendientes; marca stopped) y
   `delete` (borra `generated-apps/<slug>` recursivo + `<engine> rm -f`

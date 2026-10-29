@@ -4,6 +4,9 @@
  * prompts del planner leen de acá. Agregar un stack frontend nuevo =
  * un archivo así + registro en src/stacks/index.js.
  */
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
 export default {
   id: 'vite-react',
   kind: 'frontend',
@@ -13,12 +16,23 @@ export default {
   agentsStack: 'React + Vite + Tailwind CSS',
   buildDir: 'dist',
 
-  // Comandos de finalVerify (también los verify canónicos de los pasos).
-  verify: {
-    build: 'npm run build',
-    test: 'npx vitest run',
-    e2e: 'npm run test:e2e',
+  // Toolchain del stack — qué instalar/testear/builkear/servir y con
+  // qué manifest. Los nodos y el dashboard lo leen en vez de
+  // hardcodear npm: es lo que habilita stacks no-Node.
+  toolchain: {
+    manifest: 'package.json',
+    installCmd: 'npm install',
+    buildCmd: 'npm run build',
+    testCmd: 'npx vitest run',
+    e2eCmd: 'npm run test:e2e',
+    devCmd: 'npm run dev',
+    devPort: 5173,
   },
+
+  // next.config.* gana si hay ambos configs (detectPriority menor).
+  detectPriority: 20,
+  detect: (dir) =>
+    existsSync(join(dir, 'vite.config.js')) || existsSync(join(dir, 'vite.config.mjs')),
 
   /**
    * Requisitos que validatePlan impone sobre plan.json.

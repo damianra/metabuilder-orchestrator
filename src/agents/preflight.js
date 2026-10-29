@@ -22,7 +22,7 @@ import { checkEngineAuth } from '../tools/acp.js';
 import { getEngine, resolveEngineAuto, resolveEngineId } from '../engines/index.js';
 import { startInstall } from '../tools/install.js';
 import { ensureProjectDir } from '../tools/slug.js';
-import { writeDockerFiles, detectFrontend, detectStackId, detectOutDir, hasBackendDir } from '../tools/docker.js';
+import { writeDockerFiles, detectFrontend, detectStackId, detectOutDir, hasBackendDir, anyManifest, installCommands } from '../tools/docker.js';
 import { resolveArch, resolveArchSafe } from '../arch/index.js';
 import { resolveStacks, resolveStacksSafe } from '../stacks/index.js';
 import { getVertical } from '../verticals/index.js';
@@ -35,6 +35,8 @@ const BASE_BINS = ['node', 'npm', 'git'];
  * - package.partial.json → se mergea en package.json existente
  *   (fullstack) o se convierte en el package.json (backend puro).
  * - gitignore.partial → se appendea al .gitignore existente o lo crea.
+ * Ambos partials son opcionales — un skeleton no-Node (requirements.txt)
+ * no trae ninguno y la copia igual aplica.
  * `skeletonDir` viene del stack backend activo (src/stacks/).
  */
 export function copyApiSkeleton(dir, skeletonDir = 'api-skeleton') {
@@ -44,21 +46,27 @@ export function copyApiSkeleton(dir, skeletonDir = 'api-skeleton') {
     filter: (s) => !['package.partial.json', 'gitignore.partial'].includes(basename(s)),
   });
 
-  const partial = JSON.parse(readFileSync(join(src, 'package.partial.json'), 'utf8'));
-  const pkgPath = join(dir, 'package.json');
-  if (existsSync(pkgPath)) {
-    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-    pkg.scripts = { ...partial.scripts, ...pkg.scripts };
-    pkg.dependencies = { ...partial.dependencies, ...pkg.dependencies };
-    pkg.devDependencies = { ...partial.devDependencies, ...pkg.devDependencies };
-    writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-  } else {
-    writeFileSync(pkgPath, JSON.stringify(partial, null, 2) + '\n');
+  const partialPath = join(src, 'package.partial.json');
+  if (existsSync(partialPath)) {
+    const partial = JSON.parse(readFileSync(partialPath, 'utf8'));
+    const pkgPath = join(dir, 'package.json');
+    if (existsSync(pkgPath)) {
+      const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+      pkg.scripts = { ...partial.scripts, ...pkg.scripts };
+      pkg.dependencies = { ...partial.dependencies, ...pkg.dependencies };
+      pkg.devDependencies = { ...partial.devDependencies, ...pkg.devDependencies };
+      writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+    } else {
+      writeFileSync(pkgPath, JSON.stringify(partial, null, 2) + '\n');
+    }
   }
 
-  const gi = readFileSync(join(src, 'gitignore.partial'), 'utf8');
-  const giPath = join(dir, '.gitignore');
-  writeFileSync(giPath, existsSync(giPath) ? readFileSync(giPath, 'utf8').trimEnd() + '\n' + gi : gi);
+  const giPartial = join(src, 'gitignore.partial');
+  if (existsSync(giPartial)) {
+    const gi = readFileSync(giPartial, 'utf8');
+    const giPath = join(dir, '.gitignore');
+    writeFileSync(giPath, existsSync(giPath) ? readFileSync(giPath, 'utf8').trimEnd() + '\n' + gi : gi);
+  }
 }
 
 /**
@@ -68,8 +76,8 @@ export function copyApiSkeleton(dir, skeletonDir = 'api-skeleton') {
  * el paso e2e reintenta `npx playwright install chromium` si hiciera
  * falta.
  */
-function prewarmPlaywright(dir) {
-  startInstall(dir)
+function prewarmPlaywright(dir, installCmd = 'npm install') {
+  startInstall(dir, installCmd)
     .then((r) => r.ok && run('npx playwright install chromium', { cwd: dir, timeoutMs: 600_000 }))
     .catch(() => {});
 }
@@ -156,8 +164,8 @@ export async function preflightNode(state) {
   }
 
   // --resume: el directorio ya existe con plan.json — no se crea ni
-  // se copia nada; se re-lanza npm install (idempotente) por si
-  // node_modules quedó a medias o borrado.
+  // se copia nada; se re-lanza el install del toolchain (idempotente)
+  // por si las deps quedaron a medias o borradas.
   if (state.resumeDir) {
     const dir = state.resumeDir;
     const slug = basename(dir);
@@ -208,7 +216,7 @@ export async function preflightNode(state) {
     // Overlays de compliance en resume también: apps pre-v7 o resume
     // con --compliance nuevo reciben los componentes que falten (nunca
     // se pisa un archivo existente — el builder pudo personalizarlo).
-    if (existsSync(join(dir, 'package.json')) && (savedPlan?.scope ?? state.scope) !== 'backend') {
+    if (anyManifest(dir, resumeStacks) && (savedPlan?.scope ?? state.scope) !== 'backend') {
       const ids = complianceFor({
         idea: savedPlan?.idea ?? state.idea,
         scope: savedPlan?.scope ?? state.scope,
@@ -220,9 +228,9 @@ export async function preflightNode(state) {
         if (existsSync(odir)) copyOverlayMissing(odir, dir);
       }
     }
-    if (existsSync(join(dir, 'package.json'))) {
-      startInstall(dir);
-      history.push(log('preflight', 'npm install corriendo en background (resume)'));
+    for (const cmd of installCommands(dir, resumeStacks)) {
+      startInstall(dir, cmd);
+      history.push(log('preflight', `${cmd} corriendo en background (resume)`));
     }
 
     return {
@@ -267,7 +275,10 @@ export async function preflightNode(state) {
   const vertical = getVertical(state.appType);
   const withFrontend = state.scope !== 'backend';
   const withBackend = state.scope !== 'frontend';
-  const fresh = !existsSync(join(dir, 'package.json'));
+  // "fresh" = no hay manifest de ningún stack activo — una app sin
+  // package.json pero con requirements.txt (toolchain python) tampoco
+  // es fresh.
+  const fresh = !anyManifest(dir, stacks);
 
   if (fresh) {
     if (vertical && withFrontend) {
@@ -318,15 +329,17 @@ export async function preflightNode(state) {
       }
     }
 
-    // npm install lazy: corre en background mientras el pipeline
-    // avanza (planner, confirmación del plan). builder/verifier lo
-    // awaitan antes de tocar node_modules.
-    if (existsSync(join(dir, 'package.json'))) {
-      startInstall(dir);
-      history.push(log('preflight', 'npm install corriendo en background'));
-      activity('npm install en background…');
+    // Install lazy: corre en background mientras el pipeline avanza
+    // (planner, confirmación del plan). Los comandos salen del
+    // toolchain de cada stack activo (npm install para los de hoy);
+    // builder/verifier los awaitan antes de tocar las deps.
+    const installCmds = installCommands(dir, stacks);
+    if (installCmds.length) {
+      for (const cmd of installCmds) startInstall(dir, cmd);
+      history.push(log('preflight', `${installCmds.join(' + ')} corriendo en background`));
+      activity('install de dependencias en background…');
       if (vertical && withFrontend) {
-        prewarmPlaywright(dir);
+        prewarmPlaywright(dir, stacks.frontend?.toolchain?.installCmd);
         history.push(log('preflight', 'playwright chromium pre-warm en background'));
       }
     }

@@ -40,15 +40,44 @@ del `src/templates/AGENTS.md` y la sección legal del README generado.
 `skeletonDir`, `buildDir` (dir de salida del build: `dist`/`out`),
 `skeletonDesc`/`agentsStack`/`agentsDb` (texto para planes y AGENTS.md de la app),
 `pagesBaseEnv` (env var para re-build con basePath en Pages; solo
-stacks que lo necesitan), `verify` (comandos de finalVerify),
-`requirements` (reglas declarativas de validatePlan con `error` +
-`prompt` equivalente) y fragmentos `readme`. `resolveStacks(scope,
-overrides)` devuelve `{ frontend, backend }`; `planRequirements` los
-mergea deduplicando; `finalCheckCommands` arma la batería de verify;
-`stackRuleBullets(scope)` genera las reglas que los prompts
-`planner.md`/`plan-repair.md` inyectan via `{{stackRules}}` — el
-prompt nunca diverge del validador porque leen la misma fuente.
+stacks que lo necesitan), `requirements` (reglas declarativas de
+validatePlan con `error` + `prompt` equivalente) y fragmentos `readme`.
+`resolveStacks(scope, overrides)` devuelve `{ frontend, backend }`;
+`planRequirements` los mergea deduplicando; `finalCheckCommands` arma
+la batería de verify; `stackRuleBullets(scope)` genera las reglas que
+los prompts `planner.md`/`plan-repair.md` inyectan via `{{stackRules}}`
+— el prompt nunca diverge del validador porque leen la misma fuente.
 Agregar un stack = nuevo archivo + entrada en el `Map` de `index.js`.
+
+**Toolchain** (`toolchain` en cada def) — los comandos del stack que
+los nodos y el dashboard ejecutan, para que nada quede acoplado a npm:
+
+- `manifest` — archivo que delata deps a instalar (`package.json`;
+  `requirements.txt`/`pyproject.toml` en un stack python).
+- `installCmd` — install de deps en background (`install.js`, disparado
+  por preflight con `installCommands(dir, stacks)` — corre por manifest
+  presente, dedup por comando).
+- `buildCmd`/`testCmd`/`e2eCmd` — batería de `finalVerify`
+  (`finalCheckCommands`), en ese orden. `testCmd` también alimenta la
+  acción `test` del dashboard, el README generado y el `verify`
+  sintético de `saveBackend`.
+- `devCmd`/`devPort` — "Correr en dev" del dashboard (`devTargets`):
+  `npm run dev` :5173/:3000 en front, `npm run api` :4000 en back.
+- `dockerfile` — variante `Dockerfile.<variant>` backend-only que
+  `writeDockerFiles` copia (`backend` express, `backend-ts` nest).
+- `markers` — paths (o RegExp) que delatan el backend dir
+  (`hasBackendDir`): `server/` express, `nest-cli.json` nest.
+
+**Detección** (`detect`, `detectPriority` en cada def) — identificación
+de stack en un dir existente, usada por `detectStackId`/
+`detectBackendStackId`/`detectOutDir`/`detectFrontend`
+(`tools/docker.js`) para resume, apps sin `plan.stacks` y workspaces.
+Menor `detectPriority` se evalúa primero: nest (10) antes que
+express-mongo (30) porque su skeleton trae `mongodb` como dep;
+nextjs (10) antes que vite-react (20) si hay ambos configs; mysql (40)
+antes que postgres (50) — se desempatan por `DB_DRIVER` en `.env`.
+Helpers compartidos en `src/stacks/helpers.js` (`pkgDeps`, `envValue`,
+`hasMarker`).
 
 **Selección**: flags `--stack-frontend <id>` / `--stack-backend <id>`
 (o pregunta interactiva) → `state.stackFrontend/stackBackend` →
@@ -148,7 +177,9 @@ logs del container/dev-run muestran tráfico real) y `server/security.js`
 libres; error handler: 500s responden genérico). `preflight` lo copia
 cuando el scope tiene backend (standalone si scope=backend — el
 `package.partial.json` pasa a `package.json`; overlay sobre app-skeleton
-si fullstack — mergea deps/scripts). Si el vertical tiene
+si fullstack — mergea deps/scripts). `package.partial.json` y
+`gitignore.partial` son **opcionales**: un skeleton no-Node no los trae
+y `copyApiSkeleton` igual aplica la copia. Si el vertical tiene
 `src/verticals/<v>/api/` (schema.sql, seed-data.js, routes/) se copia
 encima de `server/`. También aplica a `appType: 'custom'` con backend.
 Secretos: `.env` (gitignored) leído via `dotenv/config` en

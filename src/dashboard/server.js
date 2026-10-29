@@ -18,7 +18,7 @@ import { run } from '../tools/shell.js';
 import { addJob, cancelJob, clearJobs, jobsDir, readJobs, readWorker } from '../queue.js';
 import { slugify } from '../tools/slug.js';
 import { buildReport, resolveRunId } from '../report.js';
-import { writeDockerFiles, detectFrontend, detectOutDir, detectBackendStackId, hasBackendDir } from '../tools/docker.js';
+import { writeDockerFiles, detectFrontend, detectOutDir, detectStackId, detectBackendStackId, hasBackendDir } from '../tools/docker.js';
 import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
 import { listArchs } from '../arch/index.js';
 import { getCompliance, listCompliance } from '../compliance/index.js';
@@ -217,7 +217,7 @@ const readPublish = (dir) => {
   return s;
 };
 
-// --- Dev local sin containers: `npm run dev`/`npm run api` de la app ---
+// --- Dev local sin containers: el devCmd del toolchain de la app ---
 // Mismo patrón que startTestRun pero los procesos son de larga vida:
 // estado en dev-run.json (pids por script para detectar stale), output
 // en dev-run.log (stream compartido, end:false). Spawn detached →
@@ -227,16 +227,28 @@ const devLogPath = (dir) => join(dir, 'dev-run.log');
 const readDevState = (dir) => readJson(devRunPath(dir));
 const writeDevState = (dir, state) => writeJson(devRunPath(dir), state);
 
-// Qué scripts levantar según lo que la app generada tenga: `api` →
-// Express :4000; `dev` → Vite :5173 o Next :3000 según el config.
+// Qué levantar en modo dev según la app generada: el `devCmd`/`devPort`
+// del toolchain de cada stack detectado (vite → :5173, next → :3000,
+// api → :4000 cualquiera sea el lenguaje). `kind` tipa el target —
+// el probe de endpoints busca el puerto del 'api' sin parsear el cmd.
+// Fallback legacy: la app no matchea ningún stack pero tiene scripts
+// npm `dev`/`api` declarados.
 const devTargets = (dir) => {
-  const scripts = readJson(join(dir, 'package.json'))?.scripts ?? {};
   const targets = [];
-  if (scripts.dev) {
+  const scripts = readJson(join(dir, 'package.json'))?.scripts ?? {};
+  const fe = getStack(detectStackId(dir));
+  const be = getStack(detectBackendStackId(dir));
+  if (fe?.toolchain?.devCmd) {
+    targets.push({ kind: 'dev', cmd: fe.toolchain.devCmd, port: fe.toolchain.devPort });
+  } else if (!fe && scripts.dev) {
     const isNext = existsSync(dir) && readdirSync(dir).some((f) => /^next\.config\.(m?js|ts)$/.test(f));
-    targets.push({ script: 'dev', port: isNext ? 3000 : 5173 });
+    targets.push({ kind: 'dev', cmd: 'npm run dev', port: isNext ? 3000 : 5173 });
   }
-  if (scripts.api) targets.push({ script: 'api', port: 4000 });
+  if (be?.toolchain?.devCmd) {
+    targets.push({ kind: 'api', cmd: be.toolchain.devCmd, port: be.toolchain.devPort });
+  } else if (!be && scripts.api) {
+    targets.push({ kind: 'api', cmd: 'npm run api', port: 4000 });
+  }
   return targets;
 };
 
@@ -252,9 +264,12 @@ export function startDevRun(dir, { spawnFn = spawn } = {}) {
   // stream de larga vida: si el archivo desaparece (app borrada) no
   // queremos un uncaught que tumbe toda la API.
   log.on('error', () => {});
-  log.write(`\n━━ dev run · ${targets.map((t) => `npm run ${t.script}`).join(' + ')} · ${state.startedAt}\n`);
+  log.write(`\n━━ dev run · ${targets.map((t) => t.cmd).join(' + ')} · ${state.startedAt}\n`);
   state.procs.forEach((proc) => {
-    const child = spawnFn('npm', ['run', proc.script], {
+    // El comando se divide en argv simple — los devCmd del toolchain
+    // son comandos de un nivel (npm run api, uvicorn app.main:app…).
+    const [bin, ...args] = proc.cmd.split(/\s+/);
+    const child = spawnFn(bin, args, {
       cwd: dir,
       detached: true,
       env: process.env,
@@ -674,7 +689,7 @@ export function createDashboardApp({
     if (!slug) return;
     const path = String(req.query.path ?? '');
     if (!path.startsWith('/api/')) return res.status(400).json({ error: 'path /api/* requerido' });
-    const port = devTargets(appDir(slug)).find((t) => t.script === 'api')?.port ?? 4000;
+    const port = devTargets(appDir(slug)).find((t) => t.kind === 'api')?.port ?? 4000;
     try {
       const r = await fetch(`http://localhost:${port}${path}`, {
         signal: AbortSignal.timeout(5000),
@@ -1109,23 +1124,29 @@ export function createDashboardApp({
     }
 
     if (action === 'test') {
-      // Corre los scripts de test de la app (npm test [+ test:e2e]) en
-      // background — el resultado queda en test-run.json/test-run.log.
+      // Corre los tests de la app en background — los comandos salen
+      // del toolchain de los stacks detectados (testCmd [+ e2eCmd si
+      // e2e:true]). Fallback legacy: app sin stack detectable pero con
+      // scripts npm `test`/`test:e2e`. Resultado en test-run.json/-log.
+      const fe = getStack(detectStackId(dir));
+      const be = getStack(detectBackendStackId(dir));
       const scripts = readJson(join(dir, 'package.json'))?.scripts ?? {};
-      if (!scripts.test) {
-        return res.status(400).json({ error: 'el proyecto no tiene script "test"' });
+      const cmds = [...new Set([fe, be].map((s) => s?.toolchain?.testCmd).filter(Boolean))];
+      if (!cmds.length && scripts.test) cmds.push('npm test');
+      const e2eCmd = fe?.toolchain?.e2eCmd ?? (scripts['test:e2e'] ? 'npm run test:e2e' : null);
+      if (req.body.e2e && e2eCmd) cmds.push(e2eCmd);
+      if (!cmds.length) {
+        return res.status(400).json({ error: 'el proyecto no tiene tests configurados' });
       }
-      if (req.body.e2e && !scripts['test:e2e']) {
-        return res.status(400).json({ error: 'el proyecto no tiene script "test:e2e"' });
+      if (req.body.e2e && !e2eCmd) {
+        return res.status(400).json({ error: 'el proyecto no tiene comando e2e' });
       }
       const current = readTestState(dir);
       if (current?.status === 'running' && pidAlive(current.pid)) {
         return res.status(409).json({ error: 'ya hay un test run en curso' });
       }
-      const commands = [['npm', 'test']];
-      if (req.body.e2e) commands.push(['npm', 'run', 'test:e2e']);
-      const label = req.body.e2e ? 'npm test + npm run test:e2e' : 'npm test';
-      return res.status(202).json({ testRun: startTest(dir, commands, label) });
+      const label = cmds.join(' + ');
+      return res.status(202).json({ testRun: startTest(dir, cmds.map((c) => c.split(/\s+/)), label) });
     }
 
     if (action === 'run-container') {
@@ -1162,12 +1183,12 @@ export function createDashboardApp({
       return res.json({ stopped: true });
     }
 
-    // Correr la app en modo dev sin containers: npm run dev (Vite/Next)
-    // + npm run api (Express :4000) según los scripts del proyecto.
+    // Correr la app en modo dev sin containers: devCmd del toolchain
+    // de cada stack detectado (Vite/Next :5173/:3000, API :4000).
     if (action === 'run-dev') {
       const targets = devTargets(dir);
       if (!targets.length) {
-        return res.status(400).json({ error: 'el proyecto no tiene scripts dev/api' });
+        return res.status(400).json({ error: 'el proyecto no tiene comando dev/api detectable' });
       }
       const current = readDevRun(dir);
       if (current?.status === 'running' && !current.stale) {

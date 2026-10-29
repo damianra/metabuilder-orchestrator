@@ -4,6 +4,8 @@
  * (DB_DRIVER=pg) y el dialecto que documenta agentsStack/requirements.
  * Agregar un stack = este archivo + registro en src/stacks/index.js.
  */
+import { envValue, pkgDeps } from './helpers.js';
+
 export default {
   id: 'express-postgres',
   kind: 'backend',
@@ -12,8 +14,22 @@ export default {
   agentsDb: 'PostgreSQL (vía DB_* en .env)',
   skeletonDir: 'api-skeleton-sql',
 
-  verify: {
-    test: 'npx vitest run',
+  toolchain: {
+    manifest: 'package.json',
+    installCmd: 'npm install',
+    testCmd: 'npx vitest run',
+    devCmd: 'npm run api',
+    devPort: 4000,
+    dockerfile: 'backend',
+    markers: ['server'],
+  },
+
+  // El skeleton-sql instala pg + mysql2 — .env DB_DRIVER desempata;
+  // sin .env gana pg (default de server/db.js, como siempre).
+  detectPriority: 50,
+  detect: (dir) => {
+    const deps = pkgDeps(dir);
+    return Boolean(deps.pg || deps.mysql2) && envValue(dir, 'DB_DRIVER') !== 'mysql';
   },
 
   requirements: [
