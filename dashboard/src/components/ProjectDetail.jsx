@@ -22,6 +22,7 @@ export default function ProjectDetail({ slug, onChanged }) {
   const [pubOpen, setPubOpen] = useState(false);
   const [withPages, setWithPages] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
   const [showLog, setShowLog] = useState(false);
   const [logData, setLogData] = useState(null);
   const [showPrompt, setShowPrompt] = useState(false);
@@ -146,14 +147,9 @@ export default function ProjectDetail({ slug, onChanged }) {
     }
   };
 
-  // Borrar va al listado — la confirmación es el único gate (no hay undo).
+  // Borrar va al listado — el modal de confirmación es el único gate
+  // (no hay undo). Se abre con setConfirmDel(true).
   const del = async () => {
-    if (
-      !window.confirm(
-        `¿Eliminar ${slug}?\n\nSe borra generated-apps/${slug} entero, más su container y la imagen ${slug}:local si existen. No hay vuelta atrás.`,
-      )
-    )
-      return;
     setBusy('delete');
     setNotice(null);
     try {
@@ -194,6 +190,16 @@ export default function ProjectDetail({ slug, onChanged }) {
 
   const spin = <LoaderCircle size={15} className="animate-spin" />;
 
+  const deleteModal = confirmDel && (
+    <DeleteConfirmModal
+      slug={slug}
+      busy={busy}
+      spin={spin}
+      onCancel={() => setConfirmDel(false)}
+      onConfirm={del}
+    />
+  );
+
   // El detalle da 404 en dirs sin plan.json (run muerto en preflight) —
   // justo el caso de limpieza: ofrecer eliminar igual desde acá.
   if (error) {
@@ -206,10 +212,11 @@ export default function ProjectDetail({ slug, onChanged }) {
         <button
           className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-400 ring-1 ring-red-500/40 bg-slate-900 hover:bg-red-500/10 disabled:opacity-40"
           disabled={busy}
-          onClick={del}
+          onClick={() => setConfirmDel(true)}
         >
           {busy === 'delete' ? spin : <Trash2 size={15} />} Eliminar la carpeta
         </button>
+        {deleteModal}
       </div>
     );
   }
@@ -380,7 +387,7 @@ export default function ProjectDetail({ slug, onChanged }) {
             className="ml-auto inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-400 ring-1 ring-red-500/40 bg-slate-900 hover:bg-red-500/10 disabled:opacity-40 disabled:cursor-not-allowed"
             disabled={busy}
             title="Borra generated-apps/<slug> + container + imagen (si hay engine)"
-            onClick={del}
+            onClick={() => setConfirmDel(true)}
           >
             {busy === 'delete' ? spin : <Trash2 size={15} />} Eliminar
           </button>
@@ -919,6 +926,51 @@ export default function ProjectDetail({ slug, onChanged }) {
           </div>
         </div>
       )}
+
+      {deleteModal}
     </div>
+  );
+}
+
+// Modal de confirmación del delete — definido una vez y renderizado en
+// las dos vistas del detalle (normal y error-sin-plan.json): un solo
+// punto de verdad para el flujo destructivo.
+function DeleteConfirmModal({ slug, busy, spin, onCancel, onConfirm }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          data-testid="delete-confirm-modal"
+          onClick={() => busy !== 'delete' && onCancel()}
+        >
+          <div
+            className="w-full max-w-md rounded-lg bg-slate-900 p-5 ring-1 ring-red-500/40 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-bold text-slate-200">¿Eliminar {slug}?</h3>
+            <p className="mt-2 text-xs text-slate-400">
+              Se borra <code className="font-mono text-slate-300">generated-apps/{slug}</code> entero,
+              más su container y la imagen <code className="font-mono text-slate-300">{slug}:local</code> si
+              existen. No hay vuelta atrás.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                data-testid="delete-confirm-cancel"
+                className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-slate-300 ring-1 ring-accent-500/40 bg-slate-900 hover:bg-slate-950 disabled:opacity-40"
+                disabled={busy === 'delete'}
+                onClick={onCancel}
+              >
+                Cancelar
+              </button>
+              <button
+                data-testid="delete-confirm-accept"
+                className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-300 ring-1 ring-red-500/50 bg-red-500/10 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={busy === 'delete'}
+                onClick={onConfirm}
+              >
+                {busy === 'delete' ? spin : <Trash2 size={15} />} Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
   );
 }
