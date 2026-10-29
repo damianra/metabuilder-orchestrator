@@ -99,8 +99,10 @@ export function createBackend(framework = 'express', db = 'sqlite', stackId = nu
     messages: [],
     created: new Date().toISOString(),
     stackId: stack.id,
-    framework,
-    db,
+    // Con stackId directo (back-compat) los dims vienen por default —
+    // persistimos los del def para no guardar metadata engañosa.
+    framework: stack.framework ?? framework,
+    db: stack.dbs?.includes(db) ? db : (stack.dbs?.[0] ?? db),
   });
   startInstall(BACKEND_DIR, stack.toolchain?.installCmd ?? 'npm install');
   return { ok: true };

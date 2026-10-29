@@ -83,7 +83,11 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
         setClonedFrom(cloneSlug);
       })
       .catch(() => {});
-  }, [cloneSlug]);
+    // options entra a los deps: dimsOfStack necesita la matriz — si
+    // api.project resolvió antes que api.options() (o esta falló y
+    // quedó sin backendMatrix) el backend stack clonado se perdía en
+    // el fallback express+sqlite. Re-prefill una vez cargada.
+  }, [cloneSlug, options?.backendMatrix]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const hasBackend = form.scope !== 'frontend';
