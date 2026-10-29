@@ -49,7 +49,7 @@ export default {
       keywords: ['nestjs'],
       error: 'falta paso de NestJS',
       prompt:
-        'Si incluye backend: NestJS en `server/` — el nest-skeleton ya está instalado (TypeORM + items CRUD de muestra); el paso agrega entities/services/controllers, no scaffold desde cero.',
+        'Si incluye backend: NestJS en `server/` — el nest-skeleton ya está instalado (TypeORM + items CRUD de muestra); el paso agrega entities/services/controllers, no scaffold desde cero. El recurso `items` del skeleton es de MUESTRA: reemplazarlo por el recurso real del dominio (rename/refactor completo) o eliminarlo entero si el dominio no tiene CRUD análogo — `/api/items` no debe quedar en la app final.',
     },
     {
       check: 'some',

@@ -117,37 +117,43 @@ const CONVENTIONS = {
 - DB: \`better-sqlite3\` con prepared statements SIEMPRE — nunca interpolar valores en queries.
 - Security pack ya incluido (headers, rate limit, request logger) — no duplicar.
 - Uploads: \`POST /api/uploads\` (campo \`file\`) → \`{url:"/uploads/<f>"}\`.
-- \`npm run api\` levanta el server en :4000; \`npm test\` corre vitest; el seed corre solo al arrancar.`,
+- \`npm run api\` levanta el server en :4000; \`npm test\` corre vitest; el seed corre solo al arrancar.
+- La muestra \`items\` del skeleton: reemplazarla por el recurso real del dominio (rename/refactor completo) o eliminarla si no aplica — \`/api/items\` no debe quedar en la app final.`,
   'express-postgres': null,
   'express-mysql': null,
   'express-mongo': `- \`server/routes/<name>.js\` exporta un \`Router\` default → se monta solo en \`/api/<name>\`.
 - Document store: \`col(name)\` de \`server/db.js\` (driver \`mongodb\` nativo, \`MONGO_URI\`/\`MONGO_DB\` en \`.env\`); \`seed-data.js\` por colección via \`seedIfEmpty\` — schemaless, NO hay \`schema.sql\`.
 - Ids \`ObjectId\` en path params (400 si inválido); sin prepared statements — filtrar con objetos del driver.
-- Uploads + security pack ya incluidos. \`npm run api\` :4000; \`npm test\` vitest; la DB viva la aporta el usuario.`,
+- Uploads + security pack ya incluidos. \`npm run api\` :4000; \`npm test\` vitest; la DB viva la aporta el usuario.
+- La muestra \`items\` del skeleton: reemplazarla por el recurso real del dominio (rename/refactor completo) o eliminarla si no aplica — \`/api/items\` no debe quedar en la app final.`,
   'nest-typeorm': `- TypeScript + NestJS: recurso nuevo = entity + service + controller + módulo en \`server/\` (registrar el módulo en \`app.module\`).
 - Controllers \`*.controller.ts\`: \`@Controller('api/<name>')\` + \`@Get/@Post/@Put/@Delete\` — el api-surface los escanea.
 - TypeORM: \`server/database.module.ts\` arma el DataSource por \`DB_TYPE=postgres|mysql|mongodb\` en \`.env\` — agregar entities al array \`entities\`.
 - \`npm run api\` = \`build:api\` (tsc → dist-server/) + \`node dist-server/main.js\` en :4000; \`npm test\` vitest (sin DB viva — stubear el repository).
-- Sin uploads ni security pack en el skeleton — agregar como middleware/controller propios si hacen falta.`,
+- Sin uploads ni security pack en el skeleton — agregar como middleware/controller propios si hacen falta.
+- La muestra \`items\` del skeleton: reemplazarla por el recurso real del dominio (rename/refactor completo) o eliminarla si no aplica — \`/api/items\` no debe quedar en la app final.`,
 };
 CONVENTIONS['express-postgres'] = CONVENTIONS['express-mysql'] =
   `- \`server/routes/<name>.js\` exporta un \`Router\` default → se monta solo en \`/api/<name>\`.
 - DB externa: \`server/db.js\` despacha \`DB_DRIVER=pg|mysql\` (pool + \`q()\` que normaliza \`?\`→\`$n\` + \`insert()\` con id portable) — conexión por \`DB_*\` en \`.env\`; schema DDL por driver en \`SCHEMAS\` (db.js), seed via \`seedIfEmpty\`.
 - Prepared statements con \`q()\` SIEMPRE — nunca interpolar valores.
-- Uploads + security pack ya incluidos. \`npm run api\` :4000; \`npm test\` vitest; la DB viva la aporta el usuario.`;
+- Uploads + security pack ya incluidos. \`npm run api\` :4000; \`npm test\` vitest; la DB viva la aporta el usuario.
+- La muestra \`items\` del skeleton: reemplazarla por el recurso real del dominio (rename/refactor completo) o eliminarla si no aplica — \`/api/items\` no debe quedar en la app final.`;
 CONVENTIONS['fastapi'] =
   `- \`app/routers/<name>.py\` exporta \`router\` (APIRouter) → se monta solo en \`/api/<name>\` — agregar un endpoint = agregar un archivo.
 - \`app/db.py\` arma engine/session por \`DATABASE_URL\` en .env (sqlite default; postgres/mysql por URL — el driver pip va en requirements.txt).
 - \`app/models.py\` las entities SQLAlchemy, \`app/schemas.py\` los Pydantic, \`app/seed.py\` seed idempotente (solo si la tabla está vacía).
 - \`uvicorn app.main:app --port 4000\` levanta la API; \`python -m pytest\` corre los tests (TestClient + \`DATABASE_URL\` de test).
-- Sin uploads ni security pack en el skeleton — middleware/routers propios si hacen falta.`;
+- Sin uploads ni security pack en el skeleton — middleware/routers propios si hacen falta.
+- La muestra \`items\` del skeleton: reemplazarla por el recurso real del dominio (rename/refactor completo) o eliminarla si no aplica — \`/api/items\` no debe quedar en la app final.`;
 CONVENTIONS['fastapi-mongo'] =
   `- \`app/routers/<name>.py\` exporta \`router\` (APIRouter) → se monta solo en \`/api/<name>\` — agregar un endpoint = agregar un archivo.
 - \`app/db.py\` arma client/engine por \`MONGO_URI\`/\`MONGO_DB\` en .env — ODMantic sobre Motor (async): los Model son pydantic y van directo como \`response_model\`, sin schemas.py.
 - \`app/models.py\` los Model ODMantic, \`app/seed.py\` seed idempotente (solo si la colección está vacía).
 - \`uvicorn app.main:app --port 4000\` levanta la API; \`python -m pytest\` corre los tests (TestClient + mongomock — sin mongo real).
 - Endpoints async (\`await engine.find/save/delete\`); ids \`ObjectId\` en path.
-- Sin uploads ni security pack en el skeleton — middleware/routers propios si hacen falta.`;
+- Sin uploads ni security pack en el skeleton — middleware/routers propios si hacen falta.
+- La muestra \`items\` del skeleton: reemplazarla por el recurso real del dominio (rename/refactor completo) o eliminarla si no aplica — \`/api/items\` no debe quedar en la app final.`;
 
 export async function backendChat(text, { agent = '', onChunk = () => {}, onActivity = () => {} } = {}) {
   touchActivity();

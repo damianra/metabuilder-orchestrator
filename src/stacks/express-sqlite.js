@@ -41,7 +41,7 @@ export default {
       keywords: ['express'],
       error: 'falta paso de Express',
       prompt:
-        'Si incluye backend: Express en `server/` — el api-skeleton ya está instalado; el paso personaliza schema/seed/routes, no scaffold desde cero.',
+        'Si incluye backend: Express en `server/` — el api-skeleton ya está instalado; el paso personaliza schema/seed/routes, no scaffold desde cero. El recurso `items` del skeleton es de MUESTRA: reemplazarlo por el recurso real del dominio (rename/refactor completo) o eliminarlo entero si el dominio no tiene CRUD análogo — `/api/items` no debe quedar en la app final.',
     },
     {
       check: 'some',
