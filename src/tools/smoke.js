@@ -96,7 +96,11 @@ export async function smokeApp(dir, stack, {
   let child, tail = '';
   let died = null;
   const launch = () => {
-    child = spawnFn(bin, args, { cwd: dir, detached: true, env: process.env });
+    // PORT forzado al devPort del toolchain: un PORT ambiental del
+    // host (CI/containers) haría levantar la app en otro puerto y el
+    // smoke sondearía el suyo → boot-fail espurio terminal. Vite lo
+    // ignora, express/nest/next lo honran, uvicorn va por --port.
+    child = spawnFn(bin, args, { cwd: dir, detached: true, env: { ...process.env, PORT: String(t.devPort) } });
     child.stdout?.on('data', (d) => { tail = (tail + d).slice(-4096); });
     child.stderr?.on('data', (d) => { tail = (tail + d).slice(-4096); });
     // ENOENT emite error→died=127 y DESPUÉS close con code -2 — no
