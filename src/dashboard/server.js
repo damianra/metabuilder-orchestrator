@@ -229,23 +229,25 @@ const writeDevState = (dir, state) => writeJson(devRunPath(dir), state);
 
 // Qué levantar en modo dev según la app generada: el `devCmd`/`devPort`
 // del toolchain de cada stack detectado (vite → :5173, next → :3000,
-// api → :4000 cualquiera sea el lenguaje). Fallback legacy: la app no
-// matchea ningún stack pero tiene scripts npm `dev`/`api` declarados.
+// api → :4000 cualquiera sea el lenguaje). `kind` tipa el target —
+// el probe de endpoints busca el puerto del 'api' sin parsear el cmd.
+// Fallback legacy: la app no matchea ningún stack pero tiene scripts
+// npm `dev`/`api` declarados.
 const devTargets = (dir) => {
   const targets = [];
   const scripts = readJson(join(dir, 'package.json'))?.scripts ?? {};
   const fe = getStack(detectStackId(dir));
   const be = getStack(detectBackendStackId(dir));
   if (fe?.toolchain?.devCmd) {
-    targets.push({ cmd: fe.toolchain.devCmd, port: fe.toolchain.devPort });
+    targets.push({ kind: 'dev', cmd: fe.toolchain.devCmd, port: fe.toolchain.devPort });
   } else if (!fe && scripts.dev) {
     const isNext = existsSync(dir) && readdirSync(dir).some((f) => /^next\.config\.(m?js|ts)$/.test(f));
-    targets.push({ cmd: 'npm run dev', port: isNext ? 3000 : 5173 });
+    targets.push({ kind: 'dev', cmd: 'npm run dev', port: isNext ? 3000 : 5173 });
   }
   if (be?.toolchain?.devCmd) {
-    targets.push({ cmd: be.toolchain.devCmd, port: be.toolchain.devPort });
+    targets.push({ kind: 'api', cmd: be.toolchain.devCmd, port: be.toolchain.devPort });
   } else if (!be && scripts.api) {
-    targets.push({ cmd: 'npm run api', port: 4000 });
+    targets.push({ kind: 'api', cmd: 'npm run api', port: 4000 });
   }
   return targets;
 };
@@ -687,7 +689,7 @@ export function createDashboardApp({
     if (!slug) return;
     const path = String(req.query.path ?? '');
     if (!path.startsWith('/api/')) return res.status(400).json({ error: 'path /api/* requerido' });
-    const port = devTargets(appDir(slug)).find((t) => t.script === 'api')?.port ?? 4000;
+    const port = devTargets(appDir(slug)).find((t) => t.kind === 'api')?.port ?? 4000;
     try {
       const r = await fetch(`http://localhost:${port}${path}`, {
         signal: AbortSignal.timeout(5000),

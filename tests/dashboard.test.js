@@ -68,7 +68,7 @@ beforeEach(async () => {
     },
     startDev: (dir) => {
       startDevCalls.push(dir);
-      return { status: 'running', procs: [{ script: 'dev', pid: process.pid, port: 5173 }] };
+      return { status: 'running', procs: [{ cmd: 'npm run dev', pid: process.pid, port: 5173 }] };
     },
     stopDev: (dir) => {
       stopDevCalls.push(dir);
@@ -1020,19 +1020,19 @@ describe('run-dev sin containers', () => {
     seedDevApp('app-vite');
     const vite = await api('/api/projects/app-vite');
     expect(vite.body.devTargets).toEqual([
-      { cmd: 'npm run dev', port: 5173 },
-      { cmd: 'npm run api', port: 4000 },
+      { kind: 'dev', cmd: 'npm run dev', port: 5173 },
+      { kind: 'api', cmd: 'npm run api', port: 4000 },
     ]);
 
     // next.config.mjs → dev:3000; backend-only → solo api
     const dirNext = seedDevApp('app-next', { dev: 'next dev' });
     writeFileSync(join(dirNext, 'next.config.mjs'), '');
     expect((await api('/api/projects/app-next')).body.devTargets).toEqual([
-      { cmd: 'npm run dev', port: 3000 },
+      { kind: 'dev', cmd: 'npm run dev', port: 3000 },
     ]);
     seedDevApp('app-back', { api: 'node server/index.js' });
     expect((await api('/api/projects/app-back')).body.devTargets).toEqual([
-      { cmd: 'npm run api', port: 4000 },
+      { kind: 'api', cmd: 'npm run api', port: 4000 },
     ]);
   });
 
@@ -1046,8 +1046,8 @@ describe('run-dev sin containers', () => {
     });
     const { body } = await api('/api/projects/app-stack');
     expect(body.devTargets).toEqual([
-      { cmd: 'npm run dev', port: 5173 },
-      { cmd: 'npm run api', port: 4000 },
+      { kind: 'dev', cmd: 'npm run dev', port: 5173 },
+      { kind: 'api', cmd: 'npm run api', port: 4000 },
     ]);
   });
 
@@ -1104,8 +1104,8 @@ describe('run-dev sin containers', () => {
       },
     });
     expect(state.procs).toMatchObject([
-      { cmd: 'npm run dev', port: 5173 },
-      { cmd: 'npm run api', port: 4000 },
+      { kind: 'dev', cmd: 'npm run dev', port: 5173 },
+      { kind: 'api', cmd: 'npm run api', port: 4000 },
     ]);
     expect(spawned).toEqual([
       { cmd: 'npm', args: ['run', 'dev'], cwd: dir, detached: true },
