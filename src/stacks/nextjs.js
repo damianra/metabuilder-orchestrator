@@ -6,6 +6,8 @@
  * `pagesBaseEnv`: el finalize re-buildea con esta env var = /<repo>
  * para que el export salga con basePath correcto en Pages.
  */
+import { hasMarker } from './helpers.js';
+
 export default {
   id: 'nextjs',
   kind: 'frontend',
@@ -17,11 +19,20 @@ export default {
   pagesBaseEnv: 'PAGES_BASE',
 
   // Mismos comandos que vite-react: `npm run build` = `next build`.
-  verify: {
-    build: 'npm run build',
-    test: 'npx vitest run',
-    e2e: 'npm run test:e2e',
+  toolchain: {
+    manifest: 'package.json',
+    installCmd: 'npm install',
+    buildCmd: 'npm run build',
+    testCmd: 'npx vitest run',
+    e2eCmd: 'npm run test:e2e',
+    devCmd: 'npm run dev',
+    devPort: 3000,
   },
+
+  // Si un dir trae vite.config y next.config a la vez, gana next
+  // (su export a out/ es la variante más restrictiva).
+  detectPriority: 10,
+  detect: (dir) => hasMarker(dir, /^next\.config\.(m?js|ts)$/),
 
   requirements: [
     {

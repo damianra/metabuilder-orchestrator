@@ -10,12 +10,12 @@ import { activity, log, writePlan } from './common.js';
 export async function verifierNode(state) {
   const step = state.plan.steps[state.currentStepIndex];
 
-  // npm install corre en background desde preflight — si todavía
-  // está corriendo lo esperamos acá, antes de tocar node_modules.
-  if (isInstalling(state.projectDir)) activity('esperando npm install…');
+  // El install del toolchain corre en background desde preflight — si
+  // todavía está corriendo lo esperamos acá, antes de tocar las deps.
+  if (isInstalling(state.projectDir)) activity('esperando install de dependencias…');
   const install = await awaitInstall(state.projectDir);
   if (!install.ok) {
-    const err = `npm install del proyecto falló: ${install.stderr.slice(-500)}`;
+    const err = `install del proyecto falló: ${install.stderr.slice(-500)}`;
     return {
       lastError: err,
       history: [log('verify', `paso ${step.id}: FAIL — ${err.slice(0, 200)}`)],

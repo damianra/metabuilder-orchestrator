@@ -3,6 +3,8 @@
  * multer + dotenv. Skeleton propio (`api-skeleton-mongo`) — document
  * store con `col(name)` y seed schemaless via `MONGO_URI`/`MONGO_DB`.
  */
+import { pkgDeps } from './helpers.js';
+
 export default {
   id: 'express-mongo',
   kind: 'backend',
@@ -11,9 +13,20 @@ export default {
   agentsDb: 'MongoDB (vía MONGO_URI en .env — document store)',
   skeletonDir: 'api-skeleton-mongo',
 
-  verify: {
-    test: 'npx vitest run',
+  toolchain: {
+    manifest: 'package.json',
+    installCmd: 'npm install',
+    testCmd: 'npx vitest run',
+    devCmd: 'npm run api',
+    devPort: 4000,
+    dockerfile: 'backend',
+    markers: ['server'],
   },
+
+  // Después de nest-typeorm: el nest-skeleton trae `mongodb` como dep
+  // (TypeORM mongo) — sin la prioridad una app nest caería acá.
+  detectPriority: 30,
+  detect: (dir) => Boolean(pkgDeps(dir).mongodb),
 
   requirements: [
     {

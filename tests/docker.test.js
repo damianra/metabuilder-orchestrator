@@ -2,7 +2,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { detectBackendStackId, writeDockerFiles } from '../src/tools/docker.js';
+import { anyManifest, detectBackendStackId, hasBackendDir, installCommands, writeDockerFiles } from '../src/tools/docker.js';
+import { getStack } from '../src/stacks/index.js';
 import { apiSurfaceFor, apiSurfaceKindOf } from '../src/tools/api-surface.js';
 import { writeFileSync, mkdirSync } from 'node:fs';
 
@@ -85,6 +86,41 @@ describe('writeDockerFiles', () => {
     for (const entry of ['node_modules', '.env', '*.sqlite', 'plan.json', 'e2e/']) {
       expect(di).toContain(entry);
     }
+  });
+
+  it('backend-only sale del toolchain.dockerfile del stack (nest → backend-ts)', () => {
+    const variant = writeDockerFiles(tmp(), {
+      frontend: false,
+      backend: true,
+      backendStackId: 'nest-typeorm',
+    });
+    expect(variant).toBe('backend-ts');
+    const df = readFileSync(join(dir, 'Dockerfile'), 'utf8');
+    expect(df).toContain('npm run build');
+    expect(df).toContain('dist/main.js');
+  });
+});
+
+describe('toolchain por stack: markers, manifest e install (v12 #1)', () => {
+  it('hasBackendDir sale de los markers declarados por los stacks', () => {
+    const d = tmp();
+    expect(hasBackendDir(d)).toBe(false);
+    mkdirSync(join(d, 'server'));
+    expect(hasBackendDir(d)).toBe(true);
+    const d2 = tmp();
+    writeFileSync(join(d2, 'nest-cli.json'), '{}');
+    expect(hasBackendDir(d2)).toBe(true);
+  });
+
+  it('anyManifest/installCommands siguen el manifest del toolchain', () => {
+    const stacks = { frontend: getStack('vite-react'), backend: getStack('express-sqlite') };
+    const d = tmp();
+    expect(anyManifest(d, stacks)).toBe(false);
+    expect(installCommands(d, stacks)).toEqual([]);
+    writeFileSync(join(d, 'package.json'), '{}');
+    expect(anyManifest(d, stacks)).toBe(true);
+    // front+back node comparten 'npm install' → dedup por comando
+    expect(installCommands(d, stacks)).toEqual(['npm install']);
   });
 });
 

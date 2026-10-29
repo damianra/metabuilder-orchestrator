@@ -53,7 +53,7 @@ describe('resolveStacks', () => {
       const s = getStack(id);
       expect(s.kind).toBe('backend');
       expect(s.skeletonDir).toBe(skel);
-      expect(s.verify.test).toBe('npx vitest run');
+      expect(s.toolchain.testCmd).toBe('npx vitest run');
       const kw = planRequirements(resolveStacks('backend', { backend: id }))
         .flatMap((r) => r.keywords);
       expect(kw).toContain(kwStack);

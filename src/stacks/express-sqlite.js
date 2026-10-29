@@ -4,6 +4,8 @@
  * prompts del planner leen de acá. Agregar un stack backend nuevo =
  * un archivo así + registro en src/stacks/index.js.
  */
+import { pkgDeps } from './helpers.js';
+
 export default {
   id: 'express-sqlite',
   kind: 'backend',
@@ -12,9 +14,20 @@ export default {
   agentsDb: 'SQLite (archivo local, sin servidores externos)',
   skeletonDir: 'api-skeleton',
 
-  verify: {
-    test: 'npx vitest run',
+  toolchain: {
+    manifest: 'package.json',
+    installCmd: 'npm install',
+    testCmd: 'npx vitest run',
+    devCmd: 'npm run api',
+    devPort: 4000,
+    dockerfile: 'backend',
+    markers: ['server'],
   },
+
+  // nest-typeorm se evalúa primero (trae `mongodb` como dep — si mongo
+  // se chequeara antes, una app nest se detectaría como express-mongo).
+  detectPriority: 20,
+  detect: (dir) => Boolean(pkgDeps(dir)['better-sqlite3']),
 
   // Mismo modelo que vite-react: `error` para validatePlan,
   // `prompt` para los bullets del planner.

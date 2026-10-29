@@ -639,8 +639,8 @@ export default function ProjectDetail({ slug, onChanged }) {
                 disabled={busy || !devTargets.length}
                 title={
                   devTargets.length
-                    ? `Corre ${devTargets.map((t) => `npm run ${t.script}`).join(' + ')} en background`
-                    : 'El proyecto no tiene scripts dev/api'
+                    ? `Corre ${devTargets.map((t) => t.cmd).join(' + ')} en background`
+                    : 'El proyecto no tiene comando dev/api detectable'
                 }
                 onClick={() => act({ action: 'run-dev' }, () => 'dev run iniciado')}
               >

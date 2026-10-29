@@ -3,6 +3,8 @@
  * dotenv. Mismo api-skeleton-sql que express-postgres — difiere el
  * driver default (DB_DRIVER=mysql) y el dialecto documentado.
  */
+import { envValue, pkgDeps } from './helpers.js';
+
 export default {
   id: 'express-mysql',
   kind: 'backend',
@@ -11,8 +13,22 @@ export default {
   agentsDb: 'MySQL/MariaDB (vía DB_* en .env)',
   skeletonDir: 'api-skeleton-sql',
 
-  verify: {
-    test: 'npx vitest run',
+  toolchain: {
+    manifest: 'package.json',
+    installCmd: 'npm install',
+    testCmd: 'npx vitest run',
+    devCmd: 'npm run api',
+    devPort: 4000,
+    dockerfile: 'backend',
+    markers: ['server'],
+  },
+
+  // pg|mysql2 con DB_DRIVER=mysql explícito → mysql (postgres es el
+  // fallback del skeleton-sql, se evalúa después).
+  detectPriority: 40,
+  detect: (dir) => {
+    const deps = pkgDeps(dir);
+    return Boolean(deps.pg || deps.mysql2) && envValue(dir, 'DB_DRIVER') === 'mysql';
   },
 
   requirements: [

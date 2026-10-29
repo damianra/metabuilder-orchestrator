@@ -800,6 +800,18 @@ describe('detalle enriquecido + acción test', () => {
     ]);
   });
 
+  it('action test usa el testCmd del toolchain del stack detectado', async () => {
+    const dir = seedApp('app-stack');
+    mkdirSync(join(dir, 'server'), { recursive: true });
+    writeJson(join(dir, 'package.json'), {
+      name: 'app-stack',
+      dependencies: { 'better-sqlite3': '^12' },
+    });
+    const { status } = await post('/api/projects/app-stack/actions', { action: 'test' });
+    expect(status).toBe(202);
+    expect(startTestCalls[0].commands).toEqual([['npx', 'vitest', 'run']]);
+  });
+
   it('400 sin script test / sin test:e2e pedido / 409 solo si el run sigue vivo', async () => {
     seedApp('app-sin-pkg');
     expect((await post('/api/projects/app-sin-pkg/actions', { action: 'test' })).status).toBe(400);
@@ -1008,29 +1020,48 @@ describe('run-dev sin containers', () => {
     seedDevApp('app-vite');
     const vite = await api('/api/projects/app-vite');
     expect(vite.body.devTargets).toEqual([
-      { script: 'dev', port: 5173 },
-      { script: 'api', port: 4000 },
+      { cmd: 'npm run dev', port: 5173 },
+      { cmd: 'npm run api', port: 4000 },
     ]);
 
     // next.config.mjs → dev:3000; backend-only → solo api
     const dirNext = seedDevApp('app-next', { dev: 'next dev' });
     writeFileSync(join(dirNext, 'next.config.mjs'), '');
-    expect((await api('/api/projects/app-next')).body.devTargets).toEqual([{ script: 'dev', port: 3000 }]);
+    expect((await api('/api/projects/app-next')).body.devTargets).toEqual([
+      { cmd: 'npm run dev', port: 3000 },
+    ]);
     seedDevApp('app-back', { api: 'node server/index.js' });
-    expect((await api('/api/projects/app-back')).body.devTargets).toEqual([{ script: 'api', port: 4000 }]);
+    expect((await api('/api/projects/app-back')).body.devTargets).toEqual([
+      { cmd: 'npm run api', port: 4000 },
+    ]);
+  });
+
+  it('devTargets salen del toolchain del stack detectado (sin scripts npm)', async () => {
+    const dir = seedApp('app-stack');
+    writeFileSync(join(dir, 'vite.config.js'), 'export default {}');
+    mkdirSync(join(dir, 'server'), { recursive: true });
+    writeJson(join(dir, 'package.json'), {
+      name: 'app-stack',
+      dependencies: { 'better-sqlite3': '^12' },
+    });
+    const { body } = await api('/api/projects/app-stack');
+    expect(body.devTargets).toEqual([
+      { cmd: 'npm run dev', port: 5173 },
+      { cmd: 'npm run api', port: 4000 },
+    ]);
   });
 
   it('409 si el dev run sigue vivo; running con pids muertos = stale → relanza', async () => {
     const dir = seedDevApp('app-uno');
     writeJson(join(dir, 'dev-run.json'), {
       status: 'running',
-      procs: [{ script: 'dev', pid: process.pid, port: 5173, alive: true }],
+      procs: [{ cmd: 'npm run dev', pid: process.pid, port: 5173, alive: true }],
     });
     expect((await post('/api/projects/app-uno/actions', { action: 'run-dev' })).status).toBe(409);
 
     writeJson(join(dir, 'dev-run.json'), {
       status: 'running',
-      procs: [{ script: 'dev', pid: 999999, port: 5173, alive: true }],
+      procs: [{ cmd: 'npm run dev', pid: 999999, port: 5173, alive: true }],
     });
     expect((await api('/api/projects/app-uno')).body.devRun.stale).toBe(true);
     expect((await post('/api/projects/app-uno/actions', { action: 'run-dev' })).status).toBe(202);
@@ -1073,8 +1104,8 @@ describe('run-dev sin containers', () => {
       },
     });
     expect(state.procs).toMatchObject([
-      { script: 'dev', port: 5173 },
-      { script: 'api', port: 4000 },
+      { cmd: 'npm run dev', port: 5173 },
+      { cmd: 'npm run api', port: 4000 },
     ]);
     expect(spawned).toEqual([
       { cmd: 'npm', args: ['run', 'dev'], cwd: dir, detached: true },
@@ -1150,7 +1181,7 @@ describe('eliminar proyecto', () => {
     const dir = seedApp('app-uno');
     writeJson(join(dir, 'dev-run.json'), {
       status: 'running',
-      procs: [{ script: 'dev', pid: process.pid, port: 5173, alive: true }],
+      procs: [{ cmd: 'npm run dev', pid: process.pid, port: 5173, alive: true }],
     });
     fakeEngine = 'podman';
     runCmdCalls = [];

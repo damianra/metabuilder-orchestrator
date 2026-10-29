@@ -4,6 +4,10 @@
  * driver). Convención: recurso = entity + service + controller +
  * módulo; controllers se escanean para api-surface (nest-controllers).
  */
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { pkgDeps } from './helpers.js';
+
 export default {
   id: 'nest-typeorm',
   kind: 'backend',
@@ -12,9 +16,21 @@ export default {
   agentsStack: 'Node.js + NestJS (TypeScript, decorators + DI)',
   agentsDb: 'TypeORM con DataSource por DB_TYPE (postgres|mysql|mongodb) en .env — entities TypeORM (mongo via @ObjectIdColumn), synchronize en dev',
 
-  verify: {
-    test: 'npx vitest run',
+  toolchain: {
+    manifest: 'package.json',
+    installCmd: 'npm install',
+    testCmd: 'npx vitest run',
+    devCmd: 'npm run api',
+    devPort: 4000,
+    // Backend TS: build stage tsc + dist/ → Dockerfile.backend-ts.
+    dockerfile: 'backend-ts',
+    markers: ['nest-cli.json'],
   },
+
+  // Primero entre los backend: trae `mongodb` como dep y le ganaría a
+  // express-mongo/mongo si se evaluara después.
+  detectPriority: 10,
+  detect: (dir) => Boolean(pkgDeps(dir)['@nestjs/core']) || existsSync(join(dir, 'nest-cli.json')),
 
   requirements: [
     {

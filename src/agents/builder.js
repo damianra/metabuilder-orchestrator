@@ -1,8 +1,8 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { config } from '../config.js';
 import { runAgentPrompt } from '../tools/acp.js';
 import { awaitInstall, isInstalling } from '../tools/install.js';
+import { anyManifest } from '../tools/docker.js';
+import { stacksFor } from '../stacks/index.js';
 import { activity, log, loadPrompt, runLogPath, textFeed, writePlan } from './common.js';
 
 /**
@@ -14,7 +14,7 @@ export async function builderNode(state) {
   const step = state.plan.steps[state.currentStepIndex];
   const total = state.plan.steps.length;
 
-  if (step.type === 'infra' && existsSync(join(state.projectDir, 'package.json'))) {
+  if (step.type === 'infra' && anyManifest(state.projectDir, stacksFor(state))) {
     return {
       status: 'building',
       history: [
@@ -27,16 +27,17 @@ export async function builderNode(state) {
   plan.steps[state.currentStepIndex].status = 'building';
   writePlan(state.projectDir, plan);
 
-  // npm install corre en background desde preflight — esperarlo
-  // antes de abrir la sesión Devin (el agente puede correr npm).
-  if (isInstalling(state.projectDir)) activity('esperando npm install…');
+  // El install del toolchain corre en background desde preflight —
+  // esperarlo antes de abrir la sesión Devin (el agente puede
+  // necesitar las deps).
+  if (isInstalling(state.projectDir)) activity('esperando install de dependencias…');
   const install = await awaitInstall(state.projectDir);
   if (!install.ok) {
     return {
       plan,
       status: 'failed',
-      lastError: `npm install falló: ${install.stderr.slice(-500)}`,
-      history: [log('build', `paso ${step.id}: npm install falló — no se consume agente`)],
+      lastError: `install del proyecto falló: ${install.stderr.slice(-500)}`,
+      history: [log('build', `paso ${step.id}: install falló — no se consume agente`)],
     };
   }
 

@@ -29,7 +29,7 @@ repos vacíos si el pipeline falla antes.
 - Todo fallo terminal va al nodo `fail` (setea `status: 'failed'`), nunca
   directo a END sin marcar estado.
 - Tools: `src/tools/` (`acp.js` cliente ACP compartido, `shell.js` execa, `slug.js`,
-  `install.js` npm install lazy, `github.js` REST).
+  `install.js` install lazy por toolchain, `github.js` REST).
 - Prompts versionables: `src/prompts/*.md`.
 - `src/templates/AGENTS.md` se **copia a cada app generada** con las reglas
   de UI obligatorias — no confundir con el AGENTS.md de la raíz, que
@@ -40,12 +40,16 @@ repos vacíos si el pipeline falla antes.
 
 ## Install lazy
 
-`npm install` corre **lazy en background** (`src/tools/install.js`:
-`startInstall`/`awaitInstall`/`isInstalling`, registry por projectDir) —
-overlap con planner + confirmación humana. `builder`, `verifier` y
-`finalVerify` lo awaitan antes de tocar node_modules. Si el scope tiene
-frontend también se pre-calienta `npx playwright install chromium` en
-background (nunca se awaita; el paso e2e lo reintenta si hace falta).
+El install corre **lazy en background** (`src/tools/install.js`:
+`startInstall`/`awaitInstall`/`isInstalling`, registry por (dir,
+comando)) — overlap con planner + confirmación humana. Qué comando
+corre y sobre qué manifest lo decide el `toolchain` de cada stack
+activo (`installCommands(dir, stacks)` en `tools/docker.js` — hoy todo
+es `npm install` sobre `package.json`; un stack python declara el
+suyo). `builder`, `verifier` y `finalVerify` los awaitan antes de
+tocar las deps. Si el scope tiene frontend también se pre-calienta
+`npx playwright install chromium` en background (nunca se awaita; el
+paso e2e lo reintenta si hace falta).
 
 ## Confirmación de plan
 
@@ -117,9 +121,11 @@ existente (p.ej. un diseño guardado desde la pestaña Diseñar app):
    el chequeo estructural corre siempre. Así un `--resume` de un
    diseño guardado no cae en `repairPlan` solo por keywords.
 
-`finalVerify` corre la batería según scope: `npm run build` +
-`npx vitest run` + `npm run test:e2e` (solo si hay frontend; backend
-solo vitest). Falla → loop `fix` (finalRetries) → `fail`.
+`finalVerify` corre la batería que arma `finalCheckCommands` desde el
+`toolchain` de cada stack (build → test → e2e, dedup por comando):
+hoy `npm run build` + `npx vitest run` + `npm run test:e2e` (solo si
+hay frontend; backend solo vitest). Falla → loop `fix`
+(finalRetries) → `fail`.
 
 `finalize`:
 1. `git init -b main` + config user + `add -A` + commit en la app.
