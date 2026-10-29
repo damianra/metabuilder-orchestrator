@@ -252,7 +252,7 @@ export default function DesignTab({ onSaved }) {
               <select
                 value={backendFor}
                 onChange={(e) => setBackendFor(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-accent-500"
+                className="mt-1 w-full rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-2 py-1.5 text-sm outline-none focus:border-accent-500"
               >
                 <option value="">sin backend — diseño standalone</option>
                 {backends.map((b) => (
@@ -283,7 +283,7 @@ export default function DesignTab({ onSaved }) {
         {status.backend && (
           <span
             title={`El diseño se copia dentro de generated-apps/${status.backend.slug} al guardar`}
-            className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-200"
+            className="flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-500/40"
           >
             para backend: {status.backend.slug}
             <button
@@ -294,7 +294,7 @@ export default function DesignTab({ onSaved }) {
               }
               onClick={toggleApi}
               disabled={Boolean(busy)}
-              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ring-1 ring-emerald-300 hover:bg-emerald-100 disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ring-1 ring-emerald-500/50 hover:bg-emerald-500/15 disabled:opacity-40"
             >
               {busy === 'api' ? (
                 <LoaderCircle size={9} className="animate-spin" />
@@ -333,7 +333,7 @@ export default function DesignTab({ onSaved }) {
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
               placeholder="nombre-app"
-              className="w-36 rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none focus:border-accent-500"
+              className="w-36 rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-2 py-1 text-xs outline-none focus:border-accent-500"
             />
           )}
           <button
@@ -344,7 +344,7 @@ export default function DesignTab({ onSaved }) {
             }
             onClick={save}
             disabled={Boolean(busy) || (!attachTo && !slug.trim())}
-            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-300 hover:bg-emerald-50 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-500/50 hover:bg-emerald-500/15 disabled:opacity-40"
           >
             {busy === 'save' ? spin : <Save size={12} />}{' '}
             {attachTo ? `guardar en ${attachTo}` : 'guardar como app'}
@@ -432,7 +432,7 @@ export default function DesignTab({ onSaved }) {
               onKeyDown={(e) => e.key === 'Enter' && send()}
               placeholder="Pedile un cambio al diseñador…"
               disabled={busy === 'chat'}
-              className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-accent-500 disabled:opacity-50"
+              className="flex-1 rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-3 py-1.5 text-sm outline-none focus:border-accent-500 disabled:opacity-50"
             />
             <button
               title="Enviar"

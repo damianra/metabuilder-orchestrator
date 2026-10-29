@@ -8,7 +8,7 @@ import { api } from '../api.js';
 // ACP, via GET /api/engines) y el hint de instalación si falta. La
 // elección se persiste en settings.json via POST /api/settings.
 const STATUS = {
-  ok: { text: 'listo', cls: 'text-emerald-400 bg-emerald-50 ring-emerald-200' },
+  ok: { text: 'listo', cls: 'text-emerald-400 bg-emerald-500/15 ring-emerald-500/40' },
   fail: { text: 'sin auth', cls: 'text-amber-400 bg-amber-500/10 ring-amber-500/40' },
   missing: { text: 'no instalado', cls: 'text-red-300 bg-red-500/10 ring-red-500/40' },
 };

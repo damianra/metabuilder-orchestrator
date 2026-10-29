@@ -7,9 +7,9 @@ const chip = (j) =>
   j.cancelRequested
     ? 'bg-amber-500/15 text-amber-300 animate-pulse'
     : j.status === 'done'
-      ? 'bg-emerald-100 text-emerald-800'
+      ? 'bg-emerald-500/15 text-emerald-300'
       : j.status === 'failed'
-        ? 'bg-red-100 text-red-800'
+        ? 'bg-red-500/15 text-red-300'
         : j.status === 'running'
           ? 'bg-accent-500/20 text-accent-300 animate-pulse'
           : 'bg-slate-800 text-slate-400';
