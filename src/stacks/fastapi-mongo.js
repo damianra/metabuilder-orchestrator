@@ -15,6 +15,11 @@ export default {
   skeletonDir: 'fastapi-skeleton-mongo',
   agentsStack: 'Python + FastAPI',
   agentsDb: 'MongoDB via ODMantic/Motor (async) — MONGO_URI/MONGO_DB en .env, schemaless, seed por engine.count',
+  agentsNotes: `- **Backend**: cada \`app/routers/<name>.py\` con \`APIRouter\` se auto-monta en \`/api/<name>\` — no tocar \`app/main.py\` ni \`app/db.py\`. Models ODMantic en \`app/models.py\` (\`response_model\` directo — el Model ya es pydantic).
+- **Capa de datos**: Motor async — \`app/db.py\` con \`MONGO_URI\`/\`MONGO_DB\` en \`.env\` (schemaless); seed por \`engine.count\` en \`init_db\`. Tests con mongomock (sin mongo real).
+- **Sin uploads en el skeleton** — agregar como endpoint propio si hacen falta.
+- **Secretos/config**: \`.env\` (gitignored) — \`python-dotenv\` ya cargado en \`app/main.py\`. Declarar toda variable en \`.env.example\`.
+- **Docker**: los provee el orquestador — el contenedor corre \`uvicorn app.main:app\` (el backend sirve \`dist/\` si existe).`,
   apiSurface: 'fastapi-routes',
   framework: 'fastapi',
   dbs: ['mongo'],

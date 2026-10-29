@@ -3,7 +3,7 @@
  * multer + dotenv. Skeleton propio (`api-skeleton-mongo`) — document
  * store con `col(name)` y seed schemaless via `MONGO_URI`/`MONGO_DB`.
  */
-import { pkgDeps } from './helpers.js';
+import { AGENTS_NOTES_EXPRESS_MONGO, pkgDeps } from './helpers.js';
 
 export default {
   id: 'express-mongo',

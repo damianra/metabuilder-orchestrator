@@ -3,7 +3,7 @@
  * dotenv. Mismo api-skeleton-sql que express-postgres — difiere el
  * driver default (DB_DRIVER=mysql) y el dialecto documentado.
  */
-import { envValue, pkgDeps } from './helpers.js';
+import { AGENTS_NOTES_EXPRESS_SQL, envValue, pkgDeps } from './helpers.js';
 
 export default {
   id: 'express-mysql',

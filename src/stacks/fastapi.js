@@ -19,6 +19,11 @@ export default {
   agentsStack: 'Python + FastAPI',
   agentsDb:
     'SQLAlchemy via DATABASE_URL en .env (sqlite local default; postgres/mysql por URL + driver pip)',
+  agentsNotes: `- **Backend**: cada \`app/routers/<name>.py\` con \`APIRouter\` se auto-monta en \`/api/<name>\` — no tocar \`app/main.py\` ni \`app/db.py\`. Models SQLAlchemy en \`app/models.py\`, schemas pydantic en \`app/schemas.py\`.
+- **Capa de datos**: \`app/db.py\` con \`DATABASE_URL\` (sqlite por default — postgres/mysql via env); seed idempotente en \`init_db\`.
+- **Sin uploads en el skeleton** — agregar como endpoint propio si hacen falta.
+- **Secretos/config**: \`.env\` (gitignored) — \`python-dotenv\` ya cargado en \`app/main.py\`. Declarar toda variable en \`.env.example\`.
+- **Docker**: los provee el orquestador — el contenedor corre \`uvicorn app.main:app\` (el backend sirve \`dist/\` si existe).`,
   apiSurface: 'fastapi-routes',
 
   toolchain: {
