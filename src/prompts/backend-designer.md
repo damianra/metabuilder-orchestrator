@@ -42,8 +42,9 @@ seguridad y protección de datos):
   siempre; errores controlados sin filtrar internals; rate-limit del
   security pack ya cubre fuerza bruta (express) — en nest agregar
   throttle simple en auth.controller si falta.
-- **Sesión al revés de mount**: el middleware/guard lee la cookie
-  `auth` y verifica el JWT → `req.user`/`@Req()`.
+- **Uso**: el middleware/guard resuelve `req.user` desde la cookie
+  `auth` antes de las rutas protegidas; el front solo hace `fetch`
+  con `credentials: 'include'` — no toca el token.
 - **Pruebas obligatorias**: test vitest del flujo — register 201,
   register duplicado 409, login ok → token JWT válido (decodificable),
   login inválido → 401, y una ruta protegida → 401 sin token / 200
