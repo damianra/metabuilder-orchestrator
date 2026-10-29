@@ -7,7 +7,7 @@ v11 completa y mergeada: multi-DB + multi-framework backend
 stack, AGENTS.md parametrizado, Backend tab multi-stack. Post-v11
 mergeados: restyle dashboard retro-gamer, screenshot en README,
 nest+mongo, instrucciones JWT del experto. Registro histórico:
-`docs/archive/ROADMAP-v1..v11.md`.
+`docs/archive/ROADMAP-v1.md` … `ROADMAP-v11.md`.
 
 ## Visión v12
 
@@ -19,11 +19,11 @@ de asumir npm para poder operar stacks no-Node.
 
 ## Backlog v12
 
-| # | Tarea | Descripción | Esfuerzo |
-| --- | --- | --- | --- |
+| # | Tarea | Esfuerzo |
+| --- | --- | --- |
 | 1 | **Toolchain por stack (enabler)** — el stack def gana `toolchain`: `{installCmd, testCmd, devCmd, buildCmd, dockerfile, manifest}`. Preflight (`npm install`), verify (`npm test`/`build`), dev-run (`npm run api`), finalize y `detectBackendStackId` lo leen en vez de hardcodear npm/package.json. Stacks Node conservan su toolchain npm — refactor interno invisible. Sin esto no hay stack no-Node posible. | M-L |
-| 2 | **FastAPI skeleton + stack** — `templates/fastapi-skeleton/`: `app/main.py` (FastAPI + CORS + static `dist/` si existe), `app/routers/items.py` CRUD, `app/db.py` SQLAlchemy + `DATABASE_URL` en `.env` (sqlite default; postgres/mysql por URL), `requirements.txt`, `tests/` pytest, `.env.example`, `Dockerfile.python` (uvicorn :4000 — convención preservada). Scanner `fastapi-routes` (decorators `@router.get|post|put|delete`). Detección por `requirements.txt`/`pyproject`. Stack def `fastapi` con toolchain python + convenciones del experto. | L |
-| 3 | **Selector framework × DB** — `stack back` del form Fullstack y del picker del Backend tab se separan en **2 selects**: framework (`express|nest|fastapi`) y DB (`sqlite|postgres|mysql|mongo`, filtrada por compat). Registry: `stacks.backend` resuelve `(framework,db) → stackId`; back-compat `--stack-backend express-sqlite` → `(express,sqlite)`. `createBackend(framework,db)`, `backend-state.json` guarda ambos, api-surface por framework, Dockerfile por toolchain. | M-L |
+| 2 | **FastAPI skeleton + stack** — `templates/fastapi-skeleton/`: `app/main.py` (FastAPI + CORS + static `dist/` si existe), `app/routers/items.py` CRUD, `app/db.py` SQLAlchemy + `DATABASE_URL` en `.env` (sqlite default; postgres/mysql por URL), `requirements.txt`, `tests/` pytest, `.env.example`, `Dockerfile.python` (uvicorn :4000 — convención preservada). Scanner `fastapi-routes` (decorators `@router.get\|post\|put\|delete`). Detección por `requirements.txt`/`pyproject`. Stack def `fastapi` con toolchain python + convenciones del experto. | L |
+| 3 | **Selector framework × DB** — `stack back` del form Fullstack y del picker del Backend tab se separan en **2 selects**: framework (`express\|nest\|fastapi`) y DB (`sqlite\|postgres\|mysql\|mongo`, filtrada por compat). Registry: `stacks.backend` resuelve `(framework,db) → stackId`; back-compat `--stack-backend express-sqlite` → `(express,sqlite)`. `createBackend(framework,db)`, `backend-state.json` guarda ambos, api-surface por framework, Dockerfile por toolchain. | M-L |
 | 4 | **Docs + matriz** — README/docs de la matriz framework×DB real; verticales siguen express-sqlite-only; `django` queda fuera (monolítico, no API-first — ver decisiones). | S |
 
 ## Matriz framework × DB (objetivo v12)
