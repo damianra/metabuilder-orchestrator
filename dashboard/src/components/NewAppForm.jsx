@@ -126,7 +126,7 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
     }
   };
 
-  const input = 'w-full rounded-lg bg-slate-900 px-3 py-2 text-sm ring-1 ring-accent-500/50 focus:ring-2 focus:ring-accent-500 outline-none';
+  const input = 'w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 ring-1 ring-accent-500/50 focus:ring-2 focus:ring-accent-500 outline-none';
   const label = 'block text-xs font-semibold text-slate-400 mb-1';
 
   return (
@@ -326,6 +326,7 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
       <div className="mt-4 flex items-center gap-3">
         <button
           type="submit"
+          data-testid="newapp-submit"
           disabled={!canSubmit}
           className="inline-flex items-center gap-2 rounded-lg bg-accent-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-accent-700 disabled:opacity-40 disabled:cursor-not-allowed"
         >

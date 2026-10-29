@@ -283,6 +283,7 @@ export default function ProjectDetail({ slug, onChanged }) {
             className={btn}
             disabled={busy || !canResume}
             title={canResume ? 'Retoma el pipeline desde plan.json' : 'El proyecto ya terminó (o no tiene plan.json)'}
+            data-testid="project-resume"
             onClick={() => act({ action: 'resume' }, () => 'resume encolado')}
           >
             {busy === 'resume' ? spin : <Play size={15} />} Resume
@@ -326,6 +327,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                   ? 'Ya hay un test run en curso'
                   : 'Corre npm test sobre la app (en background)'
             }
+            data-testid="project-test-run"
             onClick={() => act({ action: 'test', e2e: withE2e }, () => 'test run iniciado')}
           >
             {busy === 'test' || testRunning ? spin : <FlaskConical size={15} />}
@@ -574,6 +576,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                     <span className="text-xs text-slate-400">{e.file}</span>
                     {devRunning && e.method === 'GET' && (
                       <button
+                        data-testid={`project-probe${e.path.replaceAll("/", "-")}`}
                         title={`GET ${e.path} contra el dev-run (proxy via dashboard)`}
                         onClick={() => probeEndpoint(e.path)}
                         className="ml-auto shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-accent-300 ring-1 ring-accent-300 hover:bg-accent-500/15"
@@ -642,6 +645,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                     ? `Corre ${devTargets.map((t) => t.cmd).join(' + ')} en background`
                     : 'El proyecto no tiene comando dev/api detectable'
                 }
+                data-testid="project-run-dev"
                 onClick={() => act({ action: 'run-dev' }, () => 'dev run iniciado')}
               >
                 {busy === 'run-dev' ? spin : <Play size={15} />} Correr en dev

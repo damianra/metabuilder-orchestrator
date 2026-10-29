@@ -187,6 +187,7 @@ export default function BackendTab({ onSaved }) {
           </p>
           <div className="mt-3 flex gap-2">
             <select
+              data-testid="backend-framework"
               value={dims.framework}
               onChange={(e) => {
                 const fw = e.target.value;
@@ -199,6 +200,7 @@ export default function BackendTab({ onSaved }) {
               ))}
             </select>
             <select
+              data-testid="backend-db"
               value={dims.db}
               onChange={(e) => setDims((d) => ({ ...d, db: e.target.value }))}
               className="w-full rounded-lg border border-accent-500/40 bg-slate-900 px-3 py-2 text-sm text-slate-300"
@@ -209,6 +211,7 @@ export default function BackendTab({ onSaved }) {
             </select>
           </div>
           <button
+            data-testid="backend-create"
             onClick={create}
             disabled={busy === 'create'}
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-700 disabled:opacity-40"
@@ -239,6 +242,7 @@ export default function BackendTab({ onSaved }) {
                 ? 'Frena npm run api (:4000)'
                 : 'Levanta npm run api (:4000) del workspace'
             }
+            data-testid="backend-api-toggle"
             onClick={toggleDev}
             disabled={Boolean(busy)}
             className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ring-1 disabled:opacity-40 ${
@@ -254,11 +258,13 @@ export default function BackendTab({ onSaved }) {
             ref={slugRef}
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
+            data-testid="backend-save-name"
             placeholder="nombre-app"
             className="w-36 rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-2 py-1 text-xs outline-none focus:border-accent-500"
           />
           <button
             title="Mueve el workspace a generated-apps/<slug> como app real"
+            data-testid="backend-save"
             onClick={save}
             disabled={Boolean(busy) || !slug.trim()}
             className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-500/50 hover:bg-emerald-500/15 disabled:opacity-40"
@@ -344,11 +350,13 @@ export default function BackendTab({ onSaved }) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && send()}
+              data-testid="backend-chat-input"
               placeholder="Pedile un cambio al experto backend…"
               disabled={busy === 'chat'}
               className="flex-1 rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-3 py-1.5 text-sm outline-none focus:border-accent-500 disabled:opacity-50"
             />
             <button
+              data-testid="backend-send"
               title="Enviar"
               onClick={() => send()}
               disabled={busy === 'chat' || !input.trim()}
@@ -378,6 +386,7 @@ export default function BackendTab({ onSaved }) {
                     <span className="text-xs text-slate-400">{e.file}</span>
                     {status.apiRunning && e.method === 'GET' && (
                       <button
+                        data-testid={`backend-probe${e.path.replaceAll("/", "-")}`}
                         title={`GET ${e.path} (proxy via dashboard)`}
                         onClick={() => probeEndpoint(e.path)}
                         className="ml-auto shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-accent-300 ring-1 ring-accent-300 hover:bg-accent-500/15"

@@ -214,6 +214,18 @@ y renderiza el reply a medida que llegan los `chunk`.
 (permiso on-demand via el botón campana del header; solo con la pestaña
 en background — el primer poll nunca notifica).
 
+**Testids**: los controles interactivos clave llevan `data-testid`
+para automatización (Playwright / grabaciones / e2e de la propia UI):
+`newapp-submit`, `design-create`, `design-chat-input`, `design-send`,
+`design-preview`, `design-stop-preview`, `design-save-name`,
+`design-save`, `backend-framework`, `backend-db`, `backend-create`,
+`backend-chat-input`, `backend-send`, `backend-api-toggle`,
+`backend-save-name`, `backend-save`, `backend-probe<path>`,
+`project-resume`, `project-run-dev`, `project-test-run`,
+`project-probe<path>` (los probe por endpoint son dinámicos:
+path con `/` → `-`). Los icon-buttons solo tienen `title`
+(tooltip) — el testid es lo que los hace localizables.
+
 ## Flujo diseño → fullstack
 
 Las dos pestañas se componen en un solo proyecto (no son dos

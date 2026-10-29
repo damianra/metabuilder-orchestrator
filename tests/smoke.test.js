@@ -146,6 +146,19 @@ describe('smokeApp', () => {
     expect(r.checks.find((c) => c.name === 'GET /api/items/list').status).toBe('fail');
   });
 
+  it('endpoint GET 401/4xx → ruta montada (auth/validación) — no falla', async () => {
+    const port = await freePort();
+    const dir = apiDir();
+    const stack = stackWith(getStack('express-sqlite'), port); // strict
+    const r = await smokeApp(dir, stack, {
+      spawnFn: fakeSpawn(contract({ '/api/items/list': 401 }), { port }),
+      killGroup: killNoop,
+    });
+    cleanup();
+    expect(r.ok).toBe(true); // strict + 401 → pass: el handler respondió
+    expect(r.checks.find((c) => c.name === 'GET /api/items/list').status).toBe('pass');
+  });
+
   it('DB externa: endpoint 5xx → warn (no fail) y ok:true', async () => {
     const port = await freePort();
     const dir = apiDir();
