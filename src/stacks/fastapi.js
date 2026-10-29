@@ -60,7 +60,7 @@ export default {
       keywords: ['fastapi'],
       error: 'falta paso de FastAPI',
       prompt:
-        'Si incluye backend: FastAPI en `app/` — el fastapi-skeleton ya está instalado (auto-mount de `app/routers/<name>.py` en `/api/<name>`); el paso personaliza models/seed/routers, no scaffold desde cero.',
+        'Si incluye backend: FastAPI en `app/` — el fastapi-skeleton ya está instalado (auto-mount de `app/routers/<name>.py` en `/api/<name>`); el paso personaliza models/seed/routers, no scaffold desde cero. El recurso `items` del skeleton es de MUESTRA: reemplazarlo por el recurso real del dominio (rename/refactor completo) o eliminarlo entero si el dominio no tiene CRUD análogo — `/api/items` no debe quedar en la app final.',
     },
     {
       check: 'some',
