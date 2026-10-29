@@ -72,7 +72,8 @@ export async function smokeApp(dir, stack, {
   const base = `http://127.0.0.1:${t.devPort}`;
   const get = async (path) => {
     try {
-      const res = await fetchFn(base + path);
+      // Timeout corto: un endpoint colgado no debe comer el deadline.
+      const res = await fetchFn(base + path, { signal: AbortSignal.timeout(5_000) });
       return { status: res.status };
     } catch (e) {
       return { status: null, error: e?.message ?? 'conn error' };

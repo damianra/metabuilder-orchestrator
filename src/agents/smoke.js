@@ -6,7 +6,7 @@
  * estricto, externa warn-only). Opt-out: `--no-smoke` (canal
  * smokeEnabled) o `plan.smoke === false`.
  */
-import { resolveStacks } from '../stacks/index.js';
+import { resolveStacksSafe } from '../stacks/index.js';
 import { smokeApp } from '../tools/smoke.js';
 
 const stamp = (msg) => ({ ts: new Date().toISOString(), node: 'smoke', msg });
@@ -20,7 +20,9 @@ export async function smokeNode(state, extra) {
     return { history: [stamp('skip — smoke deshabilitado (--no-smoke / plan.smoke=false)')] };
   }
   const scope = state.plan?.scope ?? state.scope ?? 'backend';
-  const stacks = resolveStacks(scope, state.plan?.stacks ?? {});
+  // Safe: plan.stacks editado a mano con id inválido no debe crashear
+  // el nodo — sin stacks resolubles, skip.
+  const stacks = resolveStacksSafe(scope, state.plan?.stacks ?? {});
   const dir = state.projectDir;
 
   const results = [];
