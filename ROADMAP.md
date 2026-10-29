@@ -29,7 +29,8 @@ v12, no porque se abra una nueva dirección.
 | 5 | **Fullstack × NestJS** — nest deja de ser backend-only: skeleton reestructurado `src/`→`server/` (colisión con `src/` de vite), tsc emite a `dist-server/` (colisión con `dist/` del build), SPA serving por express adapter (static `dist/` + catchall no-/api → index.html), `build:api` como script propio (el merge preflight da el `build` a vite), `Dockerfile.fullstack-ts`, api-surface escanea `server/`+`src/` legacy, fuera el guard de server y el disabled del form. **mergeado PR #101** | M |
 
 | 6 | **AGENTS.md stack-conditional** — la sección backend del AGENTS.md generado era express-específica (`server/routes` auto-mount, `server/index.js`, uploads) aun cuando la app era nest/fastapi → un agente que retomara la app leía convenciones equivocadas. Placeholder `{{backendNotes}}` renderizado desde `agentsNotes` por stack def. | S |
-| 7 | **nextjs E2E verify** — `nextjs` figura en el selector de front pero ningún run real lo ejercitó post-`@OUT_DIR@` (`out/` vs `dist/` en smoke/Dockerfile). Correr una generación fullstack con `--stack-frontend nextjs` y verificar buildDir/serve/docker. | S |
+| 7 | **nextjs E2E verify** — `nextjs` figura en el selector de front pero ningún run real lo ejercitó post-`@OUT_DIR@` (`out/` vs `dist/` en smoke/Dockerfile). Correr una generación fullstack con `--stack-frontend nextjs` y verificar buildDir/serve/docker. **verificado E2E — `gastos-next` done (smoke SPA ✓, `out/` servida, e2e propia 8/8 + validación Playwright manual)** | S |
+| 8 | **Modal de confirmación de delete** — `ProjectDetail.del()` usaba `window.confirm()` nativo (rompe el tema oscuro, no estilable, choca con la UI). Modal propio con el estilo del panel "Agregar backend" (overlay `bg-slate-900/40`, panel `ring-red-500/40`, Cancelar/Eliminar con busy-state + testids). | XS |
 
 ## Límites conocidos (documentados — no accionables hoy)
 
