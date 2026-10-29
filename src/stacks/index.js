@@ -5,10 +5,11 @@ import expressMysql from './express-mysql.js';
 import expressMongo from './express-mongo.js';
 import nestTypeorm from './nest-typeorm.js';
 import fastapi from './fastapi.js';
+import fastapiMongo from './fastapi-mongo.js';
 import nextjs from './nextjs.js';
 
 const STACKS = new Map(
-  [viteReact, expressSqlite, expressPostgres, expressMysql, expressMongo, nestTypeorm, fastapi, nextjs].map(
+  [viteReact, expressSqlite, expressPostgres, expressMysql, expressMongo, nestTypeorm, fastapi, fastapiMongo, nextjs].map(
     (s) => [s.id, s],
   ),
 );

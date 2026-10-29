@@ -141,6 +141,13 @@ CONVENTIONS['fastapi'] =
 - \`app/models.py\` las entities SQLAlchemy, \`app/schemas.py\` los Pydantic, \`app/seed.py\` seed idempotente (solo si la tabla está vacía).
 - \`uvicorn app.main:app --port 4000\` levanta la API; \`python -m pytest\` corre los tests (TestClient + \`DATABASE_URL\` de test).
 - Sin uploads ni security pack en el skeleton — middleware/routers propios si hacen falta.`;
+CONVENTIONS['fastapi-mongo'] =
+  `- \`app/routers/<name>.py\` exporta \`router\` (APIRouter) → se monta solo en \`/api/<name>\` — agregar un endpoint = agregar un archivo.
+- \`app/db.py\` arma client/engine por \`MONGO_URI\`/\`MONGO_DB\` en .env — ODMantic sobre Motor (async): los Model son pydantic y van directo como \`response_model\`, sin schemas.py.
+- \`app/models.py\` los Model ODMantic, \`app/seed.py\` seed idempotente (solo si la colección está vacía).
+- \`uvicorn app.main:app --port 4000\` levanta la API; \`python -m pytest\` corre los tests (TestClient + mongomock — sin mongo real).
+- Endpoints async (\`await engine.find/save/delete\`); ids \`ObjectId\` en path.
+- Sin uploads ni security pack en el skeleton — middleware/routers propios si hacen falta.`;
 
 export async function backendChat(text, { agent = '', onChunk = () => {}, onActivity = () => {} } = {}) {
   touchActivity();
