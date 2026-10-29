@@ -6,16 +6,19 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 
 const app = await NestFactory.create(AppModule, { logger: ['error', 'warn', 'log'] });
-// Los controllers de Nest se bindean en init() — los middlewares SPA
-// se registran DESPUÉS para no sombrearlos (un @Controller fuera de
-// /api seguiría ganando al catchall). dist/ solo existe en fullstack.
-await app.init();
+// SPA: static + catchall registrados ANTES de los controllers (init,
+// llamada por listen, los bindea junto al 404-handler — si fueran
+// post-init quedarían detrás del 404 de Nest y serían código muerto).
+// /api/* cae a Nest (ruta montada o su 404 JSON); el resto de GETs
+// sirve index.html si existe dist/. La convención exige
+// @Controller('api/...'): un controller fuera de /api quedaría
+// sombreado por el catchall. dist/ solo existe en apps fullstack.
 const http = app.getHttpAdapter().getInstance();
 const DIST = join(process.cwd(), 'dist');
 http.use(express.static(DIST));
 http.use((req, res, next) =>
   req.method === 'GET' && !req.path.startsWith('/api')
-    ? res.sendFile(join(DIST, 'index.html'), () => next())
+    ? res.sendFile(join(DIST, 'index.html'), (err) => { if (err) next(); })
     : next(),
 );
 
