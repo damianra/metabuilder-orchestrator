@@ -49,12 +49,12 @@ const apiDir = (withDist = false) => {
   mkdirSync(join(d, 'app', 'routers'), { recursive: true });
   writeFileSync(
     join(d, 'app', 'routers', 'items.py'),
-    "router = APIRouter()\n@router.get('')\ndef l(): ...\n@router.post('')\ndef c(): ...\n",
+    "router = APIRouter()\n@router.get('')\ndef l(): ...\n@router.get('/{item_id}')\ndef g(): ...\n@router.post('')\ndef c(): ...\n",
   );
   mkdirSync(join(d, 'server', 'routes'), { recursive: true });
   writeFileSync(
     join(d, 'server', 'routes', 'items.js'),
-    "import { Router } from 'express';\nconst router = Router();\nrouter.get('/list', (req, res) => res.json([]));\nexport default router;\n",
+    "import { Router } from 'express';\nconst router = Router();\nrouter.get('/list', (req, res) => res.json([]));\nrouter.get('/:id', (req, res) => res.json({}));\nexport default router;\n",
   );
   if (withDist) {
     mkdirSync(join(d, 'dist'), { recursive: true });

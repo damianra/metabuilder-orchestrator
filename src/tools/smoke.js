@@ -163,7 +163,15 @@ export async function smokeApp(dir, stack, {
       // DB embebida; 5xx = warn con externa, 404 = wiring roto siempre).
       const endpoints = apiSurfaceFor(dir, { kind: apiSurfaceKindOf(stack?.id) })
         .filter((e) => e.method === 'GET');
-      for (const ep of endpoints) {
+      // Rutas parametrizadas (`/:id`, `/{item_id}`) no se fetchean: el
+      // 404 sería del RECURSO inexistente, no de la ruta — son
+      // inverificables sin un id real (verticales orders/blog las usan).
+      const isParameterized = (p) => /\/:[^/]+/.test(p) || /\/\{[^/]+\}/.test(p);
+      const parameterized = endpoints.filter((e) => isParameterized(e.path)).length;
+      if (parameterized) {
+        add('GETs parametrizados', 'warn', `${parameterized} ruta(s) con :param/{param} no verificables por smoke (sin id existente)`);
+      }
+      for (const ep of endpoints.filter((e) => !isParameterized(e.path))) {
         const r = await get(ep.path);
         if (r.status === 404) mark(`GET ${ep.path}`, false, '404 — ruta no montada');
         else if (r.status === 200) mark(`GET ${ep.path}`, true, '200');
