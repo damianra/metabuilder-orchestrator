@@ -22,6 +22,7 @@ function parseArgs(argv) {
     else if (a === '--github') args.github = true;
     else if (a === '--ghpages') args.ghpages = true;
     else if (a === '--verify-docker') args.verifyDocker = true;
+    else if (a === '--no-smoke') args.noSmoke = true;
     else if (a === '--quiet') args.quiet = true;
     else if (a === '--verbose') args.verbose = true;
     else if (a === '--yes' || a === '-y') args.yes = true;
@@ -259,6 +260,7 @@ const initial = {
   deployPages: args.ghpages,
   whatsappPhone: args.phone ?? '',
   verifyDocker: Boolean(args.verifyDocker),
+  smokeEnabled: !args.noSmoke,
   stackFrontend: args.stackFrontend ?? null,
   stackBackend: args.stackBackend ?? null,
   compliance: args.compliance ?? null,

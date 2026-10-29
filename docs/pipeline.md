@@ -4,7 +4,7 @@
 
 ```
 preflight → planner → validate ─┬─→ confirm → builder → verify ─┬─→ builder (siguiente paso)
-                                │                               ├─→ finalVerify → review ─┬─→ finalize → END
+                                │                               ├─→ finalVerify → review ─┬─→ smoke → finalize → END
                                 └─→ repairPlan                  └─→ fixer → verify        └─→ fixer
 ```
 
@@ -126,6 +126,25 @@ existente (p.ej. un diseño guardado desde la pestaña Diseñar app):
 hoy `npm run build` + `npx vitest run` + `npm run test:e2e` (solo si
 hay frontend; backend solo vitest). Falla → loop `fix`
 (finalRetries) → `fail`.
+
+`smoke` (v13) es verificación **runtime** del artifact final, entre
+`review` OK y `finalize`: levanta el `devCmd` del toolchain del stack
+(spawn detached, kill del process group al terminar — nunca huérfano),
+espera el puerto (~30s) y verifica el contrato HTTP — `GET /api/health`
+→ 200, cada `GET` del `apiSurface` del stack → no-404, `/api/*`
+desconocida → 404 JSON, y si existe `dist/`/`out/` → `GET /` 200 +
+deep route → `index.html` (SPA fallback). Severidad por DB: **embebida
+(sqlite) → estricto** — cualquier check falla → `fail`; **externa
+(postgres/mysql/mongo) → warn-only en la capa de datos** — un endpoint
+5xx es warn y un boot que no levanta es skip+warn, porque la regla del
+workflow es que la validación nunca depende de servicios/credenciales
+reales (wiring sí sigue fallando: 404s y SPA roto siempre fallan).
+Frontend-only → `GET /` 200 sobre el dev server. Si el puerto ya está
+ocupado por otro proceso → skip seguro (imposible distinguir server
+propio de ajeno). Opt-out: `--no-smoke` (canal `smokeEnabled`) o
+`plan.smoke === false`. El resultado queda en el canal `smokeResult`
++ history del run. Implementación: `src/tools/smoke.js` (deps
+inyectables) + `src/agents/smoke.js`.
 
 `finalize`:
 1. `git init -b main` + config user + `add -A` + commit en la app.
