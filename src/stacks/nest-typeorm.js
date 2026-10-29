@@ -10,7 +10,7 @@ export default {
   label: 'NestJS + TypeORM',
   skeletonDir: 'nest-skeleton',
   agentsStack: 'Node.js + NestJS (TypeScript, decorators + DI)',
-  agentsDb: 'TypeORM con DataSource por DB_TYPE (postgres|mysql) en .env — entities TypeORM, synchronize en dev',
+  agentsDb: 'TypeORM con DataSource por DB_TYPE (postgres|mysql|mongodb) en .env — entities TypeORM (mongo via @ObjectIdColumn), synchronize en dev',
 
   verify: {
     test: 'npx vitest run',
@@ -31,7 +31,7 @@ export default {
       keywords: ['typeorm'],
       error: 'falta paso de TypeORM',
       prompt:
-        'La capa de datos es TypeORM con `DB_TYPE=postgres|mysql` en .env — `src/database.module.ts` arma el DataSource; agregar entidades al array `entities` + registrar el módulo.',
+        'La capa de datos es TypeORM con `DB_TYPE=postgres|mysql|mongodb` en .env — `src/database.module.ts` arma el DataSource; agregar entidades al array `entities` + registrar el módulo.',
     },
     {
       check: 'some',

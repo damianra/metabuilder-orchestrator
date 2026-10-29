@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import { toId } from '../database.module.js';
 import { ItemsService } from './items.service.js';
 
 /**
@@ -25,6 +26,6 @@ export class ItemsController {
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.items.remove(Number(id));
+    return this.items.remove(toId(id));
   }
 }

@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ObjectId } from 'mongodb';
 import { Item } from './items/item.entity.js';
+import { ItemMongo } from './items/item.mongo.entity.js';
 
 /**
  * DataSource por env: `DB_TYPE=postgres|mysql|mongodb` en .env —
@@ -11,7 +13,16 @@ import { Item } from './items/item.entity.js';
  * formales usar typeorm migration:generate.
  */
 const type = process.env.DB_TYPE || 'postgres';
-const common = { entities: [Item], synchronize: process.env.DB_SYNC !== 'false', logging: false };
+
+// Entity + conversión de id por driver: relacional numérica vs
+// ObjectId hex en mongo. Services/controllers usan `toId` para los
+// path params — agregar un recurso = entity (+ variante mongo si el
+// dominio la necesita) + registrarla acá.
+export const ItemEntity = type === 'mongodb' ? ItemMongo : Item;
+export const toId = (id: string | number): number | ObjectId =>
+  type === 'mongodb' ? new ObjectId(String(id)) : Number(id);
+
+const common = { entities: [ItemEntity], synchronize: process.env.DB_SYNC !== 'false', logging: false };
 
 const config =
   type === 'mongodb'
