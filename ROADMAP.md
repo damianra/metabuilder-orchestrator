@@ -73,3 +73,12 @@ experto/agente construye encima. El sistema ya es modular para esto:
 - **La DB es del usuario** (`.env` con sus credenciales/host) — el
   orquestador no levanta DBs en la app generada; podman solo para
   pruebas de desarrollo del skeleton.
+
+## Backlog post-v11 — mejora continua
+
+| # | Tarea | Estado |
+| --- | --- | --- |
+| A ✅ | **Dashboard temas por área + restyle** — `accent-*` por CSS vars (violeta/emerald/ámbar + neutral), motif por tab, iconos Palette/ServerCog/DraftingCompass, `animate-view-enter`. | mergeado PR #83 |
+| B ✅ | **Dashboard retro-gamer** — oscuro tintado por área + CRT scanline + `glow-card` neón + labels monospace uppercase + inputs/badges dark. | mergeado PR #84/#85 |
+| C ✅ | **Screenshot en README de apps** — `captureScreenshot` (server estático + `npx playwright`) corre en todo front/fullstack — antes solo con `--github`; sección `## Captura` con `screenshot.png` commiteada. | mergeado PR #86 |
+| 1 | **NestJS + MongoDB en `nest-typeorm`** — entity de muestra portable a mongo: `item.mongo.entity.ts` con `@ObjectIdColumn` + `toId()` en service/controller + `database.module` registra la entity correcta según `DB_TYPE`; `.env.example`/stack def dejan de marcar mongo como no-soportado. Deps/drivers ya instalados — son ~40 líneas + smoke podman. | pendiente |
