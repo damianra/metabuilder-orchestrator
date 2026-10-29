@@ -12,6 +12,7 @@ export default {
   agentsStack: 'Node.js + Express',
   agentsDb: 'MySQL/MariaDB (vía DB_* en .env)',
   skeletonDir: 'api-skeleton-sql',
+  agentsNotes: AGENTS_NOTES_EXPRESS_SQL,
   framework: 'express',
   dbs: ['mysql'],
 

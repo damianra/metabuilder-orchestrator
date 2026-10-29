@@ -12,6 +12,7 @@ export default {
   agentsStack: 'Node.js + Express',
   agentsDb: 'MongoDB (vía MONGO_URI en .env — document store)',
   skeletonDir: 'api-skeleton-mongo',
+  agentsNotes: AGENTS_NOTES_EXPRESS_MONGO,
   framework: 'express',
   dbs: ['mongo'],
 

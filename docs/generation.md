@@ -63,6 +63,9 @@ los nodos y el dashboard ejecutan, para que nada quede acoplado a npm:
   sintético de `saveBackend`.
 - `devCmd`/`devPort` — "Correr en dev" del dashboard (`devTargets`):
   `npm run dev` :5173/:3000 en front, `npm run api` :4000 en back.
+- `agentsNotes` — bullets de la sección "Notas" del AGENTS.md
+  generado ({{backendNotes}}) — convenciones del stack para el
+  agente que retome la app.
 - `dockerfile` — variante `Dockerfile.<variant>` backend-only que
   `writeDockerFiles` copia (`backend` express, `backend-ts` nest).
 - `markers` — paths (o RegExp) que delatan el backend dir
