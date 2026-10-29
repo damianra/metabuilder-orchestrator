@@ -199,7 +199,7 @@ via matriz (o acepta stackId legacy), copia `skeletonDir` y persiste
 del stack via `agentsStack`/`agentsDb`), api-surface en vivo +
 probar via `/api/backend/probe`, guardar → plan sintético scope
 `backend`; picker de stack backend en la pantalla de crear —
-compliance la infiere el agente) + cola + proyectos, "Diseñar app"
+compliance la infiere el agente), "Diseñar app"
 (`DesignTab.jsx`) y "Fullstack" (`NewAppForm` con
 `fixedScope="fullstack"` — front+back en un solo run, la vía rápida).
 Los endpoints `/api/backend*` son espejo de `/api/design*`

@@ -158,7 +158,7 @@ export default function ProjectDetail({ slug, onChanged }) {
     setNotice(null);
     try {
       await api.action(slug, { action: 'delete' });
-      window.location.hash = '#/backend';
+      window.location.hash = '#/proyectos';
     } catch (err) {
       setNotice(`error: ${err.message}`);
       setBusy(null);
