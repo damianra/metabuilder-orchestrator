@@ -67,14 +67,16 @@ function fastapiSurface(dir) {
 // NestJS: src/**/*.controller.ts → @Controller('api/items') +
 // @(Get|Post|Put|Patch|Delete)('sub') → path = /<base>/<sub>.
 function nestSurface(dir) {
-  const srcDir = join(dir, 'src');
+  // El código backend vive en server/ (fullstack + backend-only desde
+  // la reestructura); src/ por apps nest legacy pre-restructure.
   const endpoints = [];
-  if (!existsSync(srcDir)) return endpoints;
+  for (const srcDir of [join(dir, 'server'), join(dir, 'src')]) {
+  if (!existsSync(srcDir)) continue;
   let files = [];
   try {
     files = readdirSync(srcDir, { recursive: true }).sort();
   } catch {
-    return endpoints;
+    continue;
   }
   for (const f of files) {
     const rel = String(f);
@@ -93,6 +95,7 @@ function nestSurface(dir) {
       const path = `/${base}/${sub}`.replace(/\/+/g, '/');
       endpoints.push({ method: m[1].toUpperCase(), path, file: rel.split('/').pop() });
     }
+  }
   }
   return endpoints;
 }

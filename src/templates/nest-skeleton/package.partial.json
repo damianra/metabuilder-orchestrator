@@ -4,9 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "api": "tsc -p tsconfig.json && node dist/main.js",
+    "api": "npm run build:api && node dist-server/main.js",
     "dev:api": "npm run api",
     "build": "tsc -p tsconfig.json",
+    "build:api": "tsc -p tsconfig.json",
     "test": "vitest run"
   },
   "dependencies": {

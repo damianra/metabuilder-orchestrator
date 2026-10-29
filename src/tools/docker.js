@@ -57,7 +57,7 @@ export function writeDockerFiles(dir, { frontend, backend, outDir, backendStackI
   const tdir = join(config.templatesDir, 'docker');
   // El template de la variante backend lo declara el stack
   // (`toolchain.dockerfile`): express → 'backend' (node slim, corre
-  // server/index.js), nest → 'backend-ts' (stage tsc + dist/).
+  // server/index.js), nest → 'backend-ts' (stage tsc + dist-server/).
   const backStack = backend ? getStack(backendStackId ?? detectBackendStackId(dir)) : null;
   const variant = frontend && backend
     ? // fullstack comparte el template node salvo que el stack backend

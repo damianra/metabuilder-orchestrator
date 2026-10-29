@@ -97,7 +97,7 @@ sin flags de deploy reusa lo que el run original eligió; un
 nodo: plan.stacks > flags > defaults. Frontends: `vite-react`
 (default), `nextjs`. Backend: `express-sqlite` (default),
 `express-postgres`, `express-mysql`, `express-mongo`,
-`nest-typeorm` (**backend-only** — el gate lo exige: dist/ colisiona
+`nest-typeorm` (fullstack desde v13 #5 — el código backend vive en `server/` y tsc emite a `dist-server/` para no colisionar con `src/` ni `dist/` de vite; antes era backend-only porque dist/ colisionaba
 y necesita `Dockerfile.backend-ts` con build stage tsc; `db.js`→
 `src/database.module.ts` con TypeORM por `DB_TYPE`), `fastapi`
 (**Python** — primer stack no-Node: toolchain pip/pytest/uvicorn sobre

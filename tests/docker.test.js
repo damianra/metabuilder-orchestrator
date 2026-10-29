@@ -132,7 +132,7 @@ describe('writeDockerFiles', () => {
     expect(variant).toBe('backend-ts');
     const df = readFileSync(join(dir, 'Dockerfile'), 'utf8');
     expect(df).toContain('npm run build');
-    expect(df).toContain('dist/main.js');
+    expect(df).toContain('dist-server/main.js');
   });
 
   it('fastapi: variantes python (backend-only y fullstack)', () => {

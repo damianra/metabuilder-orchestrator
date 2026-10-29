@@ -71,7 +71,7 @@ Un **stack** es un paquete cerrado de tecnologías — se elige entero, no por p
 | `express-postgres` | backend | Express 5 + `pg` + multer — DB externa via `DB_*` en `.env` | — |
 | `express-mysql` | backend | Express 5 + `mysql2` + multer — DB externa via `DB_*` en `.env` | — |
 | `express-mongo` | backend | Express 5 + `mongodb` (driver nativo) + multer — via `MONGO_URI`/`MONGO_DB` en `.env` | — |
-| `nest-typeorm` | backend | NestJS 10 + TypeORM (TS) — `DB_TYPE=postgres\|mysql\|mongodb` en `.env` (mongo registra la entity `@ObjectIdColumn` automática) — **backend-only** (`--scope backend`; el form no lo ofrece) | — |
+| `nest-typeorm` | backend | NestJS 10 + TypeORM (TS) — `DB_TYPE=postgres\|mysql\|mongodb` en `.env` (mongo registra la entity `@ObjectIdColumn` automática) — código backend en `server/` (tsc → `dist-server/`), sirve el SPA de `dist/` | fullstack |
 | `fastapi` | backend | **Python** FastAPI + SQLAlchemy — `DATABASE_URL` en `.env` (sqlite local default; postgres/mysql por URL) — toolchain pip/pytest/uvicorn sobre `requirements.txt`, API en :4000 con auto-mount `app/routers/` | — |
 | `fastapi-mongo` | backend | **Python** FastAPI + MongoDB — ODMantic sobre Motor (async), `MONGO_URI`/`MONGO_DB` en `.env`, models pydantic directos (sin schemas), tests con mongomock (sin mongo real) | — |
 
@@ -80,7 +80,7 @@ Los stacks están declarados como datos en `src/stacks/` — agregar uno nuevo (
 | | sqlite | postgres | mysql | mongo |
 | --- | --- | --- | --- | --- |
 | **Express** | `express-sqlite` | `express-postgres` | `express-mysql` | `express-mongo` |
-| **NestJS** (backend-only) | — | `nest-typeorm` | `nest-typeorm` | `nest-typeorm` |
+| **NestJS** | — | `nest-typeorm` | `nest-typeorm` | `nest-typeorm` |
 | **FastAPI** | `fastapi` | `fastapi` | `fastapi` | `fastapi-mongo` |
 
 Cada def declara su `toolchain` (`manifest`/`installCmd`/`buildCmd`/`testCmd`/`e2eCmd`/`devCmd`/`devPort`/`dockerfile`) y su `detect`/`detectPriority` — así preflight, verify, dev-run, Docker y la detección en resume nunca asumen npm ni `package.json` (habilita stacks no-Node; ver `docs/generation.md`).
@@ -200,7 +200,7 @@ La API solo encola, no ejecuta — el worker procesa los jobs como siempre.
 | `--name <slug>` | Nombre del proyecto/dir/repo. Default: slug de la idea (con sufijo si existe). |
 | `--arch <id>` | Patrón de arquitectura de los pasos backend: `flat` (default — toda la lógica en `server/routes/`), `mvc` (models + controllers), `layers` (controllers → services → repositories), `feature` (`server/modules/<entidad>/`). Solo aplica si el scope tiene backend; se declara en cada paso backend del plan y persiste en `plan.arch` (resume lo restaura). |
 | `--stack-frontend <id>` | Stack de UI: `vite-react` (default — Vite + React + Tailwind, build → `dist/`) o `nextjs` (Next.js 15 + React 19 + Tailwind, `output: 'export'` → `out/`). Persiste en `plan.stacks` (resume lo restaura). |
-| `--stack-backend <id>` | Stack de API: `express-sqlite` (default, SQLite embebida), `express-postgres`, `express-mysql` o `express-mongo` (DB externa via `DB_*` o `MONGO_URI`/`MONGO_DB` en `.env` de la app — api-skeleton-sql con pool + `q()` prepared statements / api-skeleton-mongo con `col(name)` schemaless + CRUD de muestra), `nest-typeorm` (NestJS+TypeORM, backend-only) o `fastapi` (Python FastAPI+SQLAlchemy, `DATABASE_URL` — requiere python3+pip en el host). Los verticales (`orders`/`blog`) solo aplican a `express-sqlite` — con otro stack el app-type queda `custom`. Idem `plan.stacks`. |
+| `--stack-backend <id>` | Stack de API: `express-sqlite` (default, SQLite embebida), `express-postgres`, `express-mysql` o `express-mongo` (DB externa via `DB_*` o `MONGO_URI`/`MONGO_DB` en `.env` de la app — api-skeleton-sql con pool + `q()` prepared statements / api-skeleton-mongo con `col(name)` schemaless + CRUD de muestra), `nest-typeorm` (NestJS+TypeORM) o `fastapi` (Python FastAPI+SQLAlchemy, `DATABASE_URL` — requiere python3+pip en el host). Los verticales (`orders`/`blog`) solo aplican a `express-sqlite` — con otro stack el app-type queda `custom`. Idem `plan.stacks`. |
 | `--extend <dir\|slug>` | Agrega backend a un proyecto **frontend** existente (ruta o slug en `generated-apps/`): copia el api-skeleton (mergea, no pisa), una sesión de agente lee la UI y appendea pasos `backend`+integración+`test`+`e2e` al plan (`scope`→`fullstack`) y el pipeline los construye. `--idea` opcional describe el dominio de la API; `--github`/`--ghpages` como siempre. Error si ya tiene `server/`. |
 | `--compliance <ids>` | Perfiles legales/de seguridad extra, separados por coma: `cookies`, `terminos`, `pagos`, `auth`, `menores`. Es **aditivo** — `privacidad` + `notfound` (página 404) ya aplican siempre con frontend, y la idea puede inferir más sola (p.ej. "tienda con checkout" activa `terminos`+`pagos`, "juguetes" → `menores`). Algunos perfiles copian componentes listos (`CookieBanner.jsx`, `AgeGate.jsx`). Persiste en `plan.compliance` (resume lo restaura). |
 | `--agent <id>` | Engine de agente: `devin` (default), `opencode` o `auto` (sondea y gana el primero que autentique). Persiste en `plan.agent` (resume lo restaura). |

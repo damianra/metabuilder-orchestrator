@@ -3,8 +3,8 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "target": "ES2022",
-    "outDir": "dist",
-    "rootDir": "src",
+    "outDir": "dist-server",
+    "rootDir": "server",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "strict": false,
@@ -12,5 +12,5 @@
     "skipLibCheck": true,
     "sourceMap": false
   },
-  "include": ["src/**/*.ts"]
+  "include": ["server/**/*.ts"]
 }

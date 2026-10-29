@@ -26,7 +26,6 @@ const BASE_COMPLIANCE = new Set(['privacidad', 'notfound']);
 // del dominio de la app (igual que en los chats de diseño/backend).
 const HIDDEN_COMPLIANCE = new Set(['menores']);
 
-// nest-typeorm es backend-only (#4) — el form es fullstack, no se ofrece.
 // stackId backend → dimensiones (framework, db) del selector —
 // para pre-llenar el form al clonar un proyecto.
 const dimsOfStack = (matrix, stackId, fallback = { framework: 'express', db: 'sqlite' }) => {
@@ -231,7 +230,7 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
             }}
           >
             {Object.entries(options?.backendMatrix ?? {}).map(([id, f]) => (
-              <option key={id} value={id} disabled={id === 'nest' && form.scope !== 'backend'}>
+              <option key={id} value={id}>
                 {f.label}
               </option>
             ))}

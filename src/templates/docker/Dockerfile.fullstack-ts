@@ -1,0 +1,21 @@
+# Fullstack NestJS: vite build del front (dist/) + tsc del backend
+# (server/ → dist-server/). El server sirve ambos — un solo container.
+FROM docker.io/library/node:22 AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+
+FROM deps AS build
+COPY . .
+RUN npm run build && npm run build:api && npm prune --omit=dev
+
+FROM docker.io/library/node:22-slim
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=build /app/node_modules ./node_modules
+COPY package*.json ./
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/dist-server ./dist-server
+
+EXPOSE 4000
+CMD ["node", "dist-server/main.js"]
