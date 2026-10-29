@@ -118,7 +118,8 @@ export function writeAgentsMd(dir, { withBackend, arch, frontendStack, backendSt
     .replaceAll('{{backendFramework}}', backendStack?.agentsStack ?? 'Node.js + Express')
     .replaceAll('{{backendDb}}', backendStack?.agentsDb ?? 'SQLite (archivo local, sin servidores externos)')
     .replaceAll('{{testing}}', testLabels.join(' + '))
-    .replaceAll('{{devScripts}}', devScripts);
+    .replaceAll('{{devScripts}}', devScripts)
+    .replaceAll('{{backendNotes}}', backendStack?.agentsNotes ?? '');
   const rules = withBackend ? `\n## Arquitectura backend\n\n${arch.agentsRules}\n` : '';
   writeFileSync(join(dir, 'AGENTS.md'), base + rules);
 }

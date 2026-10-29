@@ -4,7 +4,7 @@
  * prompts del planner leen de acá. Agregar un stack backend nuevo =
  * un archivo así + registro en src/stacks/index.js.
  */
-import { pkgDeps } from './helpers.js';
+import { AGENTS_NOTES_EXPRESS_SQL, pkgDeps } from './helpers.js';
 
 export default {
   id: 'express-sqlite',
@@ -13,6 +13,7 @@ export default {
   agentsStack: 'Node.js + Express',
   agentsDb: 'SQLite (archivo local, sin servidores externos)',
   skeletonDir: 'api-skeleton',
+  agentsNotes: AGENTS_NOTES_EXPRESS_SQL,
   framework: 'express',
   dbs: ['sqlite'],
 

@@ -17,6 +17,11 @@ export default {
   dbs: ['postgres', 'mysql', 'mongo'],
   agentsStack: 'Node.js + NestJS (TypeScript, decorators + DI)',
   agentsDb: 'TypeORM con DataSource por DB_TYPE (postgres|mysql|mongodb) en .env — entities TypeORM (mongo via @ObjectIdColumn), synchronize en dev',
+  agentsNotes: `- **Backend**: cada recurso = entity + service + controller + módulo en \`server/\` — registrar el módulo en \`server/app.module.ts\`. Controllers \`*.controller.ts\` con \`@Controller('api/<name>')\` — el prefijo \`api/\` es obligatorio (el catchall SPA sombrea rutas fuera de /api).
+- **Capa de datos**: \`server/database.module.ts\` arma el DataSource por \`DB_TYPE=postgres|mysql|mongodb\` en \`.env\` — agregar entities al array \`entities\` (mongo usa la variante \`*Mongo\` con \`@ObjectIdColumn\`).
+- **Sin uploads ni security pack** en el skeleton — agregar como middleware/controller propios si hacen falta.
+- **Secretos/config**: \`.env\` (gitignored) — \`dotenv/config\` ya se importa en \`server/main.ts\`. Declarar toda variable en \`.env.example\`.
+- **Docker**: los provee el orquestador — el contenedor corre \`node dist-server/main.js\` (tsc compila \`server/\` → \`dist-server/\` via \`npm run build:api\`; el backend sirve \`dist/\` si existe).`,
   apiSurface: 'nest-controllers',
 
   toolchain: {

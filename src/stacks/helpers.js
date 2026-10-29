@@ -28,3 +28,16 @@ export const envValue = (dir, key) => {
     return null;
   }
 };
+
+// Notas del AGENTS.md por backend stack ({{backendNotes}}) — express
+// comparte el texto salvo la línea de capa de datos.
+const EXPRESS_COMMON = `- **Backend**: cada \`server/routes/<name>.js\` que exporte un \`Router\` default se monta solo en \`/api/<name>\` — no tocar \`server/app.js\` ni \`server/db.js\`.
+- **Imágenes**: \`POST /api/uploads\` con campo \`file\` (image/*, máx 5MB) → \`{ url: "/uploads/<file>" }\`. Guardar ese path en la entidad; el frontend lo consume tal cual (el proxy de Vite redirige \`/uploads\` al puerto 4000).
+- **Secretos/config**: API keys y config sensible van en \`.env\` (gitignored), leídas via \`process.env.NOMBRE\` — \`server/index.js\` ya carga \`dotenv/config\`. Toda variable que la app use debe declararse en \`.env.example\` (commiteado, con valor placeholder o vacío) para que otro dev sepa qué configurar. Nunca hardcodear secretos ni commitear \`.env\`.
+- **Docker**: \`Dockerfile\`, \`.dockerignore\` (y \`nginx.conf\` si aplica) los provee el orquestador — no modificarlos ni crear otros. El backend ya sirve \`dist/\` si existe, así que el contenedor fullstack corre solo \`node server/index.js\`.`;
+
+export const AGENTS_NOTES_EXPRESS_SQL = `${EXPRESS_COMMON}
+- **Capa de datos**: schema en \`server/schema.sql\` (idempotente), seed en \`server/seed-data.js\` (se inserta si la tabla está vacía); queries con \`q()\` prepared statements de \`server/db.js\` (despacha por \`DB_DRIVER\`).`;
+
+export const AGENTS_NOTES_EXPRESS_MONGO = `${EXPRESS_COMMON}
+- **Capa de datos**: document store — colecciones via \`col(name)\` de \`server/db.js\` (sin schema DDL ni prepared statements; ids \`ObjectId\`, seed si la colección está vacía).`;

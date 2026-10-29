@@ -4,7 +4,7 @@
  * (DB_DRIVER=pg) y el dialecto que documenta agentsStack/requirements.
  * Agregar un stack = este archivo + registro en src/stacks/index.js.
  */
-import { envValue, pkgDeps } from './helpers.js';
+import { AGENTS_NOTES_EXPRESS_SQL, envValue, pkgDeps } from './helpers.js';
 
 export default {
   id: 'express-postgres',
@@ -13,6 +13,7 @@ export default {
   agentsStack: 'Node.js + Express',
   agentsDb: 'PostgreSQL (vía DB_* en .env)',
   skeletonDir: 'api-skeleton-sql',
+  agentsNotes: AGENTS_NOTES_EXPRESS_SQL,
   framework: 'express',
   dbs: ['postgres'],
 
