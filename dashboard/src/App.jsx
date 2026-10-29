@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, BellOff, Boxes, Cpu, DraftingCompass, Palette, ServerCog } from 'lucide-react';
+import { Bell, BellOff, Boxes, Cpu, DraftingCompass, LayoutList, Palette, ServerCog } from 'lucide-react';
 import { api } from './api.js';
 import { diffFinished, notifyFinished, snapshotStatuses } from './notifications.js';
 import NewAppForm from './components/NewAppForm.jsx';
@@ -16,6 +16,7 @@ const parseHash = () => {
   const c = window.location.hash.match(/[?&]clone=([a-z0-9-]+)/)?.[1] ?? null;
   if (window.location.hash.startsWith('#/backend')) return { view: 'list', clone: c };
   if (window.location.hash.startsWith('#/fullstack')) return { view: 'fullstack', clone: c };
+  if (window.location.hash.startsWith('#/proyectos')) return { view: 'projects', clone: c };
   return { view: 'design' }; // landing = Diseñar app (#/ y #/design)
 };
 
@@ -93,6 +94,7 @@ export default function App() {
     list: 'theme-backend motif-terminal',
     fullstack: 'theme-fullstack motif-blueprint',
     detail: 'theme-neutral',
+    projects: 'theme-neutral',
   }[route.view];
 
   return (
@@ -177,6 +179,18 @@ export default function App() {
                 <Icon size={14} /> {label}
               </a>
             ))}
+            {/* Proyectos: separado a la derecha — es el inventario, no
+                una tarea como los otros tabs */}
+            <a
+              href="#/proyectos"
+              className={`ml-auto flex items-center gap-1.5 rounded-lg border-l border-accent-500/40 px-3 py-1.5 pl-4 text-sm font-semibold ${
+                route.view === 'projects'
+                  ? 'bg-accent-500 text-slate-950 glow-card font-bold'
+                  : 'text-slate-400 hover:bg-slate-800'
+              }`}
+            >
+              <LayoutList size={14} /> Proyectos
+            </a>
           </nav>
         )}
         {engine !== null && !gateOpen && (
@@ -196,17 +210,18 @@ export default function App() {
             // Tab "Fullstack": el formulario existente, scope fijo —
             // genera front+back en un solo run (la vía rápida).
             <NewAppForm fixedScope="fullstack" onEnqueued={refresh} cloneSlug={route.clone} />
-          ) : (
+          ) : route.view === 'projects' ? (
             <>
-              <BackendTab
-                onSaved={(slug) => {
-                  window.location.hash = `#/p/${slug}`;
-                  refresh();
-                }}
-              />
               <QueuePanel jobs={jobs} worker={worker} onChanged={refresh} />
               <ProjectList projects={projects} />
             </>
+          ) : (
+            <BackendTab
+              onSaved={(slug) => {
+                window.location.hash = `#/p/${slug}`;
+                refresh();
+              }}
+            />
           )}
           </div>
         )}

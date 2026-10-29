@@ -188,7 +188,10 @@ Backend → emerald con scanline reforzada de terminal, Fullstack →
 de tab corre `.animate-view-enter` (wrapper keyed) y los elementos
 interactivos llevan transición suave.
 
-La vista principal son tres tabs — "Backend" (`BackendTab.jsx`: chat
+La vista principal son cuatro tabs — **"Proyectos"** (`#/proyectos`,
+separado a la derecha del nav: es el inventario — `QueuePanel` +
+`ProjectList`, antes vivían dentro del tab Backend), "Backend"
+(`BackendTab.jsx`: chat
 con un agente backend-experto sobre `backend-work/` = skeleton del
 stack elegido — `createBackend(framework, db)` resuelve el stackId
 via matriz (o acepta stackId legacy), copia `skeletonDir` y persiste
