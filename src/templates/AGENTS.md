@@ -5,7 +5,7 @@ Este proyecto fue generado por MetaBuilder. Stack esperado:
 - **Frontend**: {{frontendStack}} (si aplica)
 - **Backend**: {{backendFramework}} (si aplica)
 - **Base de datos**: {{backendDb}} (si aplica)
-- **Testing**: Vitest (unit/integración), Playwright + Chromium (E2E, si hay frontend)
+- **Testing**: {{testing}} (unit/integración), Playwright + Chromium (E2E, si hay frontend)
 
 ## Reglas de UI obligatorias (React + Tailwind)
 
@@ -46,13 +46,9 @@ Patrón estándar cuando la app pide contacto/pedidos por WhatsApp:
 - **Landing**: botón flotante fijo (abajo-derecha, ícono `MessageCircle` de lucide) que despliega un mini-formulario (nombre + mensaje); enviar abre el wa.me link con el mensaje armado.
 - **Pedidos/carrito**: el mensaje arma una línea por item (`nombre x cantidad — $precio`), el total, y los datos del cliente (nombre, teléfono, notas).
 
-## Scripts de package.json que deben existir
+## Comandos que deben existir
 
-- `npm run build` — build de producción (si hay frontend)
-- `npm test` / `npx vitest run` — suite Vitest
-- `npm run test:e2e` — suite Playwright (si hay frontend)
-- `npm run api` — API Express en puerto 4000 (si hay backend)
-- `npm run dev:api` — lo mismo con `--watch` (si hay backend)
+{{devScripts}}
 
 ## Notas para el agente que escribe código
 
