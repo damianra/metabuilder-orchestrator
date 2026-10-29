@@ -191,9 +191,11 @@ export async function smokeApp(dir, stack, {
       }
     }
   } finally {
-    // Kill del process group SIEMPRE — nunca un devCmd huérfano.
+    // Kill del process group SIEMPRE — nunca un devCmd huérfano. Sin
+    // guard de `died`: en la carrera post-retry un close tardío del
+    // child viejo puede pisarlo; killGroup ya tolera ESRCH.
     try {
-      if (child?.pid && died === null) killGroup(child.pid);
+      if (child?.pid) killGroup(child.pid);
     } catch {
       /* ya muerto */
     }
