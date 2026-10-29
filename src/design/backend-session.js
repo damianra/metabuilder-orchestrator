@@ -124,6 +124,12 @@ CONVENTIONS['express-postgres'] = CONVENTIONS['express-mysql'] =
 - DB externa: \`server/db.js\` despacha \`DB_DRIVER=pg|mysql\` (pool + \`q()\` que normaliza \`?\`→\`$n\` + \`insert()\` con id portable) — conexión por \`DB_*\` en \`.env\`; schema DDL por driver en \`SCHEMAS\` (db.js), seed via \`seedIfEmpty\`.
 - Prepared statements con \`q()\` SIEMPRE — nunca interpolar valores.
 - Uploads + security pack ya incluidos. \`npm run api\` :4000; \`npm test\` vitest; la DB viva la aporta el usuario.`;
+CONVENTIONS['fastapi'] =
+  `- \`app/routers/<name>.py\` exporta \`router\` (APIRouter) → se monta solo en \`/api/<name>\` — agregar un endpoint = agregar un archivo.
+- \`app/db.py\` arma engine/session por \`DATABASE_URL\` en .env (sqlite default; postgres/mysql por URL — el driver pip va en requirements.txt).
+- \`app/models.py\` las entities SQLAlchemy, \`app/schemas.py\` los Pydantic, \`app/seed.py\` seed idempotente (solo si la tabla está vacía).
+- \`uvicorn app.main:app --port 4000\` levanta la API; \`python -m pytest\` corre los tests (TestClient + \`DATABASE_URL\` de test).
+- Sin uploads ni security pack en el skeleton — middleware/routers propios si hacen falta.`;
 
 export async function backendChat(text, { agent = '', onChunk = () => {}, onActivity = () => {} } = {}) {
   touchActivity();

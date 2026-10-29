@@ -15,6 +15,7 @@ export default {
   skeletonDir: 'nest-skeleton',
   agentsStack: 'Node.js + NestJS (TypeScript, decorators + DI)',
   agentsDb: 'TypeORM con DataSource por DB_TYPE (postgres|mysql|mongodb) en .env — entities TypeORM (mongo via @ObjectIdColumn), synchronize en dev',
+  apiSurface: 'nest-controllers',
 
   toolchain: {
     manifest: 'package.json',

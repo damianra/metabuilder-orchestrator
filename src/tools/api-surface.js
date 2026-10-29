@@ -6,17 +6,19 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-// Kind de scanner según el stack backend detectado — express y
-// mongo/sql comparten la convención server/routes; nest usa
-// controllers decorados en src/.
-export const apiSurfaceKindOf = (stackId) =>
-  stackId === 'nest-typeorm' ? 'nest-controllers' : 'express-routes';
+// Kind de scanner según el stack backend detectado — lo declara el
+// def (`apiSurface`): express*/mongo/sql → 'express-routes' (default),
+// nest → 'nest-controllers', fastapi → 'fastapi-routes'.
+import { getStack } from '../stacks/index.js';
+
+export const apiSurfaceKindOf = (stackId) => getStack(stackId)?.apiSurface ?? 'express-routes';
 
 // kind: 'express-routes' (server/routes auto-mount, default) o
 // 'nest-controllers' (src/**/*.controller.ts con @Controller +
 // @Get/@Post/...). El kind sale del stack backend detectado.
 export function apiSurfaceFor(dir, { kind = 'express-routes' } = {}) {
   if (kind === 'nest-controllers') return nestSurface(dir);
+  if (kind === 'fastapi-routes') return fastapiSurface(dir);
   const routesDir = join(dir, 'server', 'routes');
   const endpoints = [];
   if (existsSync(routesDir)) {
@@ -32,6 +34,31 @@ export function apiSurfaceFor(dir, { kind = 'express-routes' } = {}) {
       for (const m of src.matchAll(/router\.(get|post|put|delete|patch)\s*\(\s*['"`]([^'"`]+)['"`]/g)) {
         endpoints.push({ method: m[1].toUpperCase(), path: mount + m[2], file: f });
       }
+    }
+  }
+  return endpoints;
+}
+
+// FastAPI: app/routers/<name>.py → /api/<name> + decorators
+// @router.<method>('<path>') — misma convención de auto-mount que
+// express, otro lenguaje.
+function fastapiSurface(dir) {
+  const routesDir = join(dir, 'app', 'routers');
+  const endpoints = [];
+  if (!existsSync(routesDir)) return endpoints;
+  for (const f of readdirSync(routesDir).sort()) {
+    if (!f.endsWith('.py') || f.startsWith('_')) continue;
+    const mount = `/api/${f.slice(0, -3)}`;
+    let src;
+    try {
+      src = readFileSync(join(routesDir, f), 'utf8');
+    } catch {
+      continue;
+    }
+    for (const m of src.matchAll(
+      /@router\.(get|post|put|delete|patch)\s*\(\s*['"]([^'"]*)['"]/g,
+    )) {
+      endpoints.push({ method: m[1].toUpperCase(), path: mount + m[2], file: f });
     }
   }
   return endpoints;

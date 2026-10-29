@@ -127,10 +127,14 @@ export async function finalVerifyNode(state) {
 export function writeReadme(state, { screenshot = null } = {}) {
   const { frontend, backend } = stacksFor(state);
 
+  // Labels de tests por toolchain activo (Vitest | pytest…), dedup.
+  const testLabels = [
+    ...new Set([frontend, backend].filter(Boolean).map((s) => s?.toolchain?.testLabel ?? 'Vitest')),
+  ];
   const stack = [
     frontend?.readme.stack,
     backend?.readme.stack,
-    `- Vitest (tests)${frontend?.readme.e2eSuffix ?? ''}`,
+    `- ${testLabels.join(' + ')} (tests)${frontend?.readme.e2eSuffix ?? ''}`,
   ].filter(Boolean).join('\n');
 
   const devCommands = [frontend?.readme.dev, backend?.readme.dev].filter(Boolean).join('\n');

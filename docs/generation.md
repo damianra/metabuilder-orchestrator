@@ -90,13 +90,14 @@ nodo: plan.stacks > flags > defaults. Frontends: `vite-react`
 `express-postgres`, `express-mysql`, `express-mongo`,
 `nest-typeorm` (**backend-only** — el gate lo exige: dist/ colisiona
 y necesita `Dockerfile.backend-ts` con build stage tsc; `db.js`→
-`src/database.module.ts` con TypeORM por `DB_TYPE`) — los dos
-primeros comparten `api-skeleton-sql` (pool + `q()` con `?`→`$n`
-normalizado + schema por driver + `.env.example` con `DB_*`); mongo
-usa `api-skeleton-mongo` (`col(name)` del driver nativo +
-`MONGO_URI`/`MONGO_DB`, schemaless). Los verticales
-`orders`/`blog` solo aplican a `express-sqlite` — con otro stack el
-app-type queda `custom` (gate en enqueue/CLI/form).
+`src/database.module.ts` con TypeORM por `DB_TYPE`), `fastapi`
+(**Python** — primer stack no-Node: toolchain pip/pytest/uvicorn sobre
+`requirements.txt`, ver abajo) — los express sql comparten
+`api-skeleton-sql` (pool + `q()` con `?`→`$n` normalizado + schema por
+driver + `.env.example` con `DB_*`); mongo usa `api-skeleton-mongo`
+(`col(name)` del driver nativo + `MONGO_URI`/`MONGO_DB`, schemaless).
+Los verticales `orders`/`blog` solo aplican a `express-sqlite` — con
+otro stack el app-type queda `custom` (gate en enqueue/CLI/form).
 
 ## Patrones de arquitectura de backend
 
@@ -188,16 +189,34 @@ Secretos: `.env` (gitignored) leído via `dotenv/config` en
 SPA fallback GET cuando `index.html` existe en alguno (deploy
 single-server y Docker).
 
-Los 3 skeletons incluyen `.github/workflows/ci.yml` (npm ci + `npm audit
---audit-level=critical` + npm test) — la app generada nace con CI de
-seguridad propia si se pushea a GitHub.
+`src/templates/fastapi-skeleton/` es el skeleton del stack no-Node:
+FastAPI + SQLAlchemy sobre `app/` — `main.py` con auto-mount de
+`app/routers/<name>.py` (exporta `router` → `/api/<name>`, igual que
+express), `/api/health`, CORS, request log + security headers + rate
+limit por IP en escritura (espejo de `security.js`/`log.js`), `/api/*`
+404 JSON, y `dist/` u `out/` estático + SPA fallback si existe el
+build del front. `app/db.py` arma engine/session/Base por
+`DATABASE_URL` en `.env` (sqlite local default; postgres/mysql por
+URL — el driver pip se declara comentado en `requirements.txt`),
+`app/models.py` entities, `app/schemas.py` Pydantic, `app/seed.py`
+seed idempotente. Tests pytest + TestClient en `tests/`
+(`conftest.py` raíz para que `import app` resuelva). No trae
+`package.partial.json` — `copyApiSkeleton` lo tolera desde v12 #1.
+
+Los 4 skeletons incluyen `.github/workflows/ci.yml` (node o python
+según stack — `npm ci` + audit + test / pip + pip-audit + pytest; el
+de fastapi corre el lado npm solo si hay `package.json`) — la app
+generada nace con CI de seguridad propia si se pushea a GitHub.
 
 ## Dockerfile por app
 
 Preflight escribe `Dockerfile` + `.dockerignore` en cada app generada
 (`src/tools/docker.js` + templates en `src/templates/docker/`):
-variante `backend` (node slim, solo `server/`), `fullstack` (build
-del frontend → `dist|out/` servido por el mismo Express), `frontend`
+variante `backend` (node slim, solo `server/`), `backend-ts` (nest,
+stage tsc → `dist/`), `python` (fastapi slim, uvicorn :4000),
+`fullstack` (build del frontend → `dist|out/` servido por el mismo
+Express), `fullstack-python` (build node → `dist|out/` servido por
+FastAPI — lo elige `toolchain.dockerfileFullstack`), `frontend`
 (build → nginx:alpine + `nginx.conf` con SPA fallback). El dir de
 salida viene de `stack.buildDir` (placeholder `@OUT_DIR@` en los
 templates). En `--resume` la variante y el outDir se detectan por el
@@ -211,7 +230,8 @@ detectado (docker → podman; ausente → omite sin fallar).
 ## Stack de las apps generadas
 
 Frontend: React+Vite+Tailwind (`vite-react`, default) o Next.js+React+
-Tailwind (`nextjs`, static export). Backend: Express/SQLite. Testing:
-Vitest / Playwright (e2e solo si hay frontend). Ver
+Tailwind (`nextjs`, static export). Backend: Express (sqlite/postgres/
+mysql/mongo), NestJS+TypeORM o FastAPI+SQLAlchemy (Python). Testing:
+Vitest/pytest / Playwright (e2e solo si hay frontend). Ver
 `src/templates/AGENTS.md` para las 5 reglas de UI que el código
 generado debe cumplir y que Playwright verifica.

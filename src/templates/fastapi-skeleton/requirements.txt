@@ -1,0 +1,10 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sqlalchemy>=2.0
+pydantic>=2.7
+python-dotenv>=1.0
+pytest>=8.0
+httpx>=0.27
+# Drivers externos por DATABASE_URL (descomentar según la DB):
+# psycopg2-binary>=2.9   # postgresql+psycopg2://user:pass@host:5432/db
+# pymysql>=1.1           # mysql+pymysql://user:pass@host:3306/db

@@ -4,10 +4,11 @@ import expressPostgres from './express-postgres.js';
 import expressMysql from './express-mysql.js';
 import expressMongo from './express-mongo.js';
 import nestTypeorm from './nest-typeorm.js';
+import fastapi from './fastapi.js';
 import nextjs from './nextjs.js';
 
 const STACKS = new Map(
-  [viteReact, expressSqlite, expressPostgres, expressMysql, expressMongo, nestTypeorm, nextjs].map(
+  [viteReact, expressSqlite, expressPostgres, expressMysql, expressMongo, nestTypeorm, fastapi, nextjs].map(
     (s) => [s.id, s],
   ),
 );
@@ -107,10 +108,14 @@ export function finalCheckCommands(stacks) {
  */
 export function stackRuleBullets(scope, overrides = {}) {
   const stacks = resolveStacks(scope, overrides);
+  // Label de tests por toolchain activo, deduplicado — los stacks
+  // node dicen Vitest; un stack python declara 'pytest' en
+  // toolchain.testLabel.
+  const testLabels = [...new Set(active(stacks).map((s) => s.toolchain?.testLabel ?? 'Vitest'))];
   const parts = [
     stacks.frontend && `${stacks.frontend.label} (frontend)`,
     stacks.backend && `${stacks.backend.label} (backend)`,
-    'Vitest (tests)',
+    ...testLabels.map((l) => `${l} (tests)`),
     stacks.frontend && 'Playwright + Chromium (e2e)',
   ].filter(Boolean);
   const lines = [`- Stack de las apps: ${parts.join(', ')}.`];

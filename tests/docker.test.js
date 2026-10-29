@@ -30,6 +30,17 @@ describe('detectBackendStackId + apiSurface por stack (v11 #3)', () => {
     expect(detectBackendStackId(mkdtempSync(join(tmpdir(), 'mb-none-')))).toBeNull();
   });
 
+  it('detecta fastapi por app/main.py o fastapi en requirements.txt', () => {
+    const d = tmp();
+    mkdirSync(join(d, 'app'), { recursive: true });
+    writeFileSync(join(d, 'app', 'main.py'), 'from fastapi import FastAPI\n');
+    expect(detectBackendStackId(d)).toBe('fastapi');
+    const d2 = tmp();
+    writeFileSync(join(d2, 'requirements.txt'), 'fastapi>=0.115\nuvicorn\n');
+    expect(detectBackendStackId(d2)).toBe('fastapi');
+    expect(hasBackendDir(d)).toBe(true);
+  });
+
   it('apiSurfaceFor kind nest-controllers escanea *.controller.ts', () => {
     const d = tmp();
     mkdirSync(join(d, 'src', 'items'), { recursive: true });
@@ -43,6 +54,21 @@ describe('detectBackendStackId + apiSurface por stack (v11 #3)', () => {
       { method: 'POST', path: '/api/items/nuevo', file: 'items.controller.ts' },
     ]);
     expect(apiSurfaceKindOf('express-sqlite')).toBe('express-routes');
+  });
+
+  it('apiSurfaceFor kind fastapi-routes escanea app/routers/*.py', () => {
+    const d = tmp();
+    mkdirSync(join(d, 'app', 'routers'), { recursive: true });
+    writeFileSync(
+      join(d, 'app', 'routers', 'items.py'),
+      "router = APIRouter()\n@router.get('')\ndef l(): ...\n@router.post('/{item_id}')\ndef c(): ...\n",
+    );
+    writeFileSync(join(d, 'app', 'routers', '__init__.py'), '');
+    const eps = apiSurfaceFor(d, { kind: apiSurfaceKindOf('fastapi') });
+    expect(eps).toEqual([
+      { method: 'GET', path: '/api/items', file: 'items.py' },
+      { method: 'POST', path: '/api/items/{item_id}', file: 'items.py' },
+    ]);
   });
 });
 
@@ -98,6 +124,32 @@ describe('writeDockerFiles', () => {
     const df = readFileSync(join(dir, 'Dockerfile'), 'utf8');
     expect(df).toContain('npm run build');
     expect(df).toContain('dist/main.js');
+  });
+
+  it('fastapi: variantes python (backend-only y fullstack)', () => {
+    const variant = writeDockerFiles(tmp(), {
+      frontend: false,
+      backend: true,
+      backendStackId: 'fastapi',
+    });
+    expect(variant).toBe('python');
+    const df = readFileSync(join(dir, 'Dockerfile'), 'utf8');
+    expect(df).toContain('python:3.12-slim');
+    expect(df).toContain('uvicorn');
+    expect(df).toContain('EXPOSE 4000');
+
+    const full = writeDockerFiles(tmp(), {
+      frontend: true,
+      backend: true,
+      backendStackId: 'fastapi',
+      outDir: 'dist',
+    });
+    expect(full).toBe('fullstack-python');
+    const dff = readFileSync(join(dir, 'Dockerfile'), 'utf8');
+    expect(dff).toContain('node:22');
+    expect(dff).toContain('npm run build');
+    expect(dff).toContain('uvicorn');
+    expect(dff).toContain('/app/dist');
   });
 });
 

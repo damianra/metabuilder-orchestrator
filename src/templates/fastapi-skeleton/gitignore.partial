@@ -1,0 +1,11 @@
+# fastapi-skeleton
+__pycache__/
+*.pyc
+*.db
+test.db
+.venv/
+.env
+docker-build.*
+test-run.*
+dev-run.*
+publish.*

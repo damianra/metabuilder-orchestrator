@@ -88,11 +88,37 @@ function prewarmPlaywright(dir, installCmd = 'npm install') {
  * (src/arch/) cuando el scope tiene backend.
  * Es lo que el builder/fixer/reviewer leen como contrato del código.
  */
+// Líneas de comandos del AGENTS.md por toolchain del stack — el
+// contrato para el agente nunca menciona npm en un stack no-Node.
+const scriptLines = (s) => {
+  const t = s?.toolchain;
+  if (!t) return [];
+  const lines = [];
+  if (t.buildCmd) lines.push(`- \`${t.buildCmd}\` — build de producción`);
+  if (t.devCmd) {
+    lines.push(`- \`${t.devCmd}\` — ${s.kind === 'backend' ? `API en puerto ${t.devPort ?? 4000}` : `dev server en puerto ${t.devPort ?? 5173}`}`);
+  }
+  if (t.devCmd === 'npm run api') lines.push('- `npm run dev:api` — lo mismo con `--watch`');
+  if (t.testCmd) lines.push(`- \`${t.testCmd}\` — suite ${t.testLabel ?? 'Vitest'}`);
+  if (t.e2eCmd) lines.push(`- \`${t.e2eCmd}\` — suite e2e`);
+  return lines;
+};
+
 export function writeAgentsMd(dir, { withBackend, arch, frontendStack, backendStack }) {
+  const testLabels = [
+    ...new Set(
+      [frontendStack, backendStack].filter(Boolean).map((s) => s.toolchain?.testLabel ?? 'Vitest'),
+    ),
+  ];
+  const devScripts = [
+    ...new Set([...scriptLines(frontendStack), ...scriptLines(backendStack)]),
+  ].join('\n');
   const base = readFileSync(join(config.templatesDir, 'AGENTS.md'), 'utf8')
     .replaceAll('{{frontendStack}}', frontendStack?.agentsStack ?? 'React + Vite + Tailwind CSS')
     .replaceAll('{{backendFramework}}', backendStack?.agentsStack ?? 'Node.js + Express')
-    .replaceAll('{{backendDb}}', backendStack?.agentsDb ?? 'SQLite (archivo local, sin servidores externos)');
+    .replaceAll('{{backendDb}}', backendStack?.agentsDb ?? 'SQLite (archivo local, sin servidores externos)')
+    .replaceAll('{{testing}}', testLabels.join(' + '))
+    .replaceAll('{{devScripts}}', devScripts);
   const rules = withBackend ? `\n## Arquitectura backend\n\n${arch.agentsRules}\n` : '';
   writeFileSync(join(dir, 'AGENTS.md'), base + rules);
 }
