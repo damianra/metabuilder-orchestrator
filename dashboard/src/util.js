@@ -1,13 +1,13 @@
 // Helpers puros de formato — sin dependencias de React (testeables).
 
 export const STATUS_META = {
-  done: { label: 'done', cls: 'bg-emerald-100 text-emerald-800 ring-emerald-300' },
+  done: { label: 'done', cls: 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/50' },
   running: { label: 'running', cls: 'bg-accent-500/20 text-accent-300 ring-accent-300 animate-pulse' },
   pending: { label: 'pending', cls: 'bg-slate-800 text-slate-300 ring-accent-500/50' },
-  failed: { label: 'failed', cls: 'bg-red-100 text-red-800 ring-red-300' },
+  failed: { label: 'failed', cls: 'bg-red-500/15 text-red-300 ring-red-300' },
   cancelled: { label: 'cancelled', cls: 'bg-slate-800 text-slate-400 ring-accent-500/50' },
   cancelling: { label: 'cancelling', cls: 'bg-amber-500/15 text-amber-300 ring-amber-300 animate-pulse' },
-  verified: { label: 'verified', cls: 'bg-emerald-100 text-emerald-800 ring-emerald-300' },
+  verified: { label: 'verified', cls: 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/50' },
 };
 
 export const statusMeta = (status) =>

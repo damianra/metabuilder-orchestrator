@@ -241,13 +241,13 @@ export default function BackendTab({ onSaved }) {
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="nombre-app"
-            className="w-36 rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none focus:border-accent-500"
+            className="w-36 rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-2 py-1 text-xs outline-none focus:border-accent-500"
           />
           <button
             title="Mueve el workspace a generated-apps/<slug> como app real"
             onClick={save}
             disabled={Boolean(busy) || !slug.trim()}
-            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-300 hover:bg-emerald-50 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-500/50 hover:bg-emerald-500/15 disabled:opacity-40"
           >
             {busy === 'save' ? spin : <Save size={12} />} guardar como app
           </button>
@@ -332,7 +332,7 @@ export default function BackendTab({ onSaved }) {
               onKeyDown={(e) => e.key === 'Enter' && send()}
               placeholder="Pedile un cambio al experto backend…"
               disabled={busy === 'chat'}
-              className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-accent-500 disabled:opacity-50"
+              className="flex-1 rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-3 py-1.5 text-sm outline-none focus:border-accent-500 disabled:opacity-50"
             />
             <button
               title="Enviar"
@@ -355,7 +355,7 @@ export default function BackendTab({ onSaved }) {
                   <li key={i} className="flex items-center gap-2">
                     <span
                       className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${
-                        e.method === 'GET' ? 'bg-emerald-100 text-emerald-800' : 'bg-accent-500/20 text-accent-300'
+                        e.method === 'GET' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-accent-500/20 text-accent-300'
                       }`}
                     >
                       {e.method}

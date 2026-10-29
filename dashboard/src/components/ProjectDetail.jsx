@@ -275,7 +275,7 @@ export default function ProjectDetail({ slug, onChanged }) {
           <StatusBadge status={project.status} />
         </div>
         {project.lastError && (
-          <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-800">{project.lastError}</p>
+          <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{project.lastError}</p>
         )}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -569,7 +569,7 @@ export default function ProjectDetail({ slug, onChanged }) {
               <ul className="mt-3 space-y-1 text-sm">
                 {apiSurface.endpoints.map((e, i) => (
                   <li key={i} className="flex items-center gap-2">
-                    <span className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${e.method === 'GET' ? 'bg-emerald-100 text-emerald-800' : 'bg-accent-500/20 text-accent-300'}`}>{e.method}</span>
+                    <span className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${e.method === 'GET' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-accent-500/20 text-accent-300'}`}>{e.method}</span>
                     <code className="text-slate-300">{e.path}</code>
                     <span className="text-xs text-slate-400">{e.file}</span>
                     {devRunning && e.method === 'GET' && (
@@ -855,7 +855,7 @@ export default function ProjectDetail({ slug, onChanged }) {
               onChange={(e) => setBackendForm((f) => ({ ...f, idea: e.target.value }))}
               placeholder="¿Qué datos maneja tu app? (ej. productos, pedidos, posts — vacío = lo infiere de la UI)"
               rows={3}
-              className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-accent-500"
+              className="mt-3 w-full rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-3 py-2 text-sm outline-none focus:border-accent-500"
             />
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <label className="text-xs text-slate-400">
@@ -863,7 +863,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                 <select
                   value={backendForm.arch}
                   onChange={(e) => setBackendForm((f) => ({ ...f, arch: e.target.value }))}
-                  className="rounded-lg border border-slate-300 px-2 py-1"
+                  className="rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-2 py-1"
                 >
                   {(archOptions.length ? archOptions : ['flat']).map((a) => (
                     <option key={a} value={a}>{a}</option>
