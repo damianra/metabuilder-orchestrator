@@ -2,16 +2,16 @@
 
 export const STATUS_META = {
   done: { label: 'done', cls: 'bg-emerald-100 text-emerald-800 ring-emerald-300' },
-  running: { label: 'running', cls: 'bg-accent-100 text-accent-800 ring-accent-300 animate-pulse' },
-  pending: { label: 'pending', cls: 'bg-slate-100 text-slate-700 ring-slate-300' },
+  running: { label: 'running', cls: 'bg-accent-500/20 text-accent-300 ring-accent-300 animate-pulse' },
+  pending: { label: 'pending', cls: 'bg-slate-800 text-slate-300 ring-accent-500/50' },
   failed: { label: 'failed', cls: 'bg-red-100 text-red-800 ring-red-300' },
-  cancelled: { label: 'cancelled', cls: 'bg-slate-100 text-slate-500 ring-slate-300' },
-  cancelling: { label: 'cancelling', cls: 'bg-amber-100 text-amber-800 ring-amber-300 animate-pulse' },
+  cancelled: { label: 'cancelled', cls: 'bg-slate-800 text-slate-400 ring-accent-500/50' },
+  cancelling: { label: 'cancelling', cls: 'bg-amber-500/15 text-amber-300 ring-amber-300 animate-pulse' },
   verified: { label: 'verified', cls: 'bg-emerald-100 text-emerald-800 ring-emerald-300' },
 };
 
 export const statusMeta = (status) =>
-  STATUS_META[status] ?? { label: status ?? 'desconocido', cls: 'bg-slate-100 text-slate-600 ring-slate-300' };
+  STATUS_META[status] ?? { label: status ?? 'desconocido', cls: 'bg-slate-800 text-slate-400 ring-accent-500/50' };
 
 // "hace 3m" / "hace 2h" / "hace 4d" — null si el timestamp es inválido.
 export function timeAgo(iso, now = Date.now()) {

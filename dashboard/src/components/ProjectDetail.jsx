@@ -8,7 +8,7 @@ import { timeAgo } from '../util.js';
 const TerminalPanel = lazy(() => import('./TerminalPanel.jsx'));
 
 const btn =
-  'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ring-1 ring-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed';
+  'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ring-1 ring-accent-500/50 bg-slate-900 hover:bg-slate-950 disabled:opacity-40 disabled:cursor-not-allowed';
 
 export default function ProjectDetail({ slug, onChanged }) {
   const [project, setProject] = useState(null);
@@ -199,12 +199,12 @@ export default function ProjectDetail({ slug, onChanged }) {
   if (error) {
     return (
       <div className="space-y-4">
-        <a href="#/backend" className="inline-flex items-center gap-1.5 text-sm text-accent-700 hover:underline">
+        <a href="#/backend" className="inline-flex items-center gap-1.5 text-sm text-accent-300 hover:underline">
           <ArrowLeft size={15} /> proyectos
         </a>
-        <p className="text-sm text-red-700">error: {error}</p>
+        <p className="text-sm text-red-300">error: {error}</p>
         <button
-          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 bg-white hover:bg-red-50 disabled:opacity-40"
+          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-400 ring-1 ring-red-500/40 bg-slate-900 hover:bg-red-500/10 disabled:opacity-40"
           disabled={busy}
           onClick={del}
         >
@@ -213,7 +213,7 @@ export default function ProjectDetail({ slug, onChanged }) {
       </div>
     );
   }
-  if (!project) return <p className="text-sm text-slate-500">cargando…</p>;
+  if (!project) return <p className="text-sm text-slate-400">cargando…</p>;
 
   const build = project.dockerBuild;
   const testRun = project.testRun;
@@ -257,25 +257,25 @@ export default function ProjectDetail({ slug, onChanged }) {
 
   return (
     <div className="space-y-4">
-      <a href="#/backend" className="inline-flex items-center gap-1.5 text-sm text-accent-700 hover:underline">
+      <a href="#/backend" className="inline-flex items-center gap-1.5 text-sm text-accent-300 hover:underline">
         <ArrowLeft size={15} /> proyectos
       </a>
 
-      <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
+      <section className="rounded-lg bg-slate-900 p-6 ring-1 ring-accent-500/40 glow-card">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-slate-900">{project.name}</h2>
-            <p className="mt-0.5 text-xs text-slate-500">
+            <h2 className="text-xl font-bold tracking-tight text-slate-100">{project.name}</h2>
+            <p className="mt-0.5 text-xs text-slate-400">
               {project.slug} · actualizado {timeAgo(project.updatedAt)}
             </p>
             {project.idea && (
-              <p className="mt-2 max-w-2xl text-sm text-slate-600 line-clamp-2">{project.idea}</p>
+              <p className="mt-2 max-w-2xl text-sm text-slate-400 line-clamp-2">{project.idea}</p>
             )}
           </div>
           <StatusBadge status={project.status} />
         </div>
         {project.lastError && (
-          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{project.lastError}</p>
+          <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-800">{project.lastError}</p>
         )}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -331,7 +331,7 @@ export default function ProjectDetail({ slug, onChanged }) {
             {busy === 'test' || testRunning ? spin : <FlaskConical size={15} />}
             {testRunning ? 'Corriendo tests…' : 'Ejecutar tests'}
           </button>
-          <label className="flex items-center gap-1.5 text-xs text-slate-600">
+          <label className="flex items-center gap-1.5 text-xs text-slate-400">
             <input
               type="checkbox"
               checked={withE2e}
@@ -375,7 +375,7 @@ export default function ProjectDetail({ slug, onChanged }) {
             </button>
           )}
           <button
-            className="ml-auto inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-600 ring-1 ring-red-200 bg-white hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="ml-auto inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-400 ring-1 ring-red-500/40 bg-slate-900 hover:bg-red-500/10 disabled:opacity-40 disabled:cursor-not-allowed"
             disabled={busy}
             title="Borra generated-apps/<slug> + container + imagen (si hay engine)"
             onClick={del}
@@ -384,10 +384,10 @@ export default function ProjectDetail({ slug, onChanged }) {
           </button>
         </div>
         {pubOpen && !repoUrl && (
-          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg bg-slate-50 px-4 py-3 text-sm ring-1 ring-slate-200">
-            <p className="text-slate-700">¿Subir el proyecto a GitHub como repo público?</p>
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg bg-slate-950 px-4 py-3 text-sm ring-1 ring-accent-500/40">
+            <p className="text-slate-300">¿Subir el proyecto a GitHub como repo público?</p>
             {hasFrontend && (
-              <label className="flex items-center gap-1.5 text-xs text-slate-600">
+              <label className="flex items-center gap-1.5 text-xs text-slate-400">
                 <input
                   type="checkbox"
                   checked={withPages}
@@ -406,19 +406,19 @@ export default function ProjectDetail({ slug, onChanged }) {
             </button>
           </div>
         )}
-        {notice && <p className="mt-2 text-sm text-slate-600">{notice}</p>}
+        {notice && <p className="mt-2 text-sm text-slate-400">{notice}</p>}
         {publishing && !notice && (
-          <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-600">{spin} publicando…</p>
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-400">{spin} publicando…</p>
         )}
         {publish?.status === 'done' && (publish.repoUrl || publish.pagesUrl) && (
-          <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-slate-600">
-            <CircleCheckBig size={14} className="text-emerald-600" /> publicado:
+          <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-slate-400">
+            <CircleCheckBig size={14} className="text-emerald-400" /> publicado:
             {publish.repoUrl && (
               <a
                 href={publish.repoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-accent-700 underline"
+                className="text-accent-300 underline"
               >
                 {publish.repoUrl}
               </a>
@@ -428,7 +428,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                 href={publish.pagesUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-accent-700 underline"
+                className="text-accent-300 underline"
               >
                 {publish.pagesUrl}
               </a>
@@ -436,11 +436,11 @@ export default function ProjectDetail({ slug, onChanged }) {
           </p>
         )}
         {publish?.status === 'done' && publish.pagesError && (
-          <p className="mt-1 text-xs text-amber-700">Pages: {publish.pagesError}</p>
+          <p className="mt-1 text-xs text-amber-400">Pages: {publish.pagesError}</p>
         )}
         {(publish?.status === 'done' || publish?.status === 'failed') && (
           <button
-            className="mt-1 text-xs text-slate-500 hover:underline"
+            className="mt-1 text-xs text-slate-400 hover:underline"
             onClick={() => setShowPubLog((v) => !v)}
           >
             publish log {showPubLog ? '▾' : '▸'}
@@ -452,15 +452,15 @@ export default function ProjectDetail({ slug, onChanged }) {
               {pubLog.log.lines.join('\n')}
             </pre>
           ) : (
-            <p className="mt-1 text-xs text-slate-500">sin publish.log todavía</p>
+            <p className="mt-1 text-xs text-slate-400">sin publish.log todavía</p>
           ))}
         {publish?.status === 'failed' && (
-          <p className="mt-2 text-sm text-red-700">
+          <p className="mt-2 text-sm text-red-300">
             publish falló{publish.error ? `: ${publish.error}` : ''}
           </p>
         )}
         {build && (
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-400">
             {building && spin} último docker build: <b>{build.status}</b>
             {build.tag ? ` (${build.tag})` : ''}
             {build.exitCode !== undefined ? ` exit ${build.exitCode}` : ''}
@@ -468,7 +468,7 @@ export default function ProjectDetail({ slug, onChanged }) {
           </p>
         )}
         {testRun && (
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-400">
             {testRunning && spin} último test run:{' '}
             <b>{testRun.stale ? `${testRun.status} (interrumpido)` : testRun.status}</b>
             {testRun.command ? ` (${testRun.command})` : ''}
@@ -477,8 +477,8 @@ export default function ProjectDetail({ slug, onChanged }) {
         )}
       </section>
 
-      <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
-        <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800">
+      <section className="rounded-lg bg-slate-900 p-6 ring-1 ring-accent-500/40 glow-card">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-slate-200">
           <Container size={16} /> Contenedor
         </h3>
         {!engine ? (
@@ -490,13 +490,13 @@ export default function ProjectDetail({ slug, onChanged }) {
           </div>
         ) : container ? (
           <div className="mt-2">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               corriendo ({engine}) ·{' '}
               <a
                 href={`http://localhost:${container.hostPort ?? suggestedPort}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-accent-700 hover:underline"
+                className="font-medium text-accent-300 hover:underline"
               >
                 localhost:{container.hostPort ?? suggestedPort}
               </a>
@@ -520,7 +520,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                   {containerLog.log.lines.join('\n')}
                 </pre>
               ) : (
-                <p className="mt-3 text-xs text-slate-500">
+                <p className="mt-3 text-xs text-slate-400">
                   {containerLog?.error ?? 'sin output todavía — el container está arrancando'}
                 </p>
               ))}
@@ -534,7 +534,7 @@ export default function ProjectDetail({ slug, onChanged }) {
               placeholder={String(suggestedPort)}
               value={hostPort}
               onChange={(e) => setHostPort(e.target.value)}
-              className="w-24 rounded-lg px-2 py-1.5 text-sm ring-1 ring-slate-300"
+              className="w-24 rounded-lg px-2 py-1.5 text-sm ring-1 ring-accent-500/50"
               title="Puerto host (default sugerido según la variante)"
             />
             <button
@@ -561,22 +561,22 @@ export default function ProjectDetail({ slug, onChanged }) {
       </section>
 
       {hasBackend && (
-        <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
-          <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800">
-            <Globe size={16} className="text-slate-500" /> API
+        <section className="rounded-lg bg-slate-900 p-6 ring-1 ring-accent-500/40 glow-card">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-slate-200">
+            <Globe size={16} className="text-slate-400" /> API
           </h3>
             {apiSurface?.endpoints?.length ? (
               <ul className="mt-3 space-y-1 text-sm">
                 {apiSurface.endpoints.map((e, i) => (
                   <li key={i} className="flex items-center gap-2">
-                    <span className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${e.method === 'GET' ? 'bg-emerald-100 text-emerald-800' : 'bg-accent-100 text-accent-800'}`}>{e.method}</span>
-                    <code className="text-slate-700">{e.path}</code>
+                    <span className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${e.method === 'GET' ? 'bg-emerald-100 text-emerald-800' : 'bg-accent-500/20 text-accent-300'}`}>{e.method}</span>
+                    <code className="text-slate-300">{e.path}</code>
                     <span className="text-xs text-slate-400">{e.file}</span>
                     {devRunning && e.method === 'GET' && (
                       <button
                         title={`GET ${e.path} contra el dev-run (proxy via dashboard)`}
                         onClick={() => probeEndpoint(e.path)}
-                        className="ml-auto shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-accent-700 ring-1 ring-accent-300 hover:bg-accent-50"
+                        className="ml-auto shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-accent-300 ring-1 ring-accent-300 hover:bg-accent-500/15"
                       >
                         probar
                       </button>
@@ -597,13 +597,13 @@ export default function ProjectDetail({ slug, onChanged }) {
       )}
 
       {(devTargets.length > 0 || devRun) && (
-        <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
-          <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800">
+        <section className="rounded-lg bg-slate-900 p-6 ring-1 ring-accent-500/40 glow-card">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-slate-200">
             <Play size={16} /> Dev local <span className="font-normal text-slate-400">sin containers</span>
           </h3>
           {devRunning ? (
             <div className="mt-2">
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-400">
                 corriendo ·{' '}
                 {(devLog?.urls?.length ? devLog.urls : devRun.procs.filter((p) => p.alive).map((p) => `http://localhost:${p.port}`)).map(
                   (u) => (
@@ -612,7 +612,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                       href={u}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mr-3 font-medium text-accent-700 hover:underline"
+                      className="mr-3 font-medium text-accent-300 hover:underline"
                     >
                       {u}
                     </a>
@@ -648,7 +648,7 @@ export default function ProjectDetail({ slug, onChanged }) {
               </button>
               {devRun && (
                 <button
-                  className="text-xs text-slate-500 hover:underline"
+                  className="text-xs text-slate-400 hover:underline"
                   onClick={() => setShowDevLog((v) => !v)}
                 >
                   último dev run: <b>{devRun.stale ? `${devRun.status} (interrumpido)` : devRun.status}</b>
@@ -663,7 +663,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                 {devLog.log.lines.join('\n')}
               </pre>
             ) : (
-              <p className="mt-3 text-xs text-slate-500">sin output todavía — el dev server está arrancando</p>
+              <p className="mt-3 text-xs text-slate-400">sin output todavía — el dev server está arrancando</p>
             ))}
         </section>
       )}
@@ -673,9 +673,9 @@ export default function ProjectDetail({ slug, onChanged }) {
         <TerminalPanel slug={slug} />
       </Suspense>
 
-      <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
+      <section className="rounded-lg bg-slate-900 p-6 ring-1 ring-accent-500/40 glow-card">
         <button
-          className="flex items-center gap-2 text-sm font-bold text-slate-800"
+          className="flex items-center gap-2 text-sm font-bold text-slate-200"
           onClick={() => setShowLog((v) => !v)}
         >
           <FileText size={16} /> Log del run {showLog ? '▾' : '▸'}
@@ -683,7 +683,7 @@ export default function ProjectDetail({ slug, onChanged }) {
         {showLog &&
           (logData?.log ? (
             <>
-              <p className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+              <p className="mt-2 flex items-center gap-2 text-xs text-slate-400">
                 job #{logData.jobId} · {logData.jobStatus}
                 {logData.log.truncated ? ' · (últimas líneas — log truncado)' : ''}
                 {(logData.jobStatus === 'failed' || logData.jobStatus === 'cancelled') && (
@@ -699,7 +699,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                         onChanged?.();
                       }
                     }}
-                    className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40"
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-slate-400 ring-1 ring-accent-500/50 hover:bg-slate-950 disabled:opacity-40"
                   >
                     {busy === 'requeue-job' ? (
                       <LoaderCircle size={11} className="animate-spin" />
@@ -722,7 +722,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                         onChanged?.();
                       }
                     }}
-                    className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-red-600 ring-1 ring-red-200 hover:bg-red-50 disabled:opacity-40"
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-red-400 ring-1 ring-red-500/40 hover:bg-red-500/10 disabled:opacity-40"
                   >
                     {busy === 'cancel-job' ? (
                       <LoaderCircle size={11} className="animate-spin" />
@@ -738,22 +738,22 @@ export default function ProjectDetail({ slug, onChanged }) {
               </pre>
             </>
           ) : (
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-2 text-xs text-slate-400">
               sin log todavía — aparece cuando un worker corre un job de este proyecto
             </p>
           ))}
       </section>
 
-      <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
+      <section className="rounded-lg bg-slate-900 p-6 ring-1 ring-accent-500/40 glow-card">
         <button
-          className="flex items-center gap-2 text-sm font-bold text-slate-800"
+          className="flex items-center gap-2 text-sm font-bold text-slate-200"
           onClick={() => setShowPrompt((v) => !v)}
         >
           <FileText size={16} /> Prompt original {showPrompt ? '▾' : '▸'}
         </button>
         {showPrompt && (
           <div className="mt-3 space-y-3">
-            <pre className="max-h-72 overflow-auto rounded-lg bg-slate-50 p-4 text-sm text-slate-700 whitespace-pre-wrap">
+            <pre className="max-h-72 overflow-auto rounded-lg bg-slate-950 p-4 text-sm text-slate-300 whitespace-pre-wrap">
               {project.idea ?? '—'}
             </pre>
             <div className="flex flex-wrap gap-2 text-xs">
@@ -766,7 +766,7 @@ export default function ProjectDetail({ slug, onChanged }) {
               ]
                 .filter(([, v]) => v)
                 .map(([k, v]) => (
-                  <span key={k} className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600 ring-1 ring-slate-200">
+                  <span key={k} className="rounded-full bg-slate-800 px-2.5 py-1 font-medium text-slate-400 ring-1 ring-accent-500/40">
                     {k}: {v}
                   </span>
                 ))}
@@ -776,17 +776,17 @@ export default function ProjectDetail({ slug, onChanged }) {
       </section>
 
       {(project.scripts ?? []).length > 0 && (
-        <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-800">Comandos</h3>
+        <section className="rounded-lg bg-slate-900 p-6 ring-1 ring-accent-500/40 glow-card">
+          <h3 className="text-sm font-bold text-slate-200">Comandos</h3>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <tbody>
                 {project.scripts.map((s) => (
                   <tr key={s.name} className="border-t border-slate-100 first:border-t-0">
-                    <td className="py-2 pr-4 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">
+                    <td className="py-2 pr-4 font-mono text-xs font-semibold text-slate-300 whitespace-nowrap">
                       npm run {s.name}
                     </td>
-                    <td className="py-2 text-xs text-slate-500 font-mono">{s.command}</td>
+                    <td className="py-2 text-xs text-slate-400 font-mono">{s.command}</td>
                   </tr>
                 ))}
               </tbody>
@@ -796,9 +796,9 @@ export default function ProjectDetail({ slug, onChanged }) {
       )}
 
       {testRun && (
-        <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
+        <section className="rounded-lg bg-slate-900 p-6 ring-1 ring-accent-500/40 glow-card">
           <button
-            className="flex items-center gap-2 text-sm font-bold text-slate-800"
+            className="flex items-center gap-2 text-sm font-bold text-slate-200"
             onClick={() => setShowTestOut((v) => !v)}
           >
             <FlaskConical size={16} /> Output de tests {showTestOut ? '▾' : '▸'}
@@ -806,7 +806,7 @@ export default function ProjectDetail({ slug, onChanged }) {
           {showTestOut &&
             (testOut?.log ? (
               <>
-                <p className="mt-2 text-xs text-slate-500">
+                <p className="mt-2 text-xs text-slate-400">
                   {testOut.testRun?.command}
                   {testOut.log.truncated ? ' · (últimas líneas — output truncado)' : ''}
                 </p>
@@ -815,21 +815,21 @@ export default function ProjectDetail({ slug, onChanged }) {
                 </pre>
               </>
             ) : (
-              <p className="mt-2 text-xs text-slate-500">sin output todavía — el run está arrancando</p>
+              <p className="mt-2 text-xs text-slate-400">sin output todavía — el run está arrancando</p>
             ))}
         </section>
       )}
 
       {project.report && (
-        <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
+        <section className="rounded-lg bg-slate-900 p-6 ring-1 ring-accent-500/40 glow-card">
           <button
-            className="flex items-center gap-2 text-sm font-bold text-slate-800"
+            className="flex items-center gap-2 text-sm font-bold text-slate-200"
             onClick={() => setShowReport((v) => !v)}
           >
             <FileText size={16} /> Reporte del último run {showReport ? '▾' : '▸'}
           </button>
           {showReport && (
-            <pre className="mt-3 max-h-96 overflow-auto rounded-lg bg-slate-50 p-4 text-xs text-slate-700 whitespace-pre-wrap">
+            <pre className="mt-3 max-h-96 overflow-auto rounded-lg bg-slate-950 p-4 text-xs text-slate-300 whitespace-pre-wrap">
               {project.report}
             </pre>
           )}
@@ -842,11 +842,11 @@ export default function ProjectDetail({ slug, onChanged }) {
           onClick={() => setBackendOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl bg-white p-5 ring-1 ring-slate-200 shadow-lg"
+            className="w-full max-w-md rounded-lg bg-slate-900 p-5 ring-1 ring-accent-500/40 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-sm font-bold text-slate-800">Agregar backend a {slug}</h3>
-            <p className="mt-1 text-xs text-slate-500">
+            <h3 className="text-sm font-bold text-slate-200">Agregar backend a {slug}</h3>
+            <p className="mt-1 text-xs text-slate-400">
               El agente lee el frontend existente y diseña la API (Express + SQLite), la
               integración UI↔API y los tests — todo sobre este mismo proyecto.
             </p>
@@ -858,7 +858,7 @@ export default function ProjectDetail({ slug, onChanged }) {
               className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-accent-500"
             />
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <label className="text-xs text-slate-600">
+              <label className="text-xs text-slate-400">
                 Arquitectura{' '}
                 <select
                   value={backendForm.arch}
@@ -870,7 +870,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                   ))}
                 </select>
               </label>
-              <label className="flex items-center gap-1.5 text-xs text-slate-600">
+              <label className="flex items-center gap-1.5 text-xs text-slate-400">
                 <input
                   type="checkbox"
                   checked={backendForm.github}
@@ -878,7 +878,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                 />
                 github
               </label>
-              <label className="flex items-center gap-1.5 text-xs text-slate-600">
+              <label className="flex items-center gap-1.5 text-xs text-slate-400">
                 <input
                   type="checkbox"
                   checked={backendForm.ghpages}
