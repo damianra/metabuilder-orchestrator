@@ -80,7 +80,9 @@ Los stacks están declarados como datos en `src/stacks/` — agregar uno nuevo (
 | --- | --- | --- | --- | --- |
 | **Express** | `express-sqlite` | `express-postgres` | `express-mysql` | `express-mongo` |
 | **NestJS** (backend-only) | — | `nest-typeorm` | `nest-typeorm` | `nest-typeorm` |
-| **FastAPI** | `fastapi` | `fastapi` | `fastapi` | — (fase 2, `motor`) | Cada def declara su `toolchain` (`manifest`/`installCmd`/`buildCmd`/`testCmd`/`e2eCmd`/`devCmd`/`devPort`/`dockerfile`) y su `detect`/`detectPriority` — así preflight, verify, dev-run, Docker y la detección en resume nunca asumen npm ni `package.json` (habilita stacks no-Node; ver `docs/generation.md`).
+| **FastAPI** | `fastapi` | `fastapi` | `fastapi` | — (fase 2, `motor`) |
+
+Cada def declara su `toolchain` (`manifest`/`installCmd`/`buildCmd`/`testCmd`/`e2eCmd`/`devCmd`/`devPort`/`dockerfile`) y su `detect`/`detectPriority` — así preflight, verify, dev-run, Docker y la detección en resume nunca asumen npm ni `package.json` (habilita stacks no-Node; ver `docs/generation.md`).
 
 Ejemplos de contexto inicial:
 
