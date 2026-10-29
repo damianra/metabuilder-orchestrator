@@ -66,6 +66,7 @@ describe('resolveStacks', () => {
       'express-mysql',
       'express-mongo',
       'nest-typeorm',
+      'fastapi',
     ]);
   });
 
@@ -89,6 +90,7 @@ describe('listStacks/getStack', () => {
       'express-mysql',
       'express-mongo',
       'nest-typeorm',
+      'fastapi',
     ]);
     expect(getStack('vite-react').kind).toBe('frontend');
     expect(getStack('nope')).toBeNull();
@@ -116,6 +118,21 @@ describe('finalCheckCommands', () => {
 
   it('backend-only: solo vitest', () => {
     expect(finalCheckCommands(resolveStacks('backend'))).toEqual(['npx vitest run']);
+  });
+
+  it('backend fastapi: solo pytest (toolchain python)', () => {
+    expect(finalCheckCommands(resolveStacks('backend', { backend: 'fastapi' }))).toEqual([
+      'python -m pytest',
+    ]);
+  });
+
+  it('fullstack fastapi: toolchain npm del front + pytest del back', () => {
+    expect(finalCheckCommands(resolveStacks('fullstack', { backend: 'fastapi' }))).toEqual([
+      'npm run build',
+      'npx vitest run',
+      'npm run test:e2e',
+      'python -m pytest',
+    ]);
   });
 });
 

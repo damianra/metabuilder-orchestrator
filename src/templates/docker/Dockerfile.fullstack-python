@@ -1,0 +1,20 @@
+# Fullstack con backend Python (FastAPI): el build del front corre en
+# stage node (npm ci + build → @OUT_DIR@) y el runtime es python —
+# FastAPI sirve @OUT_DIR@ con SPA fallback, mismo contrato que el
+# Express del api-skeleton.
+FROM docker.io/library/node:22 AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM docker.io/library/python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+COPY app ./app
+COPY --from=build /app/@OUT_DIR@ ./@OUT_DIR@
+EXPOSE 4000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "4000"]

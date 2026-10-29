@@ -58,10 +58,14 @@ export function writeDockerFiles(dir, { frontend, backend, outDir, backendStackI
   // El template de la variante backend lo declara el stack
   // (`toolchain.dockerfile`): express → 'backend' (node slim, corre
   // server/index.js), nest → 'backend-ts' (stage tsc + dist/).
+  const backStack = backend ? getStack(backendStackId ?? detectBackendStackId(dir)) : null;
   const variant = frontend && backend
-    ? 'fullstack'
+    ? // fullstack comparte el template node salvo que el stack backend
+      // declare uno propio (fastapi → fullstack-python: el runtime del
+      // container es python, no node).
+      backStack?.toolchain?.dockerfileFullstack ?? 'fullstack'
     : backend
-      ? getStack(backendStackId ?? detectBackendStackId(dir))?.toolchain?.dockerfile ?? 'backend'
+      ? backStack?.toolchain?.dockerfile ?? 'backend'
       : 'frontend';
   const tpl = readFileSync(join(tdir, `Dockerfile.${variant}`), 'utf8');
   writeFileSync(join(dir, 'Dockerfile'), tpl.replaceAll('@OUT_DIR@', outDir ?? 'dist'));
