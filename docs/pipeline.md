@@ -154,3 +154,6 @@ solo vitest). Falla → loop `fix` (finalRetries) → `fail`.
   un 409 o fallo persistente cae al GET de confirmación.
 - **Commit en re-runs**: si la app ya tiene todo commiteado, el finalize
   salta el commit vía `git diff --cached --quiet`.
+
+
+> finalize también captura `screenshot.png` del build frontend para el README (server local + `npx playwright screenshot`); warn-only si no hay chromium.
