@@ -76,8 +76,8 @@ experto/agente construye encima. El sistema ya es modular para esto:
 
 ## Backlog post-v11 — mejora continua
 
-| # | Tarea | Descripción | Estado |
-| --- | --- | --- | --- |
+| # | Tarea | Estado |
+| --- | --- | --- |
 | A ✅ | **Dashboard temas por área + restyle** — `accent-*` por CSS vars (violeta/emerald/ámbar + neutral), motif por tab, iconos Palette/ServerCog/DraftingCompass, `animate-view-enter`. | mergeado PR #83 |
 | B ✅ | **Dashboard retro-gamer** — oscuro tintado por área + CRT scanline + `glow-card` neón + labels monospace uppercase + inputs/badges dark. | mergeado PR #84/#85 |
 | C ✅ | **Screenshot en README de apps** — `captureScreenshot` (server estático + `npx playwright`) corre en todo front/fullstack — antes solo con `--github`; sección `## Captura` con `screenshot.png` commiteada. | mergeado PR #86 |
