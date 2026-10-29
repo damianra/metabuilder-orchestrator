@@ -262,6 +262,7 @@ export default function DesignTab({ onSaved }) {
             </label>
           )}
           <button
+            data-testid="design-create"
             onClick={create}
             disabled={busy === 'create'}
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-700 disabled:opacity-40"
@@ -310,6 +311,7 @@ export default function DesignTab({ onSaved }) {
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {previewUrl ? (
             <button
+              data-testid="design-stop-preview"
               title="Frena el vite dev server del workspace"
               onClick={stopPreview}
               disabled={Boolean(busy)}
@@ -319,6 +321,7 @@ export default function DesignTab({ onSaved }) {
             </button>
           ) : (
             <button
+              data-testid="design-preview"
               title="Levanta el vite dev server del workspace para el preview en vivo"
               onClick={startPreview}
               disabled={Boolean(busy)}
@@ -330,6 +333,7 @@ export default function DesignTab({ onSaved }) {
           {!attachTo && (
             <input
               ref={slugRef}
+              data-testid="design-save-name"
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
               placeholder="nombre-app"
@@ -342,6 +346,7 @@ export default function DesignTab({ onSaved }) {
                 ? `Copia el front dentro de generated-apps/${attachTo} → fullstack`
                 : 'Mueve el workspace a generated-apps/<slug> como app real'
             }
+            data-testid="design-save"
             onClick={save}
             disabled={Boolean(busy) || (!attachTo && !slug.trim())}
             className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-500/50 hover:bg-emerald-500/15 disabled:opacity-40"
@@ -430,11 +435,13 @@ export default function DesignTab({ onSaved }) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && send()}
+              data-testid="design-chat-input"
               placeholder="Pedile un cambio al diseñador…"
               disabled={busy === 'chat'}
               className="flex-1 rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-3 py-1.5 text-sm outline-none focus:border-accent-500 disabled:opacity-50"
             />
             <button
+              data-testid="design-send"
               title="Enviar"
               onClick={() => send()}
               disabled={busy === 'chat' || !input.trim()}

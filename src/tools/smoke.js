@@ -175,6 +175,9 @@ export async function smokeApp(dir, stack, {
         const r = await get(ep.path);
         if (r.status === 404) mark(`GET ${ep.path}`, false, '404 — ruta no montada');
         else if (r.status === 200) mark(`GET ${ep.path}`, true, '200');
+        // 4xx ≠ 404 (401/403 auth, 400/422 validación): el handler
+        // respondió — la ruta SÍ está montada.
+        else if (r.status >= 400 && r.status < 500) mark(`GET ${ep.path}`, true, `${r.status} — montada (auth/validación)`);
         else mark(`GET ${ep.path}`, false, `status ${r.status ?? r.error}`, { warnable: !strict });
       }
 
