@@ -118,7 +118,7 @@ const CONVENTIONS = {
 - Security pack ya incluido (headers, rate limit, request logger) — no duplicar.
 - Uploads: \`POST /api/uploads\` (campo \`file\`) → \`{url:"/uploads/<f>"}\`.
 - \`npm run api\` levanta el server en :4000; \`npm test\` corre vitest; el seed corre solo al arrancar.
-- La muestra \`items\` del skeleton: reemplazarla por el recurso real del dominio (rename/refactor completo) o eliminarla si no aplica — \`/api/items\` no debe quedar en la app final.`,
+- Si el skeleton trae una muestra (\`server/routes/items.js\`), reemplazarla por el recurso real del dominio o eliminarla si no aplica — \`/api/items\` no debe quedar en la app final.`,
   'express-postgres': null,
   'express-mysql': null,
   'express-mongo': `- \`server/routes/<name>.js\` exporta un \`Router\` default → se monta solo en \`/api/<name>\`.
