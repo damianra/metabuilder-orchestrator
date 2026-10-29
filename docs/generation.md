@@ -198,6 +198,21 @@ Secretos: `.env` (gitignored) leído via `dotenv/config` en
 SPA fallback GET cuando `index.html` existe en alguno (deploy
 single-server y Docker).
 
+`src/templates/fastapi-skeleton-mongo/` es la variante MongoDB del
+skeleton anterior (stack `fastapi-mongo`, `framework:'fastapi' +
+dbs:['mongo']` — última celda de la matriz): ODMantic sobre Motor
+(async — `app/db.py` arma `AsyncIOMotorClient`/`AIOEngine` por
+`MONGO_URI`/`MONGO_DB`), los `app/models.py` son `odmantic.Model`
+(pydantic — van directo como `response_model`, sin `schemas.py`),
+routers async (`await engine.find/save/delete`, ids `ObjectId`), y
+los tests usan `mongomock-motor` (self-contained — mongomock no
+soporta sessions, así que el test reimplementa las writes de
+ODMantic directo sobre la collection). Comparte `main.py`
+(auto-mount, CORS, SPA fallback, `/api/health`), toolchain python y
+`Dockerfile.python`/`fullstack-python` con `fastapi`; `detect` gana
+por `odmantic|motor` en requirements (prioridad mayor que `fastapi`
+— mismo patrón nest-vs-mongo).
+
 `src/templates/fastapi-skeleton/` es el skeleton del stack no-Node:
 FastAPI + SQLAlchemy sobre `app/` — `main.py` con auto-mount de
 `app/routers/<name>.py` (exporta `router` → `/api/<name>`, igual que

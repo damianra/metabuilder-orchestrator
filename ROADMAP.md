@@ -21,7 +21,7 @@ v12, no porque se abra una nueva dirección.
 
 | # | Tarea | Esfuerzo |
 | --- | --- | --- |
-| 1 | **Smoke runtime post-build** — `src/tools/smoke.js` + nodo en el grafo post-finalVerify: levanta `toolchain.devCmd`, `waitForPort`, y verifica el contrato: `GET /api/health` → 200; cada `GET` del `apiSurfaceFor` → no-404; `GET /api/*` inexistente → 404 JSON; si `dist/`/`out/` existe → `GET /` 200 + deep route → index.html (SPA fallback). Kill del proc tree al terminar — nunca huérfanos. **Severidad**: DB embebida (sqlite) → exigencia completa, falla = run `failed`; DB externa (postgres/mysql/mongo) → warn-only, solo wiring. Opt-out `plan.smoke === false` / `--no-smoke`. ~+15-30s por run. | M |
+| 1 | **Smoke runtime post-build** — `src/tools/smoke.js` + nodo en el grafo post-finalVerify: levanta `toolchain.devCmd`, `waitForPort`, y verifica el contrato: `GET /api/health` → 200; cada `GET` del `apiSurfaceFor` → no-404; `GET /api/*` inexistente → 404 JSON; si `dist/`/`out/` existe → `GET /` 200 + deep route → index.html (SPA fallback). Kill del proc tree al terminar — nunca huérfanos. **Severidad**: DB embebida (sqlite) → exigencia completa, falla = run `failed`; DB externa (postgres/mysql/mongo) → warn-only, solo wiring. Opt-out `plan.smoke === false` / `--no-smoke`. ~+15-30s por run. | M — **mergeado PR #97** |
 | 2 | **`fastapi-mongo` — última celda de la matriz** — `templates/fastapi-skeleton-mongo/` (espejo de `api-skeleton-mongo`): ODMantic sobre Motor (`AsyncIOMotorClient`), `MONGO_URI`/`MONGO_DB` en `.env` (mismas vars que express-mongo), CRUD async `items`, tests con **mongomock-motor** (sin mongo real — self-contained). Stack def con `framework:'fastapi', dbs:['mongo']`, `detectPriority` menor que `fastapi` (gana el detect por `odmantic`/`motor`), convenciones del experto. Reusa `Dockerfile.python`/`fullstack-python` y el scanner `fastapi-routes`. | M |
 
 ## Matriz framework × DB (objetivo v13)
@@ -30,7 +30,7 @@ v12, no porque se abra una nueva dirección.
 | --- | --- | --- | --- | --- |
 | **Express** | `express-sqlite` | `express-postgres` | `express-mysql` | `express-mongo` |
 | **NestJS** (backend-only) | — | `nest-typeorm` | `nest-typeorm` | `nest-typeorm` |
-| **FastAPI** | `fastapi` | `fastapi` | `fastapi` | `fastapi-mongo` (#2) |
+| **FastAPI** | `fastapi` | `fastapi` | `fastapi` | `fastapi-mongo` |
 
 ## Reglas del smoke (requisito del workflow)
 

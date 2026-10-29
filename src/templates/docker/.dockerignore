@@ -15,3 +15,7 @@ status.json
 report.md
 Dockerfile
 .dockerignore
+.venv/
+__pycache__/
+*.db
+*.pyc

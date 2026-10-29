@@ -41,6 +41,15 @@ describe('detectBackendStackId + apiSurface por stack (v11 #3)', () => {
     expect(hasBackendDir(d)).toBe(true);
   });
 
+  it('odmantic/motor en requirements → fastapi-mongo gana sobre fastapi', () => {
+    const d = tmp();
+    mkdirSync(join(d, 'app'), { recursive: true });
+    writeFileSync(join(d, 'app', 'main.py'), 'from fastapi import FastAPI\n');
+    writeFileSync(join(d, 'requirements.txt'), 'fastapi\nodmantic\nmotor\n');
+    // También matchea el detect de fastapi — la prioridad 14 gana.
+    expect(detectBackendStackId(d)).toBe('fastapi-mongo');
+  });
+
   it('apiSurfaceFor kind nest-controllers escanea *.controller.ts', () => {
     const d = tmp();
     mkdirSync(join(d, 'src', 'items'), { recursive: true });

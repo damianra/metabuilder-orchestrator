@@ -69,6 +69,7 @@ describe('resolveStacks', () => {
       'express-mongo',
       'nest-typeorm',
       'fastapi',
+      'fastapi-mongo',
     ]);
   });
 
@@ -89,7 +90,7 @@ describe('resolveBackendStackId + backendMatrix (v12 #3)', () => {
     expect(resolveBackendStackId('express', 'mongo')).toBe('express-mongo');
     expect(resolveBackendStackId('nest', 'mysql')).toBe('nest-typeorm');
     expect(resolveBackendStackId('fastapi', 'postgres')).toBe('fastapi');
-    expect(resolveBackendStackId('fastapi', 'mongo')).toBeNull(); // fase 2
+    expect(resolveBackendStackId('fastapi', 'mongo')).toBe('fastapi-mongo');
     expect(resolveBackendStackId('django', 'sqlite')).toBeNull();
   });
 
@@ -97,8 +98,9 @@ describe('resolveBackendStackId + backendMatrix (v12 #3)', () => {
     const m = backendMatrix();
     expect(m.express.dbs.map((d) => d.id)).toEqual(['sqlite', 'postgres', 'mysql', 'mongo']);
     expect(m.nest.dbs.map((d) => d.id)).toEqual(['postgres', 'mysql', 'mongo']);
-    expect(m.fastapi.dbs.map((d) => d.id)).toEqual(['sqlite', 'postgres', 'mysql']);
+    expect(m.fastapi.dbs.map((d) => d.id)).toEqual(['sqlite', 'postgres', 'mysql', 'mongo']);
     expect(m.fastapi.dbs[0].stackId).toBe('fastapi');
+    expect(m.fastapi.dbs[3].stackId).toBe('fastapi-mongo');
   });
 });
 
@@ -112,6 +114,7 @@ describe('listStacks/getStack', () => {
       'express-mongo',
       'nest-typeorm',
       'fastapi',
+      'fastapi-mongo',
     ]);
     expect(getStack('vite-react').kind).toBe('frontend');
     expect(getStack('nope')).toBeNull();

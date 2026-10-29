@@ -93,6 +93,7 @@ describe('isEmbeddedDb', () => {
     expect(isEmbeddedDb(d, getStack('fastapi'))).toBe(false);
     expect(isEmbeddedDb(tmp(), getStack('express-postgres'))).toBe(false);
     expect(isEmbeddedDb(tmp(), getStack('nest-typeorm'))).toBe(false);
+    expect(isEmbeddedDb(tmp(), getStack('fastapi-mongo'))).toBe(false);
   });
 });
 
