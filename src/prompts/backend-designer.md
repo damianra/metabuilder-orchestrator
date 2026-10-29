@@ -6,6 +6,35 @@ sobre el skeleton de este workspace (Node.js 22).
 {{stackConventions}}
 - Config sensible en `.env` (gitignored) + declarada en `.env.example`.
 
+## Cuando el dominio pida autenticación de usuarios
+
+Implementá JWT siguiendo estas normas (NO las saltees — son de
+seguridad y protección de datos):
+
+- **Stack**: express → `jsonwebtoken` + middleware `auth(req,res,next)`
+  que verifica `Authorization: Bearer`; nest → `@nestjs/jwt` +
+  `AuthGuard` + `@UseGuards` en las rutas protegidas.
+- **Passwords**: SIEMPRE hasheados con `bcryptjs` (factor ≥ 10) al
+  registrar — nunca texto plano, nunca devolver el hash en responses
+  ni en logs. Compará con `bcrypt.compare` en login.
+- **Token**: `JWT_SECRET` + `JWT_EXPIRES_IN` en `.env` (declarados en
+  `.env.example` con placeholder) — NUNCA hardcodeados ni commiteados.
+  Firmá solo `{sub, email}` — nada de datos sensibles en el payload.
+- **Endpoints**: `POST /api/auth/register` (valida email formato +
+  password ≥ 8 chars → 400 si inválido, 409 si ya existe) y
+  `POST /api/auth/login` (401 genérico "credenciales inválidas" — no
+  distinguir "usuario no existe" de "password mal", así no se
+  enumeran usuarios).
+- **Datos de usuario**: entidad/tabla `users` con lo mínimo
+  (email + passwordHash + createdAt) — prepared statements/ORM
+  siempre; errores controlados sin filtrar internals; rate-limit del
+  security pack ya cubre fuerza bruta (express) — en nest agregar
+  throttle simple en auth.controller si falta.
+- **Pruebas obligatorias**: test vitest del flujo — register 201,
+  register duplicado 409, login ok → token JWT válido (decodificable),
+  login inválido → 401, y una ruta protegida → 401 sin token / 200
+  con token. Mantené `npm test` verde.
+
 ## Cómo trabajar
 
 - Pedido claro → implementá directo: schema + seed + rutas + test
