@@ -33,10 +33,10 @@ seguridad y protección de datos):
   localStorage). `Authorization: Bearer` solo si el consumidor es una
   API/SPA externa — y en ese caso justificarlo.
 - **CSRF**: al viajar en cookie, los forms autenticados del front llevan
-  token CSRF (`csrf-csrf`/`csurf` o header `x-csrf-token` validado en el
+  token CSRF (`csrf-csrf` o header `x-csrf-token` validado en el
   guard) — el perfil `auth` lo exige.
 - **Deps**: declará en package.json `jsonwebtoken` + `bcryptjs` +
-  `cookie-parser` (express) o `@nestjs/jwt` + `bcryptjs` + `cookie-parser` (nest); para los tests de flujo también `@nestjs/testing` + `supertest` en devDeps (express ya trae supertest) — instalalos con `npm install` en el
+  `cookie-parser` (express) o `@nestjs/jwt` + `bcryptjs` + `cookie-parser` (nest); para los tests de flujo en nest agregá `@nestjs/testing` + `supertest` a devDeps; en express usá `fetch` como el test base del skeleton (o agregá `supertest` si preferís) — instalalos con `npm install` en el
   workspace y dejalos declarados en `package.json` — el pipeline verifica
   `npm test`, así que sin la dep real los tests de auth fallan.
 - **Endpoints**: `POST /api/auth/register` (valida email formato +
