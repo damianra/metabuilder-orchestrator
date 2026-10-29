@@ -172,11 +172,12 @@ export async function finalizerNode(state) {
   // buildDir del stack: 'dist' (Vite) / 'out' (Next export).
   const outDir = join(dir, frontendStack?.buildDir ?? 'dist');
 
-  // Screenshot del build para el README — solo cuando el run publica
-  // el repo en GitHub (la imagen queda commiteada con el proyecto).
+  // Screenshot del build para el README — siempre que el scope tenga
+  // frontend y el build exista (la imagen queda commiteada con el
+  // proyecto; la referencia es relativa, anda igual sin github).
   // Warn-only: sin playwright/chromium el README sale sin imagen.
   let screenshot = null;
-  if (state.deployGithub && hasFrontend && existsSync(outDir)) {
+  if (hasFrontend && existsSync(outDir)) {
     const shot = await captureScreenshot({
       dir: outDir,
       cwd: dir,

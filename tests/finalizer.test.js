@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
@@ -91,5 +91,33 @@ describe('finalizerNode — commit idempotente', () => {
 
     const count = execSync('git rev-list --count HEAD', { cwd: dir }).toString().trim();
     expect(count).toBe('1');
+  });
+
+  it('screenshot corre sin deployGithub — front/fullstack con build intenta capturar', async () => {
+    const dir = tmp();
+    mkdirSync(join(dir, 'dist'), { recursive: true });
+    writeFileSync(join(dir, 'dist', 'index.html'), '<html><body>hola</body></html>');
+    const r = await finalizerNode({
+      projectDir: dir,
+      projectSlug: 'app-shot',
+      idea: 'idea',
+      scope: 'frontend',
+      noPush: true,
+    });
+    expect(r.status).toBe('done');
+    // El gate abrió: hay un log de screenshot (capturado u omitido —
+    // warn-only si el entorno no tiene chromium).
+    expect(r.history.some((h) => h.msg.toLowerCase().includes('screenshot'))).toBe(true);
+
+    // Backend-only nunca intenta screenshot.
+    const dirB = tmp();
+    const rB = await finalizerNode({
+      projectDir: dirB,
+      projectSlug: 'app-back',
+      idea: 'idea',
+      scope: 'backend',
+      noPush: true,
+    });
+    expect(rB.history.some((h) => h.msg.toLowerCase().includes('screenshot'))).toBe(false);
   });
 });
