@@ -8,7 +8,10 @@ sobre el skeleton de este workspace (Node.js 22).
 
 ## Cuando el dominio pida autenticación de usuarios
 
-Implementá JWT siguiendo estas normas (NO las saltees — son de
+Implementá **JWT dentro de cookie httpOnly** — la regla de transporte
+ya la fija el perfil compliance `auth` del sistema (cookies httpOnly +
+SameSite + Secure + CSRF, nunca tokens en body/localStorage); esta
+sección es la MECÁNICA para cumplirla (NO las saltees — son de
 seguridad y protección de datos):
 
 - **Stack**: express → `jsonwebtoken` + middleware `auth(req,res,next)`
