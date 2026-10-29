@@ -1,63 +1,64 @@
-# MetaBuilder — Roadmap v12
+# MetaBuilder — Roadmap v13
 
 ## Estado
 
-v11 completa y mergeada: multi-DB + multi-framework backend
-(`express-sqlite|postgres|mysql|mongo`, `nest-typeorm`), scanner por
-stack, AGENTS.md parametrizado, Backend tab multi-stack. Post-v11
-mergeados: restyle dashboard retro-gamer, screenshot en README,
-nest+mongo, instrucciones JWT del experto. Registro histórico:
-`docs/archive/ROADMAP-v1.md` … `ROADMAP-v11.md`.
+v12 completa y mergeada: toolchain por stack (enabler no-Node), stack
+backend FastAPI, selector framework × DB en el dashboard y matriz
+documentada — PRs #92-#95. Registro histórico:
+`docs/archive/ROADMAP-v1.md` … `ROADMAP-v12.md`.
 
-## Visión v12
+## Visión v13
 
-Backend configurable **de verdad**: el usuario elige **framework**
-(Express / NestJS / FastAPI) y **base de datos** (sqlite / postgres /
-mysql / mongo) como dimensiones independientes en el form Fullstack y
-en el Backend tab — no un combo cerrado por stack-id. El pipeline deja
-de asumir npm para poder operar stacks no-Node.
+**Robustez validada, no más tecnologías.** El scope de stacks queda
+cerrado — el valor está en que las apps generadas salgan verificadas
+de verdad en el mismo tiempo: el pipeline levanta la app recién
+creada y le pega a sus endpoints reales (hoy la verificación es
+estática; el wiring solo se validaba a mano). Se cierra además la
+última celda de la matriz (fastapi+mongo) porque quedó aplazada en
+v12, no porque se abra una nueva dirección.
 
-## Backlog v12
+## Backlog v13
 
 | # | Tarea | Esfuerzo |
 | --- | --- | --- |
-| 1 | **Toolchain por stack (enabler)** — el stack def gana `toolchain`: `{installCmd, testCmd, devCmd, buildCmd, dockerfile, manifest}`. Preflight (`npm install`), verify (`npm test`/`build`), dev-run (`npm run api`), finalize y `detectBackendStackId` lo leen en vez de hardcodear npm/package.json. Stacks Node conservan su toolchain npm — refactor interno invisible. Sin esto no hay stack no-Node posible. | M-L — **mergeado PR #92** |
-| 2 | **FastAPI skeleton + stack** — `templates/fastapi-skeleton/`: `app/main.py` (FastAPI + CORS + static `dist/` si existe), `app/routers/items.py` CRUD, `app/db.py` SQLAlchemy + `DATABASE_URL` en `.env` (sqlite default; postgres/mysql por URL), `requirements.txt`, `tests/` pytest, `.env.example`, `Dockerfile.python` (uvicorn :4000 — convención preservada). Scanner `fastapi-routes` (decorators `@router.get\|post\|put\|delete`). Detección por `requirements.txt`/`pyproject`. Stack def `fastapi` con toolchain python + convenciones del experto. | L — **mergeado PR #93** |
-| 3 | **Selector framework × DB** — `stack back` del form Fullstack y del picker del Backend tab se separan en **2 selects**: framework (`express\|nest\|fastapi`) y DB (`sqlite\|postgres\|mysql\|mongo`, filtrada por compat). Registry: `stacks.backend` resuelve `(framework,db) → stackId`; back-compat `--stack-backend express-sqlite` → `(express,sqlite)`. `createBackend(framework,db)`, `backend-state.json` guarda ambos, api-surface por framework, Dockerfile por toolchain. | M-L — **mergeado PR #94** |
-| 4 | **Docs + matriz** — README/docs de la matriz framework×DB real; verticales siguen express-sqlite-only; `django` queda fuera (monolítico, no API-first — ver decisiones). | S |
+| 1 | **Smoke runtime post-build** — `src/tools/smoke.js` + nodo en el grafo post-finalVerify: levanta `toolchain.devCmd`, `waitForPort`, y verifica el contrato: `GET /api/health` → 200; cada `GET` del `apiSurfaceFor` → no-404; `GET /api/*` inexistente → 404 JSON; si `dist/`/`out/` existe → `GET /` 200 + deep route → index.html (SPA fallback). Kill del proc tree al terminar — nunca huérfanos. **Severidad**: DB embebida (sqlite) → exigencia completa, falla = run `failed`; DB externa (postgres/mysql/mongo) → warn-only, solo wiring. Opt-out `plan.smoke === false` / `--no-smoke`. ~+15-30s por run. | M |
+| 2 | **`fastapi-mongo` — última celda de la matriz** — `templates/fastapi-skeleton-mongo/` (espejo de `api-skeleton-mongo`): ODMantic sobre Motor (`AsyncIOMotorClient`), `MONGO_URI`/`MONGO_DB` en `.env` (mismas vars que express-mongo), CRUD async `items`, tests con **mongomock-motor** (sin mongo real — self-contained). Stack def con `framework:'fastapi', dbs:['mongo']`, `detectPriority` menor que `fastapi` (gana el detect por `odmantic`/`motor`), convenciones del experto. Reusa `Dockerfile.python`/`fullstack-python` y el scanner `fastapi-routes`. | M |
 
-## Matriz framework × DB (real, post-v12)
+## Matriz framework × DB (objetivo v13)
 
 | | sqlite | postgres | mysql | mongo |
 | --- | --- | --- | --- | --- |
-| **Express** | ✓ `express-sqlite` | ✓ `express-postgres` | ✓ `express-mysql` | ✓ `express-mongo` |
-| **NestJS** | — (backend-only) | ✓ `nest-typeorm` | ✓ `nest-typeorm` | ✓ `nest-typeorm` (`@ObjectIdColumn`) |
-| **FastAPI** | ✓ `fastapi` | ✓ `fastapi` (`DATABASE_URL`) | ✓ `fastapi` | fase 2 — `motor` driver, fuera de v12 |
+| **Express** | `express-sqlite` | `express-postgres` | `express-mysql` | `express-mongo` |
+| **NestJS** (backend-only) | — | `nest-typeorm` | `nest-typeorm` | `nest-typeorm` |
+| **FastAPI** | `fastapi` | `fastapi` | `fastapi` | `fastapi-mongo` (#2) |
 
-Cada celda es el stackId que `resolveBackendStackId(fw, db)` devuelve;
-los 2 selects del form Fullstack y del Backend tab consumen
-`backendMatrix()` de `GET /api/options`.
+## Reglas del smoke (requisito del workflow)
 
-## Registro post-v11 (mergeados)
+- **La validación nunca depende de servicios/credenciales externos** —
+  con DB postgres/mysql/mongo el smoke verifica solo wiring (boot +
+  rutas montadas + SPA), nunca exige que la DB responda. Seguridad
+  primero: sin `.env` real no hay falsos negativos ni riesgo de tocar
+  datos vivos.
+- **DB embebida = exigencia completa** — sqlite no tiene excusa: si
+  el smoke falla ahí, el run falla.
+- **Sin procesos huérfanos** — kill del tree siempre, igual que los
+  dev-runs del dashboard (misma disciplina de `on('error')` en logs).
+- **Desactivable pero por defecto ON** — `plan.smoke === false` /
+  `--no-smoke` para quien quiera el pipeline viejo.
 
-| # | Tarea | Estado |
-| --- | --- | --- |
-| A | Dashboard temas por área + restyle | mergeado PR #83 |
-| B | Dashboard retro-gamer + polish | mergeado PRs #84/#85 |
-| C | Screenshot en README de apps | mergeado PR #86 |
-| D | NestJS + MongoDB en `nest-typeorm` | mergeado PR #88/#89 |
-| E | Instrucciones JWT en el experto backend | mergeado PR #90 |
+## Decisiones tomadas (v13)
 
-## Decisiones tomadas (v12)
-
-- **FastAPI sí, Django no**: FastAPI es API-first (encaja con
-  "backend para un front React"); Django es monolítico (templates,
-  admin) — pelea contra el modelo del producto.
-- **El toolchain por stack se paga primero**: verify/install/dev-run/
-  docker acoplados a npm son la deuda real — sin esa abstracción,
-  FastAPI sería un frankenstein, no un stack.
-- **Mongo en FastAPI queda fuera de v12**: `motor` añade async
-  surface distinta — SQL via `DATABASE_URL` cubre el 90% del caso.
-- **Framework×DB como dimensiones, no combos cerrados**: más
-  libertad al usuario (su pedido explícito) y el registry queda
-  matricial en vez de una lista creciente de `framework-db` ids.
+- **ODMantic sobre Motor** para mongo: modelos declarativos +
+  validación pydantic — el experto escribe casi igual que en el path
+  SQL. pymongo sync queda descartado (bloquea el event loop); Motor
+  crudo sin ODM fuerza una capa de datos ajena al patrón.
+- **Tests con mongomock-motor** — preserva la promesa del skeleton:
+  los tests corren sin servicios externos.
+- **`fastapi-mongo` como stackId separado** — espejo de
+  `express-mongo`; `resolveBackendStackId('fastapi','mongo')` resuelve
+  sin tocar el registry. La detección gana por `odmantic`/`motor` en
+  requirements (prioridad mayor que `fastapi` puro — mismo patrón
+  nest-vs-mongo de v12).
+- **No más stacks nuevos** — el scope de frameworks queda cerrado;
+  el foco siguiente es profundidad de verificación, no amplitud de
+  matriz.
