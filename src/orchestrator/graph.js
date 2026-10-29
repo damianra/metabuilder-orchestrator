@@ -10,6 +10,7 @@ import { fixerNode } from '../agents/fixer.js';
 import { confirmNode } from '../agents/confirm.js';
 import { reviewerNode } from '../agents/reviewer.js';
 import { finalVerifyNode, finalizerNode } from '../agents/finalizer.js';
+import { smokeNode } from '../agents/smoke.js';
 import { config } from '../config.js';
 
 // ---------- Routers ----------
@@ -65,9 +66,15 @@ function afterFix(state) {
 
 function afterReview(state) {
   if (state.status === 'failed') return 'fail';
-  if (!state.lastError) return 'finalize';
+  // Review OK → verificación runtime del artifact final (smoke).
+  if (!state.lastError) return 'smoke';
   // Issues de QA → el fixer los corrige y se re-verifica (finalVerify).
   return state.finalRetries < config.maxStepRetries ? 'fix' : 'fail';
+}
+
+function afterSmoke(state) {
+  // Smoke falló (strict, DB embebida o wiring roto) → terminal.
+  return state.status === 'failed' ? 'fail' : 'finalize';
 }
 
 // ---------- Grafo ----------
@@ -84,6 +91,7 @@ export function buildGraph() {
     .addNode('confirm', confirmNode)
     .addNode('finalVerify', finalVerifyNode)
     .addNode('review', reviewerNode)
+    .addNode('smoke', smokeNode)
     .addNode('finalize', finalizerNode)
     .addNode('fail', async (state) => ({
       status: 'failed',
@@ -101,6 +109,7 @@ export function buildGraph() {
     .addConditionalEdges('fix', afterFix)
     .addConditionalEdges('finalVerify', afterVerify)
     .addConditionalEdges('review', afterReview)
+    .addConditionalEdges('smoke', afterSmoke)
     .addEdge('finalize', END)
     .addEdge('fail', END);
 
