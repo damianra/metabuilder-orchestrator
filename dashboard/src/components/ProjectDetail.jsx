@@ -190,6 +190,16 @@ export default function ProjectDetail({ slug, onChanged }) {
 
   const spin = <LoaderCircle size={15} className="animate-spin" />;
 
+  const deleteModal = confirmDel && (
+    <DeleteConfirmModal
+      slug={slug}
+      busy={busy}
+      spin={spin}
+      onCancel={() => setConfirmDel(false)}
+      onConfirm={del}
+    />
+  );
+
   // El detalle da 404 en dirs sin plan.json (run muerto en preflight) —
   // justo el caso de limpieza: ofrecer eliminar igual desde acá.
   if (error) {
@@ -206,6 +216,7 @@ export default function ProjectDetail({ slug, onChanged }) {
         >
           {busy === 'delete' ? spin : <Trash2 size={15} />} Eliminar la carpeta
         </button>
+        {deleteModal}
       </div>
     );
   }
@@ -916,11 +927,20 @@ export default function ProjectDetail({ slug, onChanged }) {
         </div>
       )}
 
-      {confirmDel && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+      {deleteModal}
+    </div>
+  );
+}
+
+// Modal de confirmación del delete — definido una vez y renderizado en
+// las dos vistas del detalle (normal y error-sin-plan.json): un solo
+// punto de verdad para el flujo destructivo.
+function DeleteConfirmModal({ slug, busy, spin, onCancel, onConfirm }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
           data-testid="delete-confirm-modal"
-          onClick={() => busy !== 'delete' && setConfirmDel(false)}
+          onClick={() => busy !== 'delete' && onCancel()}
         >
           <div
             className="w-full max-w-md rounded-lg bg-slate-900 p-5 ring-1 ring-red-500/40 shadow-lg"
@@ -937,7 +957,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                 data-testid="delete-confirm-cancel"
                 className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-slate-300 ring-1 ring-accent-500/40 bg-slate-900 hover:bg-slate-950 disabled:opacity-40"
                 disabled={busy === 'delete'}
-                onClick={() => setConfirmDel(false)}
+                onClick={onCancel}
               >
                 Cancelar
               </button>
@@ -945,14 +965,12 @@ export default function ProjectDetail({ slug, onChanged }) {
                 data-testid="delete-confirm-accept"
                 className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-300 ring-1 ring-red-500/50 bg-red-500/10 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
                 disabled={busy === 'delete'}
-                onClick={del}
+                onClick={onConfirm}
               >
                 {busy === 'delete' ? spin : <Trash2 size={15} />} Eliminar
               </button>
             </div>
           </div>
         </div>
-      )}
-    </div>
   );
 }
