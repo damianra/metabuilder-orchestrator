@@ -6,10 +6,10 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 
 const app = await NestFactory.create(AppModule, { logger: ['error', 'warn', 'log'] });
-
-// SPA del frontend si existe dist/ (fullstack) — NestJS registra sus
-// controllers primero así que /api/* siempre gana; el catchall GET
-// sirve el index.html para el routing del front.
+// Los controllers de Nest se bindean en init() — los middlewares SPA
+// se registran DESPUÉS para no sombrearlos (un @Controller fuera de
+// /api seguiría ganando al catchall). dist/ solo existe en fullstack.
+await app.init();
 const http = app.getHttpAdapter().getInstance();
 const DIST = join(process.cwd(), 'dist');
 http.use(express.static(DIST));

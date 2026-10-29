@@ -99,7 +99,7 @@ nodo: plan.stacks > flags > defaults. Frontends: `vite-react`
 `express-postgres`, `express-mysql`, `express-mongo`,
 `nest-typeorm` (fullstack desde v13 #5 — el código backend vive en `server/` y tsc emite a `dist-server/` para no colisionar con `src/` ni `dist/` de vite; antes era backend-only porque dist/ colisionaba
 y necesita `Dockerfile.backend-ts` con build stage tsc; `db.js`→
-`src/database.module.ts` con TypeORM por `DB_TYPE`), `fastapi`
+`server/database.module.ts` con TypeORM por `DB_TYPE`), `fastapi`
 (**Python** — primer stack no-Node: toolchain pip/pytest/uvicorn sobre
 `requirements.txt`, ver abajo) — los express sql comparten
 `api-skeleton-sql` (pool + `q()` con `?`→`$n` normalizado + schema por

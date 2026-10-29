@@ -14,7 +14,7 @@ import { getStack } from '../stacks/index.js';
 export const apiSurfaceKindOf = (stackId) => getStack(stackId)?.apiSurface ?? 'express-routes';
 
 // kind: 'express-routes' (server/routes auto-mount, default) o
-// 'nest-controllers' (src/**/*.controller.ts con @Controller +
+// 'nest-controllers' (server/**/*.controller.ts — src/ en apps legacy — con @Controller +
 // @Get/@Post/...). El kind sale del stack backend detectado.
 export function apiSurfaceFor(dir, { kind = 'express-routes' } = {}) {
   if (kind === 'nest-controllers') return nestSurface(dir);
