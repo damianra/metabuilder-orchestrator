@@ -12,8 +12,9 @@ Implementá JWT siguiendo estas normas (NO las saltees — son de
 seguridad y protección de datos):
 
 - **Stack**: express → `jsonwebtoken` + middleware `auth(req,res,next)`
-  que verifica `Authorization: Bearer`; nest → `@nestjs/jwt` +
-  `AuthGuard` + `@UseGuards` en las rutas protegidas.
+  que lee el JWT de la cookie `auth` (`cookie-parser`); nest →
+  `@nestjs/jwt` + `cookie-parser` en `main.ts` + `AuthGuard` que lee
+  `req.cookies.auth` + `@UseGuards` en las rutas protegidas.
 - **Passwords**: SIEMPRE hasheados con `bcryptjs` (factor ≥ 10) al
   registrar — nunca texto plano, nunca devolver el hash en responses
   ni en logs. Compará con `bcrypt.compare` en login.
@@ -28,8 +29,9 @@ seguridad y protección de datos):
   localStorage). `Authorization: Bearer` solo si el consumidor es una
   API/SPA externa — y en ese caso justificarlo.
 - **Deps**: declará en package.json `jsonwebtoken` + `bcryptjs` +
-  `cookie-parser` (express) o `@nestjs/jwt` + `bcryptjs` (nest) — las
-  instala el pipeline, pero deben quedar en deps.
+  `cookie-parser` (express) o `@nestjs/jwt` + `bcryptjs` (nest) — instalalos con `npm install` en el
+  workspace y dejalos declarados en `package.json` — el pipeline verifica
+  `npm test`, así que sin la dep real los tests de auth fallan.
 - **Endpoints**: `POST /api/auth/register` (valida email formato +
   password ≥ 8 chars → 400 si inválido, 409 si ya existe) y
   `POST /api/auth/login` (401 genérico "credenciales inválidas" — no
