@@ -13,6 +13,8 @@ export default {
   agentsStack: 'Node.js + Express',
   agentsDb: 'SQLite (archivo local, sin servidores externos)',
   skeletonDir: 'api-skeleton',
+  framework: 'express',
+  dbs: ['sqlite'],
 
   toolchain: {
     manifest: 'package.json',

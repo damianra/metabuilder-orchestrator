@@ -45,7 +45,7 @@ export default function BackendTab({ onSaved }) {
 
   const refresh = useCallback(() => api.backendStatus().then(setStatus).catch(() => {}), []);
   const [options, setOptions] = useState(null);
-  const [stackId, setStackId] = useState('express-sqlite');
+  const [dims, setDims] = useState({ framework: 'express', db: 'sqlite' });
   useEffect(() => { api.options().then(setOptions).catch(() => {}); }, []);
 
   useEffect(() => {
@@ -65,7 +65,7 @@ export default function BackendTab({ onSaved }) {
     setBusy('create');
     setError(null);
     try {
-      await api.createBackend(stackId);
+      await api.createBackend(dims);
       await refresh();
     } catch (e) {
       setError(e.message);
@@ -185,15 +185,29 @@ export default function BackendTab({ onSaved }) {
             Describí tu dominio y un agente backend-experto construye la API sobre el
             stack que elijas — con propuestas, schema, rutas y tests.
           </p>
-          <select
-            value={stackId}
-            onChange={(e) => setStackId(e.target.value)}
-            className="mt-3 w-full rounded-lg border border-accent-500/40 bg-slate-900 px-3 py-2 text-sm text-slate-300"
-          >
-            {(options?.stacks?.backend ?? ['express-sqlite']).map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+          <div className="mt-3 flex gap-2">
+            <select
+              value={dims.framework}
+              onChange={(e) => {
+                const fw = e.target.value;
+                setDims({ framework: fw, db: options?.backendMatrix?.[fw]?.dbs[0]?.id ?? 'sqlite' });
+              }}
+              className="w-full rounded-lg border border-accent-500/40 bg-slate-900 px-3 py-2 text-sm text-slate-300"
+            >
+              {Object.entries(options?.backendMatrix ?? {}).map(([id, f]) => (
+                <option key={id} value={id}>{f.label}</option>
+              ))}
+            </select>
+            <select
+              value={dims.db}
+              onChange={(e) => setDims((d) => ({ ...d, db: e.target.value }))}
+              className="w-full rounded-lg border border-accent-500/40 bg-slate-900 px-3 py-2 text-sm text-slate-300"
+            >
+              {(options?.backendMatrix?.[dims.framework]?.dbs ?? []).map((d) => (
+                <option key={d.id} value={d.id}>{d.label}</option>
+              ))}
+            </select>
+          </div>
           <button
             onClick={create}
             disabled={busy === 'create'}

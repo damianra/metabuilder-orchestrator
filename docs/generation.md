@@ -79,6 +79,15 @@ antes que postgres (50) — se desempatan por `DB_DRIVER` en `.env`.
 Helpers compartidos en `src/stacks/helpers.js` (`pkgDeps`, `envValue`,
 `hasMarker`).
 
+**Framework × DB**: cada def backend declara `framework` (`express`|
+`nest`|`fastapi`) y `dbs` cubiertas — `resolveBackendStackId(fw, db)
+→ stackId` (combo inválido → null; fastapi+mongo queda fase 2) y
+`backendMatrix()` arma la matriz para los pickers. El form Fullstack
+y el Backend tab muestran **2 selects** (framework + db filtrada por
+compat) y la API resuelve el stackId (`backendFramework`/`backendDb`
+en POST /api/runs y POST /api/backend — `stackBackend`/`stackId`
+directos siguen aceptándose por back-compat).
+
 **Selección**: flags `--stack-frontend <id>` / `--stack-backend <id>`
 (o pregunta interactiva) → `state.stackFrontend/stackBackend` →
 `plan.stacks` (persistido por planner; resume lo restaura igual que

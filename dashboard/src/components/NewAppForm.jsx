@@ -8,7 +8,8 @@ const EMPTY = {
   appType: '',
   arch: 'flat',
   stackFrontend: 'vite-react',
-  stackBackend: 'express-sqlite',
+  backendFramework: 'express',
+  backendDb: 'sqlite',
   name: '',
   phone: '',
   github: false,
@@ -26,7 +27,15 @@ const BASE_COMPLIANCE = new Set(['privacidad', 'notfound']);
 const HIDDEN_COMPLIANCE = new Set(['menores']);
 
 // nest-typeorm es backend-only (#4) — el form es fullstack, no se ofrece.
-const formBackendStacks = (list = []) => list.filter((id) => id !== 'nest-typeorm');
+// stackId backend → dimensiones (framework, db) del selector —
+// para pre-llenar el form al clonar un proyecto.
+const dimsOfStack = (matrix, stackId, fallback = { framework: 'express', db: 'sqlite' }) => {
+  for (const [fw, cell] of Object.entries(matrix ?? {})) {
+    const hit = cell.dbs.find((d) => d.stackId === stackId);
+    if (hit) return { framework: fw, db: hit.id };
+  }
+  return fallback;
+};
 
 // Form "Nueva app" — los pickers se alimentan de GET /api/options
 // (registries del orquestador), nada hardcodeado. `cloneSlug` (viene de
@@ -62,7 +71,10 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
           appType: p.appType ?? f.appType,
           arch: p.arch ?? f.arch,
           stackFrontend: p.stacks?.frontend ?? f.stackFrontend,
-          stackBackend: p.stacks?.backend ?? f.stackBackend,
+          ...dimsOfStack(options?.backendMatrix, p.stacks?.backend, {
+            framework: f.backendFramework,
+            db: f.backendDb,
+          }),
           agent: p.agent ?? f.agent,
           compliance: (p.compliance ?? []).filter(
             (id) => !BASE_COMPLIANCE.has(id) && !HIDDEN_COMPLIANCE.has(id),
@@ -71,7 +83,11 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
         setClonedFrom(cloneSlug);
       })
       .catch(() => {});
-  }, [cloneSlug]);
+    // options entra a los deps: dimsOfStack necesita la matriz — si
+    // api.project resolvió antes que api.options() (o esta falló y
+    // quedó sin backendMatrix) el backend stack clonado se perdía en
+    // el fallback express+sqlite. Re-prefill una vez cargada.
+  }, [cloneSlug, options?.backendMatrix]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const hasBackend = form.scope !== 'frontend';
@@ -88,7 +104,10 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
       if (form.appType) body.appType = form.appType;
       if (hasBackend && form.arch) body.arch = form.arch;
       if (hasFrontend && form.stackFrontend) body.stackFrontend = form.stackFrontend;
-      if (hasBackend && form.stackBackend) body.stackBackend = form.stackBackend;
+      if (hasBackend) {
+        body.backendFramework = form.backendFramework;
+        body.backendDb = form.backendDb;
+      }
       if (form.name.trim()) body.name = form.name.trim();
       if (form.phone.trim()) body.phone = form.phone.trim();
       if (form.github) body.github = true;
@@ -154,9 +173,9 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
             id="appType"
             className={input}
             value={form.appType}
-            disabled={hasBackend && form.stackBackend !== 'express-sqlite'}
+            disabled={hasBackend && !(form.backendFramework === 'express' && form.backendDb === 'sqlite')}
             title={
-              form.stackBackend !== 'express-sqlite'
+              !(form.backendFramework === 'express' && form.backendDb === 'sqlite')
                 ? 'Los verticales solo aplican a stack express-sqlite — con otra base el vertical es custom'
                 : undefined
             }
@@ -197,20 +216,43 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
 
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div>
-          <label className={label} htmlFor="stackBackend">Stack back</label>
+          <label className={label} htmlFor="backendFramework">Framework back</label>
           <select
-            id="stackBackend"
+            id="backendFramework"
             className={input}
-            value={form.stackBackend}
+            value={form.backendFramework}
             disabled={!hasBackend}
             onChange={(e) => {
-              set('stackBackend', e.target.value);
-              // Los verticales son overlays sqlite — con otro stack el
-              // vertical queda en custom (gate también server-side).
-              if (e.target.value !== 'express-sqlite') set('appType', 'custom');
+              const fw = e.target.value;
+              const db = options?.backendMatrix?.[fw]?.dbs[0]?.id ?? 'sqlite';
+              set('backendFramework', fw);
+              set('backendDb', db);
+              if (!(fw === 'express' && db === 'sqlite')) set('appType', 'custom');
             }}
           >
-            {formBackendStacks(options?.stacks?.backend ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
+            {Object.entries(options?.backendMatrix ?? {}).map(([id, f]) => (
+              <option key={id} value={id} disabled={id === 'nest' && form.scope !== 'backend'}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={label} htmlFor="backendDb">Base de datos</label>
+          <select
+            id="backendDb"
+            className={input}
+            value={form.backendDb}
+            disabled={!hasBackend}
+            onChange={(e) => {
+              set('backendDb', e.target.value);
+              if (!(form.backendFramework === 'express' && e.target.value === 'sqlite'))
+                set('appType', 'custom');
+            }}
+          >
+            {(options?.backendMatrix?.[form.backendFramework]?.dbs ?? []).map((d) => (
+              <option key={d.id} value={d.id}>{d.label}</option>
+            ))}
           </select>
         </div>
         <div>

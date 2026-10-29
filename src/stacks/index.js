@@ -21,6 +21,37 @@ export function listStacks(kind) {
   return [...STACKS.values()].filter((s) => !kind || s.kind === kind);
 }
 
+const FRAMEWORK_LABELS = { express: 'Express', nest: 'NestJS', fastapi: 'FastAPI' };
+const DB_LABELS = { sqlite: 'SQLite', postgres: 'PostgreSQL', mysql: 'MySQL', mongo: 'MongoDB' };
+
+/**
+ * Resuelve (framework, db) → stackId backend. Cada def declara
+ * `framework` + `dbs` cubiertos: express mapea 1:1 por db, nest
+ * cubre pg/mysql/mongo via DB_TYPE, fastapi sqlite/pg/mysql via
+ * DATABASE_URL. Combo inválido (framework desconocido o db no
+ * soportada — fastapi+mongo queda fase 2) → null.
+ */
+export const resolveBackendStackId = (framework, db) =>
+  listStacks('backend').find((s) => s.framework === framework && s.dbs?.includes(db))?.id ?? null;
+
+// Matriz framework × db para los pickers (form Fullstack y Backend
+// tab): { express: {label, dbs:[{id,label,stackId}]}, ... } — la UI
+// filtra las dbs del framework elegido y resuelve el stackId.
+export function backendMatrix() {
+  const matrix = {};
+  for (const s of listStacks('backend')) {
+    if (!s.framework) continue;
+    const cell = (matrix[s.framework] ??= {
+      label: FRAMEWORK_LABELS[s.framework] ?? s.framework,
+      dbs: [],
+    });
+    for (const db of s.dbs ?? []) {
+      cell.dbs.push({ id: db, label: DB_LABELS[db] ?? db, stackId: s.id });
+    }
+  }
+  return matrix;
+}
+
 /**
  * Stacks activos para un scope: `{ frontend, backend }` (null el que
  * no aplica). `overrides` = { frontend, backend } por id — reservado

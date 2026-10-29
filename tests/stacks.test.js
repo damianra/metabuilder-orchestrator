@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  backendMatrix,
   finalCheckCommands,
   getStack,
   listStacks,
   planRequirements,
+  resolveBackendStackId,
   resolveStacks,
   stackRuleBullets,
 } from '../src/stacks/index.js';
@@ -78,6 +80,25 @@ describe('resolveStacks', () => {
   it('overrides por id; id desconocido lanza', () => {
     expect(resolveStacks('frontend', { frontend: 'vite-react' }).frontend.id).toBe('vite-react');
     expect(() => resolveStacks('frontend', { frontend: 'svelte' })).toThrow('svelte');
+  });
+});
+
+describe('resolveBackendStackId + backendMatrix (v12 #3)', () => {
+  it('resuelve (framework, db) → stackId; combo inválido → null', () => {
+    expect(resolveBackendStackId('express', 'sqlite')).toBe('express-sqlite');
+    expect(resolveBackendStackId('express', 'mongo')).toBe('express-mongo');
+    expect(resolveBackendStackId('nest', 'mysql')).toBe('nest-typeorm');
+    expect(resolveBackendStackId('fastapi', 'postgres')).toBe('fastapi');
+    expect(resolveBackendStackId('fastapi', 'mongo')).toBeNull(); // fase 2
+    expect(resolveBackendStackId('django', 'sqlite')).toBeNull();
+  });
+
+  it('la matriz filtra dbs por framework con labels y stackId', () => {
+    const m = backendMatrix();
+    expect(m.express.dbs.map((d) => d.id)).toEqual(['sqlite', 'postgres', 'mysql', 'mongo']);
+    expect(m.nest.dbs.map((d) => d.id)).toEqual(['postgres', 'mysql', 'mongo']);
+    expect(m.fastapi.dbs.map((d) => d.id)).toEqual(['sqlite', 'postgres', 'mysql']);
+    expect(m.fastapi.dbs[0].stackId).toBe('fastapi');
   });
 });
 

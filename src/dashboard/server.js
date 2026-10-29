@@ -44,7 +44,7 @@ import {
   saveBackend,
 } from '../design/backend-session.js';
 import { getVertical, listVerticals } from '../verticals/index.js';
-import { getStack, listStacks, resolveStacksSafe } from '../stacks/index.js';
+import { getStack, listStacks, resolveBackendStackId, backendMatrix, resolveStacksSafe } from '../stacks/index.js';
 import { getEngine as getAgentEngine, listEngines } from '../engines/index.js';
 import { checkEngineAuth } from '../tools/acp.js';
 import { readSettings, writeSettings } from '../tools/settings.js';
@@ -514,6 +514,7 @@ export function createDashboardApp({
         frontend: listStacks('frontend').map((s) => s.id),
         backend: listStacks('backend').map((s) => s.id),
       },
+      backendMatrix: backendMatrix(),
       engines: listEngines(),
       compliance: listCompliance(),
       // engine configurado (settings/env) — null = setup gate pendiente
@@ -819,6 +820,17 @@ export function createDashboardApp({
     if (b.stackFrontend && getStack(b.stackFrontend)?.kind !== 'frontend') {
       return res.status(400).json({ error: `stackFrontend inválido (${listStacks('frontend').map((s) => s.id).join('|')})` });
     }
+    // Selector framework × db: si vienen las dimensiones sueltas se
+    // resuelven a stackId (stackBackend explícito gana — back-compat).
+    if (!b.stackBackend && (b.backendFramework || b.backendDb)) {
+      const resolved = resolveBackendStackId(b.backendFramework, b.backendDb);
+      if (!resolved) {
+        return res.status(400).json({
+          error: `combo backend inválido: ${b.backendFramework} + ${b.backendDb}`,
+        });
+      }
+      b.stackBackend = resolved;
+    }
     if (b.stackBackend && getStack(b.stackBackend)?.kind !== 'backend') {
       return res.status(400).json({ error: `stackBackend inválido (${listStacks('backend').map((s) => s.id).join('|')})` });
     }
@@ -948,7 +960,9 @@ export function createDashboardApp({
   app.get('/api/backend', (req, res) => res.json(backendStatus()));
 
   app.post('/api/backend', (req, res) => {
-    const r = createBackend(req.body?.stackId);
+    // Dimensiones sueltas (framework+db, picker nuevo) o stackId
+    // directo (back-compat) — createBackend resuelve el stack.
+    const r = createBackend(req.body?.framework, req.body?.db, req.body?.stackId);
     res.status(r.ok ? 201 : 409).json(r);
   });
 
