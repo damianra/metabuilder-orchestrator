@@ -107,15 +107,15 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
     }
   };
 
-  const input = 'w-full rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-slate-300 focus:ring-2 focus:ring-accent-500 outline-none';
-  const label = 'block text-xs font-semibold text-slate-600 mb-1';
+  const input = 'w-full rounded-lg bg-slate-900 px-3 py-2 text-sm ring-1 ring-accent-500/50 focus:ring-2 focus:ring-accent-500 outline-none';
+  const label = 'block text-xs font-semibold text-slate-400 mb-1';
 
   return (
-    <form onSubmit={submit} className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
-      <h2 className="flex items-center gap-2 text-lg font-bold tracking-tight text-slate-900">
+    <form onSubmit={submit} className="rounded-lg bg-slate-900 p-6 ring-1 ring-accent-500/40 glow-card">
+      <h2 className="flex items-center gap-2 text-lg font-bold tracking-tight text-slate-100">
         <DraftingCompass size={18} className="text-accent-600" /> Nueva app
         {clonedFrom && (
-          <span className="rounded-lg bg-accent-50 px-2 py-0.5 text-xs font-semibold text-accent-700 ring-1 ring-accent-200">
+          <span className="rounded-lg bg-accent-500/15 px-2 py-0.5 text-xs font-semibold text-accent-300 ring-1 ring-accent-200">
             config de {clonedFrom}
           </span>
         )}
@@ -238,7 +238,7 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
               return (
                 <label
                   key={id}
-                  className={`flex items-center gap-2 text-sm ${base ? 'text-slate-400' : 'text-slate-700'}`}
+                  className={`flex items-center gap-2 text-sm ${base ? 'text-slate-400' : 'text-slate-300'}`}
                 >
                   <input
                     type="checkbox"
@@ -267,15 +267,15 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
       )}
 
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <label className="flex items-end gap-2 pb-2 text-sm text-slate-700">
+        <label className="flex items-end gap-2 pb-2 text-sm text-slate-300">
           <input type="checkbox" checked={form.github} onChange={(e) => set('github', e.target.checked)} />
           repo en GitHub
         </label>
-        <label className="flex items-end gap-2 pb-2 text-sm text-slate-700">
+        <label className="flex items-end gap-2 pb-2 text-sm text-slate-300">
           <input type="checkbox" checked={form.ghpages} disabled={!form.github || !hasFrontend} onChange={(e) => set('ghpages', e.target.checked)} />
           + Pages
         </label>
-        <label className="flex items-end gap-2 pb-2 text-sm text-slate-700">
+        <label className="flex items-end gap-2 pb-2 text-sm text-slate-300">
           <input type="checkbox" checked={form.verifyDocker} onChange={(e) => set('verifyDocker', e.target.checked)} />
           verificar Dockerfile
         </label>
@@ -290,7 +290,7 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
           <Send size={15} /> Encolar generación
         </button>
         {feedback && (
-          <p className={`text-sm ${feedback.ok ? 'text-emerald-700' : 'text-red-700'}`}>{feedback.text}</p>
+          <p className={`text-sm ${feedback.ok ? 'text-emerald-400' : 'text-red-300'}`}>{feedback.text}</p>
         )}
       </div>
     </form>

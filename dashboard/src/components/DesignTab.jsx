@@ -20,9 +20,9 @@ const spin = <LoaderCircle size={15} className="animate-spin" />;
 // `reply` envía el texto como mensaje, `action` dispara una nativa.
 function ProposalCard({ proposal, onPick, disabled }) {
   return (
-    <div className="mt-2 space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+    <div className="mt-2 space-y-2 rounded-lg bg-slate-900 p-3 ring-1 ring-accent-500/40">
       {proposal.question && (
-        <p className="text-xs font-semibold text-slate-600">{proposal.question}</p>
+        <p className="text-xs font-semibold text-slate-400">{proposal.question}</p>
       )}
       <div className="flex flex-wrap gap-1.5">
         {proposal.options.map((o, i) => (
@@ -30,7 +30,7 @@ function ProposalCard({ proposal, onPick, disabled }) {
             key={i}
             disabled={disabled}
             onClick={() => onPick(o)}
-            className="rounded-lg px-2.5 py-1 text-xs font-semibold text-accent-700 ring-1 ring-accent-300 hover:bg-accent-50 disabled:opacity-40"
+            className="rounded-lg px-2.5 py-1 text-xs font-semibold text-accent-300 ring-1 ring-accent-300 hover:bg-accent-500/15 disabled:opacity-40"
           >
             {o.label}
           </button>
@@ -230,24 +230,24 @@ export default function DesignTab({ onSaved }) {
 
   if (!status) {
     return (
-      <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200 shadow-sm">
-        <p className="flex items-center gap-2 text-sm text-slate-500">{spin} cargando…</p>
+      <section className="rounded-lg bg-slate-900 p-5 ring-1 ring-accent-500/40 glow-card">
+        <p className="flex items-center gap-2 text-sm text-slate-400">{spin} cargando…</p>
       </section>
     );
   }
 
   if (!status.exists) {
     return (
-      <section className="rounded-2xl bg-white p-8 ring-1 ring-slate-200 shadow-sm">
+      <section className="rounded-lg bg-slate-900 p-8 ring-1 ring-accent-500/40 glow-card">
         <div className="mx-auto max-w-md text-center">
           <Palette size={28} className="mx-auto text-accent-600" />
-          <h2 className="mt-2 text-sm font-bold text-slate-800">Diseñar app</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="mt-2 text-sm font-bold text-slate-200">Diseñar app</h2>
+          <p className="mt-1 text-sm text-slate-400">
             Iterá un frontend chateando con el agente — el preview se levanta con un vite dev
             server y el resultado se puede guardar como app real.
           </p>
           {backends.length > 0 && (
-            <label className="mt-4 block text-left text-xs font-semibold text-slate-600">
+            <label className="mt-4 block text-left text-xs font-semibold text-slate-400">
               Diseñar para un backend existente (opcional)
               <select
                 value={backendFor}
@@ -268,22 +268,22 @@ export default function DesignTab({ onSaved }) {
           >
             {busy === 'create' ? spin : <Palette size={15} />} Nuevo diseño
           </button>
-          {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
+          {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
         </div>
       </section>
     );
   }
 
   return (
-    <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200 shadow-sm">
+    <section className="rounded-lg bg-slate-900 p-5 ring-1 ring-accent-500/40 glow-card">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="flex items-center gap-2 text-sm font-bold text-slate-800">
+        <h2 className="flex items-center gap-2 text-sm font-bold text-slate-200">
           <Palette size={16} className="text-accent-600" /> Diseñar app
         </h2>
         {status.backend && (
           <span
             title={`El diseño se copia dentro de generated-apps/${status.backend.slug} al guardar`}
-            className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200"
+            className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-200"
           >
             para backend: {status.backend.slug}
             <button
@@ -313,7 +313,7 @@ export default function DesignTab({ onSaved }) {
               title="Frena el vite dev server del workspace"
               onClick={stopPreview}
               disabled={Boolean(busy)}
-              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-slate-400 ring-1 ring-accent-500/50 hover:bg-slate-950 disabled:opacity-40"
             >
               {busy === 'stop' ? spin : <Square size={12} />} frenar preview
             </button>
@@ -322,7 +322,7 @@ export default function DesignTab({ onSaved }) {
               title="Levanta el vite dev server del workspace para el preview en vivo"
               onClick={startPreview}
               disabled={Boolean(busy)}
-              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-accent-700 ring-1 ring-accent-300 hover:bg-accent-50 disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-accent-300 ring-1 ring-accent-300 hover:bg-accent-500/15 disabled:opacity-40"
             >
               {busy === 'dev' ? spin : <Play size={12} />} preview
             </button>
@@ -344,7 +344,7 @@ export default function DesignTab({ onSaved }) {
             }
             onClick={save}
             disabled={Boolean(busy) || (!attachTo && !slug.trim())}
-            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-300 hover:bg-emerald-50 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-300 hover:bg-emerald-50 disabled:opacity-40"
           >
             {busy === 'save' ? spin : <Save size={12} />}{' '}
             {attachTo ? `guardar en ${attachTo}` : 'guardar como app'}
@@ -356,7 +356,7 @@ export default function DesignTab({ onSaved }) {
             className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ring-1 disabled:opacity-40 ${
               confirmDiscard
                 ? 'bg-red-600 text-white ring-red-600 hover:bg-red-700'
-                : 'text-red-600 ring-red-200 hover:bg-red-50'
+                : 'text-red-400 ring-red-500/40 hover:bg-red-500/10'
             }`}
           >
             {busy === 'discard' ? spin : <Trash2 size={12} />}
@@ -365,12 +365,12 @@ export default function DesignTab({ onSaved }) {
         </div>
       </div>
       {error && (
-        <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-red-200">
+        <p className="mt-2 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300 ring-1 ring-red-500/40">
           {error}
         </p>
       )}
       <div className="mt-3 grid gap-4 lg:grid-cols-2">
-        <div className="flex min-h-[420px] flex-col rounded-xl ring-1 ring-slate-200">
+        <div className="flex min-h-[420px] flex-col rounded-lg ring-1 ring-accent-500/40">
           <div className="flex-1 space-y-3 overflow-y-auto p-3" style={{ maxHeight: '55vh' }}>
             {messages.length === 0 && !inflight && (
               <p className="p-3 text-xs text-slate-400">
@@ -382,7 +382,7 @@ export default function DesignTab({ onSaved }) {
               if (m.role === 'user') {
                 return (
                   <div key={i} className="flex justify-end">
-                    <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-accent-600 px-3 py-2 text-sm text-white">
+                    <div className="max-w-[85%] whitespace-pre-wrap rounded-lg bg-accent-600 px-3 py-2 text-sm text-white">
                       {m.text}
                     </div>
                   </div>
@@ -394,7 +394,7 @@ export default function DesignTab({ onSaved }) {
               return (
                 <div key={i} className="flex justify-start">
                   <div className="max-w-[85%]">
-                    <div className="whitespace-pre-wrap rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">
+                    <div className="whitespace-pre-wrap rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-300">
                       {text}
                     </div>
                     {proposal && (
@@ -407,12 +407,12 @@ export default function DesignTab({ onSaved }) {
             {inflight && (
               <>
                 <div className="flex justify-end">
-                  <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-accent-600 px-3 py-2 text-sm text-white">
+                  <div className="max-w-[85%] whitespace-pre-wrap rounded-lg bg-accent-600 px-3 py-2 text-sm text-white">
                     {inflight.user}
                   </div>
                 </div>
                 <div className="flex justify-start">
-                  <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">
+                  <div className="max-w-[85%] whitespace-pre-wrap rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-300">
                     {inflight.reply || <LoaderCircle size={14} className="animate-spin text-slate-400" />}
                   </div>
                 </div>
@@ -425,7 +425,7 @@ export default function DesignTab({ onSaved }) {
               {activity}
             </p>
           )}
-          <div className="flex items-center gap-2 border-t border-slate-200 p-2">
+          <div className="flex items-center gap-2 border-t border-accent-500/40 p-2">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -444,22 +444,22 @@ export default function DesignTab({ onSaved }) {
             </button>
           </div>
         </div>
-        <div className="flex min-h-[420px] flex-col overflow-hidden rounded-xl ring-1 ring-slate-200">
+        <div className="flex min-h-[420px] flex-col overflow-hidden rounded-lg ring-1 ring-accent-500/40">
           {previewUrl ? (
             <>
-              <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-1.5">
+              <div className="flex items-center gap-2 border-b border-accent-500/40 bg-slate-950 px-3 py-1.5">
                 <a
                   href={previewUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 truncate text-xs text-accent-700 hover:underline"
+                  className="inline-flex items-center gap-1 truncate text-xs text-accent-300 hover:underline"
                 >
                   <ExternalLink size={12} /> {previewUrl}
                 </a>
                 <button
                   title="Recargar el iframe"
                   onClick={() => setFrameKey((k) => k + 1)}
-                  className="ml-auto text-slate-400 hover:text-slate-600"
+                  className="ml-auto text-slate-400 hover:text-slate-400"
                 >
                   <RotateCcw size={13} />
                 </button>
@@ -468,7 +468,7 @@ export default function DesignTab({ onSaved }) {
                 key={frameKey}
                 title="preview del diseño"
                 src={previewUrl}
-                className="w-full flex-1 bg-white"
+                className="w-full flex-1 bg-slate-900"
               />
             </>
           ) : (

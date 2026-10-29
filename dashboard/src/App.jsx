@@ -96,26 +96,26 @@ export default function App() {
   }[route.view];
 
   return (
-    <div className={`min-h-screen bg-slate-50 ${theme}`}>
-      <header className="border-b border-slate-200 bg-white">
+    <div className={`min-h-screen ${theme}`}>
+      <header className="border-b border-accent-500/40 bg-slate-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <a href="#/" className="flex items-center gap-2 font-bold tracking-tight text-slate-900">
+          <a href="#/" className="flex items-center gap-2 font-bold tracking-tight text-slate-100">
             <Boxes size={20} className="text-accent-600" /> MetaBuilder
             <span className="font-glyph text-[10px] font-normal text-slate-400">//orchestrator</span>
           </a>
-          <div className="flex items-center gap-3 text-xs text-slate-500">
+          <div className="flex items-center gap-3 text-xs text-slate-400">
             {notifPerm === 'default' && (
               <button
                 title="Notificaciones del browser al terminar un run"
                 onClick={async () => setNotifPerm(await Notification.requestPermission())}
-                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50"
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 font-semibold text-slate-400 ring-1 ring-accent-500/50 hover:bg-slate-950"
               >
                 <Bell size={13} /> avisar al terminar
               </button>
             )}
             {notifPerm === 'granted' && (
               <span title="Notificaciones activas — avisa al terminar un run con la pestaña en background" className="inline-flex items-center gap-1 text-slate-400">
-                <Bell size={13} className="text-emerald-600" /> avisos on
+                <Bell size={13} className="text-emerald-400" /> avisos on
               </span>
             )}
             {notifPerm === 'denied' && (
@@ -127,14 +127,14 @@ export default function App() {
               <button
                 title="Cambiar motor de agente"
                 onClick={() => setGateOpen(true)}
-                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50"
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 font-semibold text-slate-400 ring-1 ring-accent-500/50 hover:bg-slate-950"
               >
                 <Cpu size={13} /> motor: {engine}
               </button>
             )}
-            {running > 0 && <span className="text-accent-700 font-semibold">{running} corriendo</span>}
+            {running > 0 && <span className="text-accent-300 font-semibold">{running} corriendo</span>}
             {queued > 0 && <span>{queued} en cola</span>}
-            <span className={`inline-flex items-center gap-1.5 ${apiDown ? 'text-red-600' : 'text-emerald-700'}`}>
+            <span className={`inline-flex items-center gap-1.5 ${apiDown ? 'text-red-400' : 'text-emerald-400'}`}>
               <span className={`h-2 w-2 rounded-full ${apiDown ? 'bg-red-500' : 'bg-emerald-500'}`} />
               api {apiDown ? 'caída' : 'ok'}
             </span>
@@ -154,12 +154,12 @@ export default function App() {
           />
         )}
         {apiDown && (
-          <p className="rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-800 ring-1 ring-amber-200">
+          <p className="rounded-lg bg-amber-500/10 px-4 py-2 text-sm text-amber-300 ring-1 ring-amber-500/40">
             La API no responde — levantala con <code className="font-mono">npm run dashboard</code>.
           </p>
         )}
         {engine !== null && !gateOpen && route.view !== 'detail' && (
-          <nav className="flex gap-1 rounded-xl bg-white p-1 ring-1 ring-slate-200 shadow-sm">
+          <nav className="flex gap-1 rounded-lg bg-slate-900 p-1 ring-1 ring-accent-500/40 glow-card">
             {[
               ['design', 'Diseñar app', '#/', Palette],
               ['list', 'Backend', '#/backend', ServerCog],
@@ -170,8 +170,8 @@ export default function App() {
                 href={href}
                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold ${
                   route.view === v
-                    ? 'bg-accent-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-100'
+                    ? 'bg-accent-500 text-slate-950 glow-card font-bold'
+                    : 'text-slate-400 hover:bg-slate-800'
                 }`}
               >
                 <Icon size={14} /> {label}

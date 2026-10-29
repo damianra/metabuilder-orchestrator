@@ -14,9 +14,9 @@ import { api } from '../api.js';
 // default = engine configurado del dashboard.
 
 const btn =
-  'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ring-1 ring-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed';
+  'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ring-1 ring-accent-500/50 bg-slate-900 hover:bg-slate-950 disabled:opacity-40 disabled:cursor-not-allowed';
 const select =
-  'rounded-lg bg-white px-2 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 outline-none';
+  'rounded-lg bg-slate-900 px-2 py-1 text-xs font-semibold text-slate-300 ring-1 ring-accent-500/50 outline-none';
 
 export default function TerminalPanel({ slug }) {
   const [open, setOpen] = useState(false);
@@ -119,17 +119,17 @@ export default function TerminalPanel({ slug }) {
   const engineLabel = engines?.find((e) => e.id === engine)?.label ?? engine ?? 'agente';
 
   return (
-    <section className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 shadow-sm">
+    <section className="rounded-lg bg-slate-900 p-6 ring-1 ring-accent-500/40 glow-card">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 text-left font-bold tracking-tight text-slate-900"
+        className="flex w-full items-center gap-2 text-left font-bold tracking-tight text-slate-100"
       >
         <TerminalIcon size={16} /> Terminal {open ? '▾' : '▸'}
       </button>
       {open && (
         <div className="mt-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="flex items-center gap-2 text-xs text-slate-500">
+            <p className="flex items-center gap-2 text-xs text-slate-400">
               sesión{' '}
               {engines?.length ? (
                 <select
@@ -145,7 +145,7 @@ export default function TerminalPanel({ slug }) {
                   ))}
                 </select>
               ) : (
-                <code className="rounded bg-slate-100 px-1">{engineLabel}</code>
+                <code className="rounded bg-slate-800 px-1">{engineLabel}</code>
               )}{' '}
               en el directorio de la app{status ? ` · ${status}` : ''}
             </p>
@@ -155,7 +155,7 @@ export default function TerminalPanel({ slug }) {
           </div>
           <div
             ref={boxRef}
-            className="mt-2 h-96 overflow-hidden rounded-xl bg-slate-900 p-2"
+            className="mt-2 h-96 overflow-hidden rounded-lg bg-slate-900 p-2"
           />
         </div>
       )}

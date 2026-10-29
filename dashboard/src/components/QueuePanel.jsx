@@ -5,14 +5,14 @@ import { jobSummary, timeAgo } from '../util.js';
 
 const chip = (j) =>
   j.cancelRequested
-    ? 'bg-amber-100 text-amber-800 animate-pulse'
+    ? 'bg-amber-500/15 text-amber-300 animate-pulse'
     : j.status === 'done'
       ? 'bg-emerald-100 text-emerald-800'
       : j.status === 'failed'
         ? 'bg-red-100 text-red-800'
         : j.status === 'running'
-          ? 'bg-accent-100 text-accent-800 animate-pulse'
-          : 'bg-slate-100 text-slate-600';
+          ? 'bg-accent-500/20 text-accent-300 animate-pulse'
+          : 'bg-slate-800 text-slate-400';
 
 // pending → borrar; running → flag cancelRequested y el worker mata el
 // árbol del run. Mientras se procesa se muestra "cancelando".
@@ -75,14 +75,14 @@ function JobRow({ j, onChanged }) {
         <button
           title={open ? 'Ocultar log del job' : 'Ver log del job'}
           onClick={() => setOpen((v) => !v)}
-          className="shrink-0 text-slate-400 hover:text-slate-600"
+          className="shrink-0 text-slate-400 hover:text-slate-400"
         >
           {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
         <span className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${chip(j)}`}>
           {j.cancelRequested ? 'cancelando' : j.status}
         </span>
-        <span className="truncate text-slate-600">
+        <span className="truncate text-slate-400">
           #{j.id} {jobSummary(j.args)}
           <span className="inline-flex items-center gap-1 text-slate-400">
             {j.status === 'running' && <LoaderCircle size={13} className="animate-spin" />}
@@ -106,7 +106,7 @@ function JobRow({ j, onChanged }) {
                 onChanged?.();
               }
             }}
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50 disabled:opacity-40"
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold text-red-400 ring-1 ring-red-500/40 hover:bg-red-500/10 disabled:opacity-40"
           >
             {cancelBusy ? (
               <LoaderCircle size={12} className="animate-spin" />
@@ -129,7 +129,7 @@ function JobRow({ j, onChanged }) {
                 onChanged?.();
               }
             }}
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40"
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold text-slate-400 ring-1 ring-accent-500/50 hover:bg-slate-950 disabled:opacity-40"
           >
             {retryBusy ? (
               <LoaderCircle size={12} className="animate-spin" />
@@ -166,9 +166,9 @@ export default function QueuePanel({ jobs, worker, onChanged }) {
   if (!shown.length) return null;
 
   return (
-    <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200 shadow-sm">
-      <h2 className="flex items-center gap-2 text-sm font-bold text-slate-800">
-        <ListOrdered size={16} className="text-slate-500" /> Cola ({active.length} activos)
+    <section className="rounded-lg bg-slate-900 p-5 ring-1 ring-accent-500/40 glow-card">
+      <h2 className="flex items-center gap-2 text-sm font-bold text-slate-200">
+        <ListOrdered size={16} className="text-slate-400" /> Cola ({active.length} activos)
         {finished.length > 0 && (
           <button
             title="Borra los jobs terminados (done/failed/cancelled) — los activos no se tocan"
@@ -182,7 +182,7 @@ export default function QueuePanel({ jobs, worker, onChanged }) {
                 onChanged?.();
               }
             }}
-            className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40"
+            className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold text-slate-400 ring-1 ring-accent-500/50 hover:bg-slate-950 disabled:opacity-40"
           >
             {clearBusy ? (
               <LoaderCircle size={12} className="animate-spin" />
@@ -194,7 +194,7 @@ export default function QueuePanel({ jobs, worker, onChanged }) {
         )}
       </h2>
       {stalled && (
-        <p className="mt-2 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
+        <p className="mt-2 flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-300 ring-1 ring-amber-500/40">
           <TriangleAlert size={14} /> sin worker consumiendo la cola — levantá
           <code className="font-mono">npm run dashboard</code> o
           <code className="font-mono">npm run worker</code>

@@ -7,9 +7,9 @@ const spin = <LoaderCircle size={14} className="animate-spin" />;
 
 function ProposalCard({ proposal, onPick, disabled }) {
   return (
-    <div className="mt-2 space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+    <div className="mt-2 space-y-2 rounded-lg bg-slate-900 p-3 ring-1 ring-accent-500/40">
       {proposal.question && (
-        <p className="text-xs font-semibold text-slate-600">{proposal.question}</p>
+        <p className="text-xs font-semibold text-slate-400">{proposal.question}</p>
       )}
       <div className="flex flex-wrap gap-1.5">
         {proposal.options.map((o, i) => (
@@ -17,7 +17,7 @@ function ProposalCard({ proposal, onPick, disabled }) {
             key={i}
             disabled={disabled}
             onClick={() => onPick(o)}
-            className="rounded-lg px-2.5 py-1 text-xs font-semibold text-accent-700 ring-1 ring-accent-300 hover:bg-accent-50 disabled:opacity-40"
+            className="rounded-lg px-2.5 py-1 text-xs font-semibold text-accent-300 ring-1 ring-accent-300 hover:bg-accent-500/15 disabled:opacity-40"
           >
             {o.label}
           </button>
@@ -169,26 +169,26 @@ export default function BackendTab({ onSaved }) {
 
   if (!status) {
     return (
-      <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200 shadow-sm">
-        <p className="flex items-center gap-2 text-sm text-slate-500">{spin} cargando…</p>
+      <section className="rounded-lg bg-slate-900 p-5 ring-1 ring-accent-500/40 glow-card">
+        <p className="flex items-center gap-2 text-sm text-slate-400">{spin} cargando…</p>
       </section>
     );
   }
 
   if (!status.exists) {
     return (
-      <section className="rounded-2xl bg-white p-8 ring-1 ring-slate-200 shadow-sm">
+      <section className="rounded-lg bg-slate-900 p-8 ring-1 ring-accent-500/40 glow-card">
         <div className="mx-auto max-w-md text-center">
           <ServerCog size={28} className="mx-auto text-accent-600" />
-          <h2 className="mt-2 text-sm font-bold text-slate-800">Backend</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="mt-2 text-sm font-bold text-slate-200">Backend</h2>
+          <p className="mt-1 text-sm text-slate-400">
             Describí tu dominio y un agente backend-experto construye la API sobre el
             stack que elijas — con propuestas, schema, rutas y tests.
           </p>
           <select
             value={stackId}
             onChange={(e) => setStackId(e.target.value)}
-            className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+            className="mt-3 w-full rounded-lg border border-accent-500/40 bg-slate-900 px-3 py-2 text-sm text-slate-300"
           >
             {(options?.stacks?.backend ?? ['express-sqlite']).map((s) => (
               <option key={s} value={s}>{s}</option>
@@ -201,19 +201,19 @@ export default function BackendTab({ onSaved }) {
           >
             {busy === 'create' ? spin : <ServerCog size={15} />} Nueva API
           </button>
-          {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
+          {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
         </div>
       </section>
     );
   }
 
   return (
-    <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200 shadow-sm">
+    <section className="rounded-lg bg-slate-900 p-5 ring-1 ring-accent-500/40 glow-card">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="flex items-center gap-2 text-sm font-bold text-slate-800">
+        <h2 className="flex items-center gap-2 text-sm font-bold text-slate-200">
           <ServerCog size={16} className="text-accent-600" /> Backend
           {status.stackId && (
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200">
+            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-400 ring-1 ring-accent-500/40">
               {status.stackId}
             </span>
           )}
@@ -229,8 +229,8 @@ export default function BackendTab({ onSaved }) {
             disabled={Boolean(busy)}
             className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ring-1 disabled:opacity-40 ${
               status.apiRunning
-                ? 'text-slate-600 ring-slate-300 hover:bg-slate-50'
-                : 'text-accent-700 ring-accent-300 hover:bg-accent-50'
+                ? 'text-slate-400 ring-accent-500/50 hover:bg-slate-950'
+                : 'text-accent-300 ring-accent-300 hover:bg-accent-500/15'
             }`}
           >
             {busy === 'dev' ? spin : status.apiRunning ? <Square size={12} /> : <Play size={12} />}
@@ -247,7 +247,7 @@ export default function BackendTab({ onSaved }) {
             title="Mueve el workspace a generated-apps/<slug> como app real"
             onClick={save}
             disabled={Boolean(busy) || !slug.trim()}
-            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-300 hover:bg-emerald-50 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-300 hover:bg-emerald-50 disabled:opacity-40"
           >
             {busy === 'save' ? spin : <Save size={12} />} guardar como app
           </button>
@@ -258,7 +258,7 @@ export default function BackendTab({ onSaved }) {
             className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ring-1 disabled:opacity-40 ${
               confirmDiscard
                 ? 'bg-red-600 text-white ring-red-600 hover:bg-red-700'
-                : 'text-red-600 ring-red-200 hover:bg-red-50'
+                : 'text-red-400 ring-red-500/40 hover:bg-red-500/10'
             }`}
           >
             {busy === 'discard' ? spin : <Trash2 size={12} />}
@@ -267,12 +267,12 @@ export default function BackendTab({ onSaved }) {
         </div>
       </div>
       {error && (
-        <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-red-200">
+        <p className="mt-2 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300 ring-1 ring-red-500/40">
           {error}
         </p>
       )}
       <div className="mt-3 grid gap-4 lg:grid-cols-2">
-        <div className="flex min-h-[420px] flex-col rounded-xl ring-1 ring-slate-200">
+        <div className="flex min-h-[420px] flex-col rounded-lg ring-1 ring-accent-500/40">
           <div className="flex-1 space-y-3 overflow-y-auto p-3" style={{ maxHeight: '55vh' }}>
             {messages.length === 0 && !inflight && (
               <p className="p-3 text-xs text-slate-400">
@@ -284,7 +284,7 @@ export default function BackendTab({ onSaved }) {
               if (m.role === 'user') {
                 return (
                   <div key={i} className="flex justify-end">
-                    <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-accent-600 px-3 py-2 text-sm text-white">
+                    <div className="max-w-[85%] whitespace-pre-wrap rounded-lg bg-accent-600 px-3 py-2 text-sm text-white">
                       {m.text}
                     </div>
                   </div>
@@ -294,7 +294,7 @@ export default function BackendTab({ onSaved }) {
               return (
                 <div key={i} className="flex justify-start">
                   <div className="max-w-[85%]">
-                    <div className="whitespace-pre-wrap rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">
+                    <div className="whitespace-pre-wrap rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-300">
                       {text}
                     </div>
                     {proposal && (
@@ -307,12 +307,12 @@ export default function BackendTab({ onSaved }) {
             {inflight && (
               <>
                 <div className="flex justify-end">
-                  <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-accent-600 px-3 py-2 text-sm text-white">
+                  <div className="max-w-[85%] whitespace-pre-wrap rounded-lg bg-accent-600 px-3 py-2 text-sm text-white">
                     {inflight.user}
                   </div>
                 </div>
                 <div className="flex justify-start">
-                  <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">
+                  <div className="max-w-[85%] whitespace-pre-wrap rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-300">
                     {inflight.reply || <LoaderCircle size={14} className="animate-spin text-slate-400" />}
                   </div>
                 </div>
@@ -325,7 +325,7 @@ export default function BackendTab({ onSaved }) {
               {activity}
             </p>
           )}
-          <div className="flex items-center gap-2 border-t border-slate-200 p-2">
+          <div className="flex items-center gap-2 border-t border-accent-500/40 p-2">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -344,8 +344,8 @@ export default function BackendTab({ onSaved }) {
             </button>
           </div>
         </div>
-        <div className="flex min-h-[420px] flex-col overflow-hidden rounded-xl ring-1 ring-slate-200">
-          <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
+        <div className="flex min-h-[420px] flex-col overflow-hidden rounded-lg ring-1 ring-accent-500/40">
+          <div className="border-b border-accent-500/40 bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-400">
             API surface{status.apiRunning ? ' · corriendo en :4000' : ''}
           </div>
           <div className="flex-1 overflow-y-auto p-3">
@@ -355,18 +355,18 @@ export default function BackendTab({ onSaved }) {
                   <li key={i} className="flex items-center gap-2">
                     <span
                       className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-xs font-semibold ${
-                        e.method === 'GET' ? 'bg-emerald-100 text-emerald-800' : 'bg-accent-100 text-accent-800'
+                        e.method === 'GET' ? 'bg-emerald-100 text-emerald-800' : 'bg-accent-500/20 text-accent-300'
                       }`}
                     >
                       {e.method}
                     </span>
-                    <code className="text-slate-700">{e.path}</code>
+                    <code className="text-slate-300">{e.path}</code>
                     <span className="text-xs text-slate-400">{e.file}</span>
                     {status.apiRunning && e.method === 'GET' && (
                       <button
                         title={`GET ${e.path} (proxy via dashboard)`}
                         onClick={() => probeEndpoint(e.path)}
-                        className="ml-auto shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-accent-700 ring-1 ring-accent-300 hover:bg-accent-50"
+                        className="ml-auto shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-accent-300 ring-1 ring-accent-300 hover:bg-accent-500/15"
                       >
                         probar
                       </button>
