@@ -235,6 +235,16 @@ según stack — `npm ci` + audit + test / pip + pip-audit + pytest; el
 de fastapi corre el lado npm solo si hay `package.json`) — la app
 generada nace con CI de seguridad propia si se pushea a GitHub.
 
+## Component kit pre-styled (v13)
+
+El `app-skeleton` trae `src/components/ui.jsx` — bloques genéricos
+(`Section`, `Navbar`, `Hero`, `Card`, `StatCard`, `EmptyState`,
+`ErrorState`, `FormShell` con submit gateado, `CTA`) que el agente
+compone y parametriza en vez de escribir Tailwind desde cero: piso de
+calidad consistente y menos retrabajos del fixer. `AGENTS.ui.md`
+documenta el kit; `ui-kit.test.jsx` lo smokea dentro del `npm test`
+de cada app.
+
 ## Prompt pruning por relevancia (v13)
 
 El `AGENTS.md` que recibe cada agente se arma por secciones según el

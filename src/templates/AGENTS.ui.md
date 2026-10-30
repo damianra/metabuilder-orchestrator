@@ -18,3 +18,12 @@
 - **Navbar** simple con nombre/logo + links de ancla a las secciones.
 - Contenido no provisto por el usuario → lorem ipsum breve; imágenes → placeholder (placehold.co) o bloque con ícono Lucide.
 
+
+## Kit de componentes (`src/components/ui.jsx`)
+
+El skeleton trae bloques pre-styled — **componerlos/parametrizarlos,
+no reescribirlos**: `Section`, `Navbar`, `Hero`, `Card`, `StatCard`,
+`EmptyState`, `ErrorState`, `FormShell` (submit gateado por `disabled`),
+`CTA`. Acento configurable: `accent="indigo|emerald|amber"` (mapa de
+clases literales — Tailwind no genera clases dinámicas). Si un bloque
+necesita variante, extenderlo con `className` antes que duplicar markup.
