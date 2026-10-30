@@ -16,6 +16,8 @@ API del dominio detectada (verificá wiring front↔back contra esto — rutas q
 {{apiSurface}}
 ```
 
+Evidencia visual: {{screenshot}}
+
 ## Qué verificar
 
 1. **Reglas de UI** (AGENTS.md): botones de acción deshabilitados por defecto y habilitados solo con campos válidos, fallbacks informativos ante datos vacíos, sin links/íconos con URL vacía, componentes sin props inventadas.

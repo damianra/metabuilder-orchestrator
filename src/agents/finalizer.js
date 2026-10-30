@@ -203,7 +203,10 @@ export async function finalizerNode(state) {
   // proyecto; la referencia es relativa, anda igual sin github).
   // Warn-only: sin playwright/chromium el README sale sin imagen.
   let screenshot = null;
-  if (hasFrontend && existsSync(outDir)) {
+  // La captura ya pudo ocurrir en review (v13 #14) — reusarla.
+  if (hasFrontend && existsSync(join(dir, 'screenshot.png'))) {
+    screenshot = 'screenshot.png';
+  } else if (hasFrontend && existsSync(outDir)) {
     const shot = await captureScreenshot({
       dir: outDir,
       cwd: dir,
