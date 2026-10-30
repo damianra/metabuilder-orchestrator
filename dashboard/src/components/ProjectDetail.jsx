@@ -42,9 +42,17 @@ export default function ProjectDetail({ slug, onChanged }) {
   const [backendForm, setBackendForm] = useState({ idea: '', arch: 'flat', stackBackend: 'express-sqlite', github: false, ghpages: false });
   const [stackOptions, setStackOptions] = useState([]);
   const [archOptions, setArchOptions] = useState([]);
+  const [githubOk, setGithubOk] = useState(true); // true=fail-open hasta que options() resuelva
   // Superficie de API: endpoints escaneados de server/routes/ + probe.
   const [apiSurface, setApiSurface] = useState(null);
   const [probe, setProbe] = useState(null); // {path, status, body}
+
+  // Flag GitHub al montar — no solo al abrir el modal de backend
+  // (ese botón no existe en proyectos fullstack/backend y el flag
+  // quedaba fail-open: el disable del publish nunca se activaba).
+  useEffect(() => {
+    api.options().then((o) => setGithubOk(Boolean(o.github))).catch(() => {});
+  }, []);
 
   const load = () =>
     api.project(slug).then(setProject).catch((e) => setError(e.message));
@@ -308,6 +316,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                     .then((o) => {
                       setArchOptions(o.archs ?? []);
                       setStackOptions(o.backendStacks ?? []);
+                      setGithubOk(Boolean(o.github));
                     })
                     .catch(() => {});
               }}
@@ -413,7 +422,8 @@ export default function ProjectDetail({ slug, onChanged }) {
             )}
             <button
               className="inline-flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-accent-700 disabled:opacity-40"
-              disabled={busy === 'publish' || publishing}
+              disabled={busy === 'publish' || publishing || !githubOk}
+              title={githubOk ? '' : 'sin GITHUB_TOKEN en .env'}
               onClick={pub}
             >
               {busy === 'publish' || publishing ? spin : <CloudUpload size={14} />}
@@ -903,6 +913,8 @@ export default function ProjectDetail({ slug, onChanged }) {
                 <input
                   type="checkbox"
                   checked={backendForm.github}
+                  disabled={!githubOk}
+                  title={githubOk ? '' : 'sin GITHUB_TOKEN en .env'}
                   onChange={(e) => setBackendForm((f) => ({ ...f, github: e.target.checked }))}
                 />
                 github
@@ -911,7 +923,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                 <input
                   type="checkbox"
                   checked={backendForm.ghpages}
-                  disabled={!backendForm.github}
+                  disabled={!backendForm.github || !githubOk}
                   onChange={(e) => setBackendForm((f) => ({ ...f, ghpages: e.target.checked }))}
                 />
                 gh-pages

@@ -31,7 +31,7 @@ export async function publishRepo({
   // error.logText cuando el publish falla.
   const lines = [];
   const git = (args, cwd = dir) =>
-    runCmd(`git ${args}`, { cwd, timeoutMs: 120_000 }).then((r) => {
+    runCmd(`git ${args}`, { cwd, timeoutMs: 120_000, env: { GIT_TERMINAL_PROMPT: '0' } }).then((r) => {
       const out = {
         ...r,
         stdout: sanitize(r.stdout, token),

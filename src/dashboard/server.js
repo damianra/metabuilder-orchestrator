@@ -516,6 +516,9 @@ export function createDashboardApp({
       },
       backendMatrix: backendMatrix(),
       backendStacks: listStacks('backend').map((s) => ({ id: s.id, label: s.label })),
+      // GitHub linkeado (token en .env) — la UI deshabilita los toggles
+      // github/ghpages/publish cuando no lo hay en vez de fallar después.
+      github: Boolean(config.githubToken),
       engines: listEngines(),
       compliance: listCompliance(),
       // engine configurado (settings/env) — null = setup gate pendiente
