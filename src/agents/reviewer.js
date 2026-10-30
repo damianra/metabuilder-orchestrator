@@ -1,6 +1,7 @@
+import { readdirSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { config } from '../config.js';
 import { runAgentPrompt } from '../tools/acp.js';
-import { run } from '../tools/shell.js';
 import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
 import { stacksFor } from '../stacks/index.js';
 import { activity, log, loadPrompt, runLogPath, textFeed } from './common.js';
@@ -13,9 +14,10 @@ import { activity, log, loadPrompt, runLogPath, textFeed } from './common.js';
 export async function reviewerNode(state) {
   // Review scoped (v13 #15): en vez de que el agente explore el árbol
   // (ls -R + reads sueltos = tokens), le pasamos el inventario — los
-  // archivos fuente a revisar y el api-surface del dominio.
-  const files = await run('git ls-files -c -o --exclude-standard', { cwd: state.projectDir });
-  const fileList = files.ok ? files.stdout.trim().split('\n').filter(Boolean).join('\n') : '(sin inventario)';
+  // archivos fuente a revisar y el api-surface del dominio. El walk es
+  // filesystem-based: en este punto la app todavía no tiene `git init`
+  // (corre en finalize, un nodo después).
+  const fileList = sourceFiles(state.projectDir).join('\n') || '(sin inventario)';
   const backend = stacksFor(state).backend;
   const surface = backend
     ? apiSurfaceFor(state.projectDir, { kind: apiSurfaceKindOf(backend.id) })
@@ -64,6 +66,26 @@ export async function reviewerNode(state) {
     lastOutput: result.issues.slice(-3000),
     history: [log('review', `issues reportados: ${result.issues.slice(0, 200)}`)],
   };
+}
+
+// Inventario de archivos fuente — excluye deps, builds, vcs y media
+// generada (no son reviewables y solo gastarían líneas de prompt).
+const SKIP_DIRS = new Set([
+  'node_modules', '.git', '.next', '.venv', 'venv', '__pycache__',
+  'dist', 'dist-server', 'out', 'build', 'uploads', 'coverage',
+]);
+
+function sourceFiles(dir, base = dir) {
+  const out = [];
+  for (const f of readdirSync(dir).sort()) {
+    const p = join(dir, f);
+    if (statSync(p).isDirectory()) {
+      if (!SKIP_DIRS.has(f) && !f.startsWith('.')) out.push(...sourceFiles(p, base));
+    } else {
+      out.push(relative(base, p));
+    }
+  }
+  return out;
 }
 
 /**
