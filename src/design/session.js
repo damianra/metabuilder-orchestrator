@@ -104,15 +104,14 @@ export function createDesign({ attachTo = null } = {}) {
   if (existsSync(join(DESIGN_DIR, 'package.json'))) return { ok: false, error: 'ya existe un diseño en curso — descartalo o guardalo' };
   mkdirSync(DESIGN_DIR, { recursive: true });
   cpSync(join(config.templatesDir, 'app-skeleton'), DESIGN_DIR, { recursive: true });
-  const agentsSrc = readFileSync(join(config.templatesDir, 'AGENTS.md'), 'utf8');
-  writeFileSync(
-    join(DESIGN_DIR, 'AGENTS.md'),
-    agentsSrc
-      .replaceAll('{{frontendStack}}', 'Vite + React + Tailwind')
-      // El design-work no tiene backend — defaults de writeAgentsMd.
-      .replaceAll('{{backendFramework}}', 'Node.js + Express')
-      .replaceAll('{{backendDb}}', 'SQLite (archivo local, sin servidores externos)'),
-  );
+  // El design-work no tiene backend — usa writeAgentsMd directo (asi
+  // aplica el pruning de secciones y no quedan placeholders residuales).
+  writeAgentsMd(DESIGN_DIR, {
+    withBackend: false,
+    withFrontend: true,
+    frontendStack: getStack('vite-react'),
+    backendStack: null,
+  });
   for (const f of ['package.json', 'index.html', 'src/App.jsx']) {
     const p = join(DESIGN_DIR, f);
     if (existsSync(p)) writeFileSync(p, readFileSync(p, 'utf8').replaceAll('__APP_NAME__', 'design-work'));
