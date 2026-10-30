@@ -57,6 +57,7 @@ export default function DesignTab({ onSaved }) {
   // agente diseña contra su API real y guardar lo copia dentro de él.
   const [backends, setBackends] = useState([]);
   const [backendFor, setBackendFor] = useState('');
+  const [stackFrontend, setStackFrontend] = useState('vite-react');
   const [frameKey, setFrameKey] = useState(0);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const chatEnd = useRef(null);
@@ -96,7 +97,7 @@ export default function DesignTab({ onSaved }) {
     setBusy('create');
     setError(null);
     try {
-      await api.createDesign(backendFor || undefined);
+      await api.createDesign(backendFor || undefined, stackFrontend);
       await refresh();
     } catch (e) {
       setError(e.message);
@@ -246,6 +247,17 @@ export default function DesignTab({ onSaved }) {
             Iterá un frontend chateando con el agente — el preview se levanta con un vite dev
             server y el resultado se puede guardar como app real.
           </p>
+          <label className="mt-4 block text-left text-xs font-semibold text-slate-400">
+            Stack del frontend
+            <select
+              value={stackFrontend}
+              onChange={(e) => setStackFrontend(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-2 py-1.5 text-sm outline-none focus:border-accent-500"
+            >
+              <option value="vite-react">React + Vite</option>
+              <option value="nextjs">Next.js</option>
+            </select>
+          </label>
           {backends.length > 0 && (
             <label className="mt-4 block text-left text-xs font-semibold text-slate-400">
               Diseñar para un backend existente (opcional)

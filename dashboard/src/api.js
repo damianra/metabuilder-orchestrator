@@ -44,11 +44,11 @@ export const api = {
       body: JSON.stringify(body),
     }),
   designStatus: () => req('/api/design'),
-  createDesign: (forSlug) =>
+  createDesign: (forSlug, stackFrontend) =>
     req('/api/design', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(forSlug ? { for: forSlug } : {}),
+      body: JSON.stringify({ ...(forSlug ? { for: forSlug } : {}), ...(stackFrontend ? { stackFrontend } : {}) }),
     }),
   discardDesign: () => req('/api/design', { method: 'DELETE' }),
   designDev: () => req('/api/design/dev', { method: 'POST' }),

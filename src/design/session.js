@@ -99,24 +99,25 @@ export function designStatus(dir = DESIGN_DIR) {
 // (v10) ata el diseño a un proyecto backend existente: el chat diseña
 // contra su API real y `saveDesign` copia el front dentro del mismo
 // proyecto en vez de crear uno nuevo.
-export function createDesign({ attachTo = null } = {}) {
+export function createDesign({ attachTo = null, frontendStackId = 'vite-react' } = {}) {
+  const fst = getStack(frontendStackId) ?? getStack('vite-react');
   touchActivity();
   if (existsSync(join(DESIGN_DIR, 'package.json'))) return { ok: false, error: 'ya existe un diseño en curso — descartalo o guardalo' };
   mkdirSync(DESIGN_DIR, { recursive: true });
-  cpSync(join(config.templatesDir, 'app-skeleton'), DESIGN_DIR, { recursive: true });
+  cpSync(join(config.templatesDir, fst.skeletonDir ?? 'app-skeleton'), DESIGN_DIR, { recursive: true });
   // El design-work no tiene backend — usa writeAgentsMd directo (asi
   // aplica el pruning de secciones y no quedan placeholders residuales).
   writeAgentsMd(DESIGN_DIR, {
     withBackend: false,
     withFrontend: true,
-    frontendStack: getStack('vite-react'),
+    frontendStack: fst,
     backendStack: null,
   });
-  for (const f of ['package.json', 'index.html', 'src/App.jsx']) {
+  for (const f of ['package.json', 'index.html', 'src/App.jsx', 'src/app/page.jsx']) {
     const p = join(DESIGN_DIR, f);
     if (existsSync(p)) writeFileSync(p, readFileSync(p, 'utf8').replaceAll('__APP_NAME__', 'design-work'));
   }
-  writeState({ messages: [], created: new Date().toISOString(), attachTo });
+  writeState({ messages: [], created: new Date().toISOString(), attachTo, frontendStackId: fst.id });
   startInstall(DESIGN_DIR);
   return { ok: true };
 }
@@ -240,11 +241,11 @@ export function attachFrontendFiles(srcDir, destDir) {
 
 // plan.json del backend → fullstack: stacks.frontend, compliance base
 // y un step `done` sintético del front (misma técnica que saveDesign).
-export function attachPlanUpdate(destDir) {
+export function attachPlanUpdate(destDir, frontendStackId = 'vite-react') {
   const planPath = join(destDir, 'plan.json');
   const plan = JSON.parse(readFileSync(planPath, 'utf8'));
   plan.scope = 'fullstack';
-  plan.stacks = { ...(plan.stacks ?? {}), frontend: 'vite-react' };
+  plan.stacks = { ...(plan.stacks ?? {}), frontend: frontendStackId };
   plan.compliance = [...new Set([...(plan.compliance ?? []), 'privacidad', 'notfound'])];
   const nextId = Math.max(0, ...(plan.steps ?? []).map((s) => s.id ?? 0)) + 1;
   (plan.steps ??= []).push({
@@ -268,14 +269,14 @@ function saveDesignAttach(slug) {
   }
   stopDevRun(DESIGN_DIR);
   attachFrontendFiles(DESIGN_DIR, dest);
-  attachPlanUpdate(dest);
+  attachPlanUpdate(dest, readState().frontendStackId ?? 'vite-react');
   const plan = JSON.parse(readFileSync(planPath, 'utf8'));
   writeAgentsMd(dest, {
     withBackend: true,
     whatsapp:
       plan.appType === 'orders' || /whats|wa\.me/i.test(plan.idea ?? ''),
     arch: resolveArchSafe(plan.arch, 'flat'),
-    frontendStack: getStack('vite-react'),
+    frontendStack: getStack(readState().frontendStackId ?? 'vite-react'),
     backendStack: getStack(plan.stacks?.backend ?? detectBackendStackId(dest)),
   });
   clearInstall(DESIGN_DIR);
