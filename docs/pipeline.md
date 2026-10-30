@@ -128,7 +128,7 @@ hay frontend; backend solo vitest). Falla → loop `fix`
 (finalRetries) → `fail`.
 
 `smoke` (v13) es verificación **runtime** del artifact final, entre
-`review` OK y `finalize`: levanta el `devCmd` del toolchain del stack
+`finalVerify` OK y `review`: levanta el `devCmd` del toolchain del stack
 (spawn detached, kill del process group al terminar — nunca huérfano),
 espera el puerto (~30s) y verifica el contrato HTTP — `GET /api/health`
 → 200, cada `GET` del `apiSurface` del stack → no-404, `/api/*`
