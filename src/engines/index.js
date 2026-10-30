@@ -14,15 +14,25 @@ export const getEngine = (id) => ENGINES.get(id) ?? null;
 
 /**
  * Id del engine elegido, SIN sonda de auth. Precedencia:
- *   flag (--agent / state.agent) > plan.agent (resume) >
- *   settings.json `engine` (dashboard) > env AGENT_PROVIDER > 'auto'.
+ *   flag (--agent / state.agent) > settings.json `engine` (dashboard,
+ *   si no es 'auto') > env AGENT_PROVIDER > plan.agent (resume) > 'auto'.
+ * El engine ACTIVO siempre gana sobre el guardado en plan.json — un
+ * resume con el engine muerto (sin tokens) se desbloquea cambiando
+ * el config, sin tocar el plan. `plan.agent` queda como fallback
+ * histórico cuando nada está configurado.
  * `sources.flag` puede ser '' (default del state) — se ignora.
  * 'auto' lo resuelve con probe el caller que pueda (preflight);
  * resolveEngine() lo mapea a 'devin' para callers síncronos.
  */
 export function resolveEngineId({ flag, plan, settings } = {}) {
   const configured = settings !== undefined ? settings : readSettings().engine;
-  return flag || plan || configured || config.agentProvider || 'auto';
+  return (
+    flag ||
+    (configured && configured !== 'auto' ? configured : null) ||
+    config.agentProvider ||
+    plan ||
+    'auto'
+  );
 }
 
 /**
