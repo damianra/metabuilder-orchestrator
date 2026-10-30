@@ -34,6 +34,7 @@ Sos el planificador de MetaBuilder. Tu única tarea es escribir el archivo `plan
 ## Reglas
 
 - Pasos atómicos, ordenados y autocontenidos; cada `verify` debe ser un comando REAL ejecutable en este directorio (ej: `npm run build`, `npx vitest run`, `npm run test:e2e`, `test -f archivo`).
+- **Granularidad**: cada paso cuesta un ciclo build+verify (tokens + tiempo). Agrupá trabajo trivial relacionado en un solo paso (scaffolding + componente simple, varios archivos del mismo recurso) — un paso por "unidad verificable", no por archivo.
 {{stackRules}}
 {{archRules}}
 - **scope `fullstack`**: orden sugerido: backend base → frontend → integración → tests → e2e.

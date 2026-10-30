@@ -38,7 +38,7 @@ v12, no porque se abra una nueva dirección.
 | 14 | **Screenshot al review** — la `screenshot.png` se genera en finalize POST-review → el QA agent es ciego visual (hero vacío, contraste, layout roto pasa). Adelantar el capture al review (pre-approve) + pasarlo como evidencia → salto de cobertura visual. **mergeado PR #113** | M |
 | 15 | **Review scoped al diff** — el review puede releer todo el proyecto por paso. Limitar su input a archivos tocados por el paso + imports frontera → tokens por review bajan sin perder cobertura en lo nuevo (los checks estáticos cubren el resto). **mergeado PR #112** | S |
 | 16 | **Prompt pruning por relevancia** — hoy inyectamos TODO el AGENTS.md + convenciones en cada llamada (WhatsApp en apps sin WhatsApp, DB externa en sqlite, compliance de pagos sin pagos). Gatear secciones por `appType`/`scope`/`stack` real → ~30-40% menos texto por llamada al agente, mismo output. El template ya se arma por partes — falta el selector. **mergeado PR #114** | S |
-| 17 | **Granularidad del plan** — 6 pasos = 6 ciclos build+verify con overhead de contexto/verify por paso. El planner podría agrupar pasos triviales (scaffolding + componente simple) → menos ciclos = menos tokens re-cargados. Balance: atomicidad para fix/resume. | S |
+| 17 | **Granularidad del plan** — 6 pasos = 6 ciclos build+verify con overhead de contexto/verify por paso. El planner podría agrupar pasos triviales (scaffolding + componente simple) → menos ciclos = menos tokens re-cargados. Balance: atomicidad para fix/resume. **mergeado PR #116** | S |
 
 
 ## Límites conocidos (documentados — no accionables hoy)
