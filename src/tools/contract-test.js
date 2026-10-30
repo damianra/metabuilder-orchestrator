@@ -71,7 +71,7 @@ import re
 import pytest
 
 ENDPOINTS = ${JSON.stringify(rows, null, 2)}
-ROUTERS = Path(__file__).resolve().parent.parent / "app" / "routers"
+ROUTERS = Path(__file__).resolve().parent / "app" / "routers"
 
 
 @pytest.mark.parametrize("e", ENDPOINTS, ids=lambda e: f"{e['method'].upper()} {e['path']}")
