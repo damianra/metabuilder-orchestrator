@@ -291,6 +291,12 @@ export default function DesignTab({ onSaved }) {
         <h2 className="flex items-center gap-2 text-sm font-bold text-slate-200">
           <Palette size={16} className="text-accent-600" /> Diseñar app
         </h2>
+        <span
+          title="Stack elegido al crear el diseño"
+          className="rounded-lg bg-accent-500/15 px-2 py-0.5 text-xs font-semibold text-accent-400 ring-1 ring-accent-500/40"
+        >
+          {{ 'vite-react': 'React + Vite', nextjs: 'Next.js' }[status.frontendStackId] ?? status.frontendStackId ?? 'React + Vite'}
+        </span>
         {status.backend && (
           <span
             title={`El diseño se copia dentro de generated-apps/${status.backend.slug} al guardar`}
