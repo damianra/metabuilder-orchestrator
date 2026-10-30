@@ -233,6 +233,7 @@ export async function preflightNode(state) {
     }
     writeAgentsMd(dir, {
       withBackend: hasBackendDir(dir),
+      withFrontend: resumeStacks.frontend != null,
       whatsapp:
         savedPlan?.appType === 'orders' || /whats|wa\.me/i.test(savedPlan?.idea ?? state.idea ?? ''),
       arch: resolveArchSafe(planArch, state.arch),

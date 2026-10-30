@@ -272,6 +272,8 @@ function saveDesignAttach(slug) {
   const plan = JSON.parse(readFileSync(planPath, 'utf8'));
   writeAgentsMd(dest, {
     withBackend: true,
+    whatsapp:
+      plan.appType === 'orders' || /whats|wa\.me/i.test(plan.idea ?? ''),
     arch: resolveArchSafe(plan.arch, 'flat'),
     frontendStack: getStack('vite-react'),
     backendStack: getStack(plan.stacks?.backend ?? detectBackendStackId(dest)),
