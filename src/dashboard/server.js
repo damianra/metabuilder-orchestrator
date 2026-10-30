@@ -919,7 +919,9 @@ export function createDashboardApp({
         return res.status(409).json({ error: `${forSlug} tiene un job en curso` });
       }
     }
-    const r = createDesign({ attachTo: forSlug || null });
+    if (req.body?.stackFrontend && getStack(String(req.body.stackFrontend))?.kind !== 'frontend')
+        return res.status(400).json({ error: `stack-frontend desconocido: ${req.body.stackFrontend}` });
+    const r = createDesign({ attachTo: forSlug || null, frontendStackId: req.body?.stackFrontend });
     res.status(r.ok ? 201 : 409).json(r);
   });
 
