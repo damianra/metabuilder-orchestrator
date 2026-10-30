@@ -16,7 +16,8 @@
 - **Botones**: `rounded-full` o `rounded-lg`, `px-6 py-3 font-semibold`; primario sólido + `hover:` visible; secundario outline.
 - **Hero**: gradiente sutil (`bg-gradient-to-b`) o fondo sólido oscuro + badge/logo con ícono Lucide real; nunca un div vacío de color.
 - **Navbar** simple con nombre/logo + links de ancla a las secciones.
-- Contenido no provisto por el usuario → lorem ipsum breve; imágenes → placeholder (placehold.co) o bloque con ícono Lucide.
+- Contenido no provisto por el usuario → lorem ipsum breve; bloque con ícono Lucide si no hay imagen.
+- **Imágenes (licencias)**: la app puede venderse — SOLO imágenes con licencia que permita **uso comercial + redistribución**: `images.unsplash.com`, `images.pexels.com`, `cdn.pixabay.com` (licencias Unsplash/Pexels/Pixabay). **Prohibido** hotlink (la request expone la IP del visitante y la URL puede rotar): la imagen se **descarga a `public/images/`** y se referencia local; registrar fuente+licencia en `public/images/LICENSES.txt`. Nunca Google images ni fuentes arbitrarias (licencia no verificable); si ninguna fuente libre aplica → placeholder estático (bloque + ícono Lucide), no imagen remota.
 
 
 ## Kit de componentes (`src/components/ui.jsx`)
