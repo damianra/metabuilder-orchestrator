@@ -105,7 +105,10 @@ existente (p.ej. un diseño guardado desde la pestaña Diseñar app):
    Dockerfile se re-escriben por detección (`server/` → sección
    backend + `Dockerfile.fullstack`), como en cualquier resume.
 3. **planner** (rama `state.extend`): sesión de agente con
-   `prompts/extend-backend.md` — lee `src/` para conocer los datos
+   `prompts/extend-backend.md` — recibe `{{frontContract}}`: los
+   `/api/*` que el front YA llama (extraídos por `src/tools/front-api-scan.js`
+   — fetch/api.* en `src/`; la API se implementa contra esa spec, no
+   inferida). Además lee `src/` para conocer los datos
    mock de la UI y appendea pasos `backend` (schema/seed/routes sobre
    el api-skeleton) + paso `frontend` de **integración** (reemplazar
    mocks por `fetch` a `/api/*`) + `test` + `e2e`. Del archivo que
