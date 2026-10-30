@@ -5,14 +5,19 @@ import { join, relative } from 'node:path';
 // backend espera — sus llamadas fetch/api son la spec exacta. En vez
 // de que el agente infiera la API de la idea, extraemos los endpoints
 // que el front realmente llama y se los pasamos al planner.
-const SRC_DIRS = ['src', 'app', 'pages'];
 const SKIP = new Set(['node_modules', 'dist', 'out', 'build', '.next']);
 const EXT = /\.(jsx?|tsx?)$/;
 
 const walk = (dir, base, out = []) => {
   for (const f of readdirSync(dir).sort()) {
     const p = join(dir, f);
-    if (statSync(p).isDirectory()) {
+    let st;
+    try {
+      st = statSync(p);
+    } catch {
+      continue; // symlink roto o permiso — no tumbar el planner por eso
+    }
+    if (st.isDirectory()) {
       if (!SKIP.has(f) && !f.startsWith('.')) walk(p, base, out);
     } else if (EXT.test(f)) {
       out.push(relative(base, p));
@@ -42,7 +47,7 @@ export function frontApiScan(dir) {
     }
     // fetch('/api/...'[, {method:'X'}]) — el method se busca en los
     // 200 chars posteriores a la URL (segundo arg, mismo call).
-    for (const m of src.matchAll(/fetch\(\s*['"`]([^'"`]*\/api\/[^'"`]*)['"`]/g)) {
+    for (const m of src.matchAll(/fetch\(\s*['"`](\/api\/[^'"`]*)['"`]/g)) {
       // solo dentro del propio call: hasta el primer `)` tras la URL
       const close = src.indexOf(')', m.index + m[0].length);
       const tail = src.slice(m.index, close > 0 ? close : m.index + m[0].length + 200);
@@ -51,7 +56,7 @@ export function frontApiScan(dir) {
     }
     // api.<method>('/api/...') — cliente lib/api.js
     for (const m of src.matchAll(
-      /\b(?:api|client|http)\.(get|post|put|patch|delete)\s*\(\s*['"`]([^'"`]*\/api\/[^'"`]*)['"`]/g,
+      /\b(?:api|client|http)\.(get|post|put|patch|delete)\s*\(\s*['"`](\/api\/[^'"`]*)['"`]/g,
     )) {
       push(out, seen, m[1].toUpperCase(), normalizePath(m[2]), rel);
     }

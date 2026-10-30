@@ -1056,7 +1056,7 @@ export function createDashboardApp({
       if (req.body.idea) args.push('--idea', String(req.body.idea));
       if (req.body.arch) args.push('--arch', String(req.body.arch));
       if (req.body.stackBackend) {
-        if (!getStack(String(req.body.stackBackend)))
+        if (getStack(String(req.body.stackBackend))?.kind !== 'backend')
           return res.status(400).json({ error: `stack-backend desconocido: ${req.body.stackBackend}` });
         args.push('--stack-backend', String(req.body.stackBackend));
       }
