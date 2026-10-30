@@ -47,6 +47,13 @@ export default function ProjectDetail({ slug, onChanged }) {
   const [apiSurface, setApiSurface] = useState(null);
   const [probe, setProbe] = useState(null); // {path, status, body}
 
+  // Flag GitHub al montar — no solo al abrir el modal de backend
+  // (ese botón no existe en proyectos fullstack/backend y el flag
+  // quedaba fail-open: el disable del publish nunca se activaba).
+  useEffect(() => {
+    api.options().then((o) => setGithubOk(Boolean(o.github))).catch(() => {});
+  }, []);
+
   const load = () =>
     api.project(slug).then(setProject).catch((e) => setError(e.message));
 
