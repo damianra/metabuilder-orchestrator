@@ -235,6 +235,14 @@ según stack — `npm ci` + audit + test / pip + pip-audit + pytest; el
 de fastapi corre el lado npm solo si hay `package.json`) — la app
 generada nace con CI de seguridad propia si se pushea a GitHub.
 
+## Contract test por endpoint (v13)
+
+En `finalVerify` (post-pasos, sobre el dominio real) se emite un test
+estático por endpoint del `apiSurfaceFor` — `test/api-contract.test.js`
+(vitest) o `test_api_contract.py` (pytest): cada ruta debe existir y
+seguir registrada. Corre dentro del `npm test`/`pytest` de la app y
+viaja con ella — el agente solo escribe tests de dominio.
+
 ## Dockerfile por app
 
 Preflight escribe `Dockerfile` + `.dockerignore` en cada app generada

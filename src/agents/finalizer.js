@@ -4,6 +4,8 @@ import { config } from '../config.js';
 import { run } from '../tools/shell.js';
 import { awaitInstall, isInstalling } from '../tools/install.js';
 import { finalCheckCommands, stacksFor } from '../stacks/index.js';
+import { apiSurfaceKindOf } from '../tools/api-surface.js';
+import { writeContractTest } from '../tools/contract-test.js';
 import { getGitHubUser, createRepo, enablePages, getPages } from '../tools/github.js';
 import { captureScreenshot } from '../tools/screenshot.js';
 import { getEngine } from '../engines/index.js';
@@ -61,7 +63,18 @@ export async function finalVerifyNode(state) {
     };
   }
 
-  const cmds = finalCheckCommands(stacksFor(state));
+  const stacks = stacksFor(state);
+  const cmds = finalCheckCommands(stacks);
+
+  // Contract test estático por endpoint (v13 #13): se emite ACÁ —
+  // post-pasos, así cubre el dominio real, no solo el skeleton — y
+  // corre dentro del `npm test`/`pytest` de la app en este mismo run.
+  let contractFile = null;
+  if (stacks.backend) {
+    contractFile = writeContractTest(state.projectDir, {
+      kind: apiSurfaceKindOf(stacks.backend.id),
+    });
+  }
 
   for (const cmd of cmds) {
     const res = await run(cmd, { cwd: state.projectDir, timeoutMs: config.verifyTimeoutMs });
@@ -76,6 +89,7 @@ export async function finalVerifyNode(state) {
   }
 
   const history = [log('finalVerify', `OK: ${cmds.join(' && ')}`)];
+  if (contractFile) history.push(log('finalVerify', `contract test emitido: ${contractFile}`));
 
   // --verify-docker: build de la imagen como check extra. Sin daemon
   // se omite (es un flag opt-in, no debe fallar el run por ambiente).
