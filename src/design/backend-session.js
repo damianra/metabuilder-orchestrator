@@ -277,6 +277,7 @@ export function saveBackend(slug) {
     const savedPlan = JSON.parse(readFileSync(join(dest, 'plan.json'), 'utf8'));
     writeAgentsMd(dest, {
       withBackend: true,
+      withFrontend: false,
       arch: resolveArchSafe(savedPlan.arch, 'flat'),
       frontendStack: undefined,
       backendStack: getStack(savedPlan.stacks?.backend ?? detectBackendStackId(dest)),

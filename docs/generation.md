@@ -235,6 +235,13 @@ según stack — `npm ci` + audit + test / pip + pip-audit + pytest; el
 de fastapi corre el lado npm solo si hay `package.json`) — la app
 generada nace con CI de seguridad propia si se pushea a GitHub.
 
+## Prompt pruning por relevancia (v13)
+
+El `AGENTS.md` que recibe cada agente se arma por secciones según el
+run real: `AGENTS.ui.md` (reglas UI + guía de diseño) solo con
+frontend; `AGENTS.whatsapp.md` solo si `appType === 'orders'` o la
+idea menciona WhatsApp — ~30% menos texto inyectado por llamada.
+
 ## Contract test por endpoint (v13)
 
 En `finalVerify` (post-pasos, sobre el dominio real) se emite un test
