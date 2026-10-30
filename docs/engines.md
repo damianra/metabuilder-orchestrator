@@ -6,9 +6,10 @@ para todos. El engine se declara como datos en `src/engines/<id>.js`
 `strictConfig`, `docsUrl`/`installHint`/`authHint` — estos últimos son
 los links y comandos que el setup gate del dashboard muestra en las
 cards del engine) + entrada en el `Map` de `src/engines/index.js` —
-`resolveEngineId` decide: `--agent` (state.agent) > `plan.agent`
-(resume) > `settings.json` `engine` (`src/tools/settings.js` — el
-dashboard lo escribe, gitignored) > `AGENT_PROVIDER` > `'auto'` —
+`resolveEngineId` decide: `--agent` (state.agent) > `settings.json`
+`engine` (`src/tools/settings.js` — el dashboard lo escribe,
+gitignored; si no es `auto`) > `AGENT_PROVIDER` > `plan.agent`
+(fallback histórico del resume) > `'auto'` —
 auto sonda cada engine con `checkEngineAuth` y gana el primero que
 autentica (preflight; en callers sin sonda `resolveEngine` mapea
 auto/'' → devin). `plan.agent` se sella al crear/resumir el plan
@@ -84,3 +85,7 @@ adquiere un slot de `~/.metabuilder/devin-slots/slot-N/` antes del spawn
 `<engine> acp` a la vez en toda la máquina (mezclando engines), aunque corran varios `npm start`
 — se serializan solos. `checkEngineAuth` no consume slot (handshake de ~1s
 sin trabajo de agente).
+
+### Precedencia del engine en resume (v13)
+
+`resolveEngineId`: `--agent` flag > `settings.json` (si no es `auto`) > `AGENT_PROVIDER` > `plan.agent` > `auto`. El engine **activo** siempre gana sobre el guardado en `plan.json` — `plan.agent` queda como fallback histórico. Un run creado con un engine que luego quedó sin tokens se desbloquea cambiando `settings.json` (o `--agent`), sin editar el plan.

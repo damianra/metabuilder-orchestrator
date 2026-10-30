@@ -39,14 +39,19 @@ describe('registry de engines', () => {
     expect(getEngine('nope')).toBeNull();
   });
 
-  it('resolveEngineId: flag > plan > settings > env > auto', () => {
+  it('resolveEngineId: flag > settings≠auto > env > plan > auto', () => {
     // Precedencia completa (sin tocar settings.json ni env reales:
     // sources inyectables; METABUILDER_SETTINGS_PATH apunta a tmp).
     expect(resolveEngineId({ flag: 'opencode', plan: 'devin', settings: 'devin' }))
       .toBe('opencode');
+    // El engine ACTIVO gana sobre plan.agent — un resume con engine
+    // muerto se desbloquea cambiando settings, sin tocar el plan.
     expect(resolveEngineId({ flag: '', plan: 'opencode', settings: 'devin' }))
-      .toBe('opencode');
+      .toBe('devin');
     expect(resolveEngineId({ flag: '', plan: '', settings: 'opencode' }))
+      .toBe('opencode');
+    // plan.agent queda como fallback: settings 'auto' o vacío → gana el plan
+    expect(resolveEngineId({ flag: '', plan: 'opencode', settings: 'auto' }))
       .toBe('opencode');
     // Sin fuentes → 'auto' (la sonda la hace preflight)
     expect(resolveEngineId({})).toBe('auto');

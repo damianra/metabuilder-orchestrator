@@ -45,7 +45,7 @@ export async function runDoctor({
 
   // Engines de agente (src/engines/): se reportan todos con su probe
   // real (bin + handshake ACP), pero solo falla el engine EFECTIVO
-  // (resolveEngineId: --agent > plan > settings > env > 'auto'). En
+  // (resolveEngineId: --agent > settings≠auto > env > plan > 'auto'). En
   // 'auto' basta con que uno autentique — si ninguno anda, fail global.
   const effective = resolveId();
   let anyEngineOk = false;

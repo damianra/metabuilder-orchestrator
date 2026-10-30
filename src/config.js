@@ -19,7 +19,7 @@ export const config = {
 
   // Engine de agente por defecto (src/engines/): '' → 'auto' (devin si
   // autentica, sino opencode — la sonda vive en preflight). --agent,
-  // plan.agent y settings.json tienen precedencia sobre esta env.
+  // settings.json tiene precedencia sobre esta env; ésta a su vez sobre plan.agent.
   agentProvider: process.env.AGENT_PROVIDER || '',
   // Config mutable en runtime (hoy: { engine }) — la escribe el
   // dashboard via POST /api/settings y se relee en cada resolución.
