@@ -247,32 +247,30 @@ export default function DesignTab({ onSaved }) {
             Iterá un frontend chateando con el agente — el preview se levanta con un vite dev
             server y el resultado se puede guardar como app real.
           </p>
-          <label className="mt-4 block text-left text-xs font-semibold text-slate-400">
-            Stack del frontend
+          <div className="mt-3 flex gap-2">
             <select
+              data-testid="design-stack"
               value={stackFrontend}
               onChange={(e) => setStackFrontend(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-2 py-1.5 text-sm outline-none focus:border-accent-500"
+              className="w-full rounded-lg border border-accent-500/40 bg-slate-900 px-3 py-2 text-sm text-slate-300"
             >
               <option value="vite-react">React + Vite</option>
               <option value="nextjs">Next.js</option>
             </select>
-          </label>
-          {backends.length > 0 && (
-            <label className="mt-4 block text-left text-xs font-semibold text-slate-400">
-              Diseñar para un backend existente (opcional)
+            {backends.length > 0 && (
               <select
+                data-testid="design-backend-for"
                 value={backendFor}
                 onChange={(e) => setBackendFor(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-2 py-1.5 text-sm outline-none focus:border-accent-500"
+                className="w-full rounded-lg border border-accent-500/40 bg-slate-900 px-3 py-2 text-sm text-slate-300"
               >
-                <option value="">sin backend — diseño standalone</option>
+                <option value="">standalone</option>
                 {backends.map((b) => (
                   <option key={b.slug} value={b.slug}>{b.slug}</option>
                 ))}
               </select>
-            </label>
-          )}
+            )}
+          </div>
           <button
             data-testid="design-create"
             onClick={create}
