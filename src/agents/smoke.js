@@ -1,7 +1,7 @@
 /**
- * Nodo `smoke` — verificación runtime post-review (v13 #1): levanta
+ * Nodo `smoke` — verificación runtime pre-review (v13 #1): levanta
  * el devCmd del toolchain y pega contra los endpoints reales antes
- * de finalize. Corre entre `review` OK y `finalize`; un fallo es
+ * del review. Corre entre `finalVerify` OK y `review`; un fallo es
  * terminal → `fail` (la severidad por DB la decide smokeApp: sqlite
  * estricto, externa warn-only). Opt-out: `--no-smoke` (canal
  * smokeEnabled) o `plan.smoke === false`.
