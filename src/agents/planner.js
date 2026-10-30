@@ -52,8 +52,9 @@ export async function plannerNode(state) {
             description: 'Integración UI↔API: la UI ya llama estos endpoints — verificar/ajustar lib/api.js y componentes al contrato real (loadings, errores, privacidad+consent en forms).',
             verify: 'npm run build', status: 'pending', attempts: 0 },
           { id: nextId + 2, type: 'test',
-            description: 'Tests Vitest de las rutas nuevas y de la integración.',
-            verify: 'npx vitest run', status: 'pending', attempts: 0 },
+            description: `Tests del toolchain del stack (${(getStack(backendId)?.toolchain?.testCmd ?? 'npx vitest run').split(' ').pop() === 'pytest' ? 'pytest' : 'Vitest'}) de las rutas nuevas y de la integración.`,
+            verify: getStack(backendId)?.toolchain?.testCmd ?? 'npx vitest run',
+            status: 'pending', attempts: 0 },
         ];
         normalizeExtendedPlan(existing, {
           dir: state.projectDir,
