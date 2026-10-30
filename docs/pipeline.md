@@ -12,7 +12,11 @@ Fail terminal: fallos de transporte/timeout del planner y reintentos
 agotados van al nodo `fail` (status: failed), no a repairPlan.
 
 `review` es el sub-agente QA (prompts/reviewer.md): sesión del engine
-de agente que inspecciona la app contra AGENTS.md + idea. Responde `RESULT: APPROVED`
+de agente que inspecciona la app contra AGENTS.md + idea. El prompt
+lleva scope — inventario de archivos fuente + api-surface + captura
+`screenshot.png` del build como evidencia visual (warn-only; se
+REcaptura en cada pasada porque el fix-loop rebuildea `dist/`).
+Responde `RESULT: APPROVED`
 (→ finalize) o `RESULT: ISSUES` (→ fixer corrige, consume finalRetries,
 vuelve a finalVerify). El repo remoto se crea recién en finalize: evita
 repos vacíos si el pipeline falla antes.

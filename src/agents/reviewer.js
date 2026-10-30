@@ -1,9 +1,10 @@
-import { readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { config } from '../config.js';
 import { runAgentPrompt } from '../tools/acp.js';
 import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
 import { stacksFor } from '../stacks/index.js';
+import { captureScreenshot } from '../tools/screenshot.js';
 import { activity, log, loadPrompt, runLogPath, textFeed } from './common.js';
 
 /**
@@ -18,6 +19,27 @@ export async function reviewerNode(state) {
   // filesystem-based: en este punto la app todavía no tiene `git init`
   // (corre en finalize, un nodo después).
   const fileList = sourceFiles(state.projectDir).join('\n') || '(sin inventario)';
+
+  // Screenshot al review (v13 #14): el QA era ciego visual. La captura
+  // es warn-only (sin playwright no frena nada) y reusa el static-serve
+  // de finalize. SIEMPRE se recaptura: tras un fix-loop dist/ fue
+  // rebuildeado y una imagen vieja sería evidencia pre-fix.
+  let screenshot = '';
+  const outDir = ['dist', 'out'].find((d) => existsSync(join(state.projectDir, d, 'index.html')));
+  if (outDir) {
+    try {
+      const shot = await captureScreenshot({
+        dir: join(state.projectDir, outDir),
+        cwd: state.projectDir,
+        outFile: join(state.projectDir, 'screenshot.png'),
+      });
+      if (shot.ok) screenshot = 'screenshot.png';
+    } catch {
+      // warn-only: sin playwright/chromium el review sigue sin imagen
+    }
+  } else if (existsSync(join(state.projectDir, 'screenshot.png'))) {
+    screenshot = 'screenshot.png';
+  }
   const backend = stacksFor(state).backend;
   const surface = backend
     ? apiSurfaceFor(state.projectDir, { kind: apiSurfaceKindOf(backend.id) })
@@ -30,6 +52,9 @@ export async function reviewerNode(state) {
     scope: state.scope,
     fileList,
     apiSurface: surface,
+    screenshot: screenshot
+      ? 'Existe `screenshot.png` (captura del build servido). Si tu cliente puede leer imágenes, mirala: es evidencia visual real del diseño (hero, contraste, layout, estados vacíos).'
+      : '(sin captura disponible — revisá solo código)',
   });
 
   const feed = textFeed();
