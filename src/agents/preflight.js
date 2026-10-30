@@ -104,7 +104,7 @@ const scriptLines = (s) => {
   return lines;
 };
 
-export function writeAgentsMd(dir, { withBackend, arch, frontendStack, backendStack }) {
+export function writeAgentsMd(dir, { withBackend, arch, frontendStack, backendStack, withFrontend = true, whatsapp = false }) {
   const testLabels = [
     ...new Set(
       [frontendStack, backendStack].filter(Boolean).map((s) => s.toolchain?.testLabel ?? 'Vitest'),
@@ -113,12 +113,18 @@ export function writeAgentsMd(dir, { withBackend, arch, frontendStack, backendSt
   const devScripts = [
     ...new Set([...scriptLines(frontendStack), ...scriptLines(backendStack)]),
   ].join('\n');
+  // Prompt pruning (v13 #16): secciones solo si aplican — UI/diseño
+  // no aporta nada a una app backend-only; WhatsApp no a una app sin
+  // pedidos/contacto. Mismo AGENTS.md, ~30% menos texto inyectado.
+  const fragment = (name) => readFileSync(join(config.templatesDir, name), 'utf8');
   const base = readFileSync(join(config.templatesDir, 'AGENTS.md'), 'utf8')
     .replaceAll('{{frontendStack}}', frontendStack?.agentsStack ?? 'React + Vite + Tailwind CSS')
     .replaceAll('{{backendFramework}}', backendStack?.agentsStack ?? 'Node.js + Express')
     .replaceAll('{{backendDb}}', backendStack?.agentsDb ?? 'SQLite (archivo local, sin servidores externos)')
     .replaceAll('{{testing}}', testLabels.join(' + '))
     .replaceAll('{{devScripts}}', devScripts)
+    .replaceAll('{{uiSections}}', withFrontend ? fragment('AGENTS.ui.md') : '')
+    .replaceAll('{{whatsappSection}}', whatsapp ? fragment('AGENTS.whatsapp.md') : '')
     .replaceAll('{{backendNotes}}', backendStack?.agentsNotes ?? '');
   const rules = withBackend ? `\n## Arquitectura backend\n\n${arch.agentsRules}\n` : '';
   writeFileSync(join(dir, 'AGENTS.md'), base + rules);
@@ -227,6 +233,8 @@ export async function preflightNode(state) {
     }
     writeAgentsMd(dir, {
       withBackend: hasBackendDir(dir),
+      whatsapp:
+        savedPlan?.appType === 'orders' || /whats|wa\.me/i.test(savedPlan?.idea ?? state.idea ?? ''),
       arch: resolveArchSafe(planArch, state.arch),
       frontendStack: resumeStacks.frontend,
       backendStack: resumeStacks.backend,
@@ -283,6 +291,9 @@ export async function preflightNode(state) {
   });
   writeAgentsMd(dir, {
     withBackend: state.scope !== 'frontend',
+    withFrontend: state.scope !== 'backend',
+    whatsapp:
+      state.appType === 'orders' || /whats|wa\.me/i.test(state.idea ?? ''),
     arch,
     frontendStack: stacks.frontend,
     backendStack: stacks.backend,
