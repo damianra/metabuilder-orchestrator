@@ -113,7 +113,7 @@ export function createDesign({ attachTo = null, frontendStackId = 'vite-react' }
     frontendStack: fst,
     backendStack: null,
   });
-  for (const f of ['package.json', 'index.html', 'src/App.jsx', 'src/app/page.jsx']) {
+  for (const f of ['package.json', 'index.html', 'src/App.jsx', 'src/app/page.jsx', 'src/app/layout.jsx']) {
     const p = join(DESIGN_DIR, f);
     if (existsSync(p)) writeFileSync(p, readFileSync(p, 'utf8').replaceAll('__APP_NAME__', 'design-work'));
   }
