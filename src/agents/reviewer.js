@@ -22,10 +22,11 @@ export async function reviewerNode(state) {
 
   // Screenshot al review (v13 #14): el QA era ciego visual. La captura
   // es warn-only (sin playwright no frena nada) y reusa el static-serve
-  // de finalize — si ya existe screenshot.png no se recaptura.
+  // de finalize. SIEMPRE se recaptura: tras un fix-loop dist/ fue
+  // rebuildeado y una imagen vieja sería evidencia pre-fix.
   let screenshot = '';
   const outDir = ['dist', 'out'].find((d) => existsSync(join(state.projectDir, d, 'index.html')));
-  if (outDir && !existsSync(join(state.projectDir, 'screenshot.png'))) {
+  if (outDir) {
     try {
       const shot = await captureScreenshot({
         dir: join(state.projectDir, outDir),
