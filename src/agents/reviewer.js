@@ -1,5 +1,8 @@
 import { config } from '../config.js';
 import { runAgentPrompt } from '../tools/acp.js';
+import { run } from '../tools/shell.js';
+import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
+import { stacksFor } from '../stacks/index.js';
 import { activity, log, loadPrompt, runLogPath, textFeed } from './common.js';
 
 /**
@@ -8,9 +11,23 @@ import { activity, log, loadPrompt, runLogPath, textFeed } from './common.js';
  * ISSUES → el loop fix los corrige (consume finalRetries).
  */
 export async function reviewerNode(state) {
+  // Review scoped (v13 #15): en vez de que el agente explore el árbol
+  // (ls -R + reads sueltos = tokens), le pasamos el inventario — los
+  // archivos fuente a revisar y el api-surface del dominio.
+  const files = await run('git ls-files -c -o --exclude-standard', { cwd: state.projectDir });
+  const fileList = files.ok ? files.stdout.trim().split('\n').filter(Boolean).join('\n') : '(sin inventario)';
+  const backend = stacksFor(state).backend;
+  const surface = backend
+    ? apiSurfaceFor(state.projectDir, { kind: apiSurfaceKindOf(backend.id) })
+        .map((e) => `${e.method} ${e.path}`)
+        .join('\n') || '(sin endpoints)'
+    : '(sin backend)';
+
   const prompt = loadPrompt('reviewer', {
     idea: state.idea,
     scope: state.scope,
+    fileList,
+    apiSurface: surface,
   });
 
   const feed = textFeed();
