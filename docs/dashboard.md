@@ -128,7 +128,8 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
   lo consulta on-demand al montar, no en cada poll de 5s.
 - `GET /api/options` — scopes/verticales/archs/stacks leídos de los
   registries (+ `backendStacks` `{id,label}` para el selector del
-  modal add-backend) + `engines` (ids del registry de agentes) y `engine` (el
+  modal add-backend + `github` boolean (hay `GITHUB_TOKEN` — la UI
+  deshabilita github/ghpages/publish si no lo hay) + `engines` (ids del registry de agentes) y `engine` (el
   configurado en settings.json/env, o null → setup gate en la UI).
 - `GET /api/engines` — probe por engine: `{id,label,bin,installed,
   auth,detail,docsUrl,installHint,authHint}` + `engine` configurado. `installed`

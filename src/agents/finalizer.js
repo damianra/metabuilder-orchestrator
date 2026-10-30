@@ -226,7 +226,7 @@ export async function finalizerNode(state) {
   history.push(log('finalize', 'README.md generado'));
 
   const git = (args, cwd = dir) =>
-    run(`git ${args}`, { cwd, timeoutMs: 120_000 }).then((r) => ({
+    run(`git ${args}`, { cwd, timeoutMs: 120_000, env: { GIT_TERMINAL_PROMPT: '0' } }).then((r) => ({
       ...r,
       stderr: sanitize(r.stderr),
       stdout: sanitize(r.stdout),
