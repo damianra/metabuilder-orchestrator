@@ -5,7 +5,7 @@ import {
   complianceFor,
   complianceRuleBullets,
 } from '../compliance/index.js';
-import { resolveStacks, stackIds, stackRuleBullets } from '../stacks/index.js';
+import { getStack, resolveStacks, stackIds, stackRuleBullets } from '../stacks/index.js';
 import { runAgentPrompt } from '../tools/acp.js';
 import { normalizeExtendedPlan } from '../tools/extend-plan.js';
 import { frontApiScan } from '../tools/front-api-scan.js';
@@ -33,6 +33,49 @@ export async function plannerNode(state) {
       const contract = frontApiScan(state.projectDir)
         .map((e) => `${e.method} ${e.path} (${e.file})`)
         .join('\n');
+      // Fast-path: contrato front→API claro → plan fijo sin sesión del
+      // planner (el scanner ya dice qué endpoints implementar). Los
+      // pasos se appendean a `existing` y caen al bloque común de
+      // resume (currentStepIndex, arch, compliance, sellado) — mismo
+      // tratamiento que los pasos escritos por el agente.
+      if (contract) {
+        const backendId = state.stackBackend ?? 'express-sqlite';
+        const backendLabel = getStack(backendId)?.label ?? backendId;
+        const nextId = Math.max(0, ...(existing.steps ?? []).map((s) => s.id ?? 0)) + 1;
+        const eps = contract.split('\n');
+        existing.steps = [
+          ...(existing.steps ?? []),
+          { id: nextId, type: 'backend',
+            description: `Backend ${backendLabel}: implementar en el skeleton backend ya copiado (server/ para express, app/ para fastapi) los endpoints que el front ya llama — ${eps.join(' · ')}. Schema/seed del dominio; el sample items se reemplaza por el recurso real.`,
+            verify: getStack(backendId)?.toolchain?.testCmd ?? 'npm run build',
+            status: 'pending', attempts: 0 },
+          { id: nextId + 1, type: 'frontend',
+            description: 'Integración UI↔API: la UI ya llama estos endpoints — verificar/ajustar lib/api.js y componentes al contrato real (loadings, errores, privacidad+consent en forms).',
+            verify: 'npm run build', status: 'pending', attempts: 0 },
+          // Test por toolchain: el requirement del stack front exige
+          // vitest y el backend su testCmd (pytest si es fastapi) —
+          // con backend node comparten el mismo comando → dedup.
+          ...[...new Set(['npx vitest run', getStack(backendId)?.toolchain?.testCmd ?? 'npx vitest run'])]
+            .map((cmd, i) => ({
+              id: nextId + 2 + i, type: 'test',
+              description: `Tests (${/pytest/.test(cmd) ? 'pytest' : 'Vitest'}) de las rutas nuevas y de la integración.`,
+              verify: cmd, status: 'pending', attempts: 0 })),
+          // e2e solo si el plan no lo tiene ya — el requirement
+          // 'e2e con Playwright' re-valida sobre el plan fusionado.
+          ...(existing.steps.some((s) => s.type === 'e2e')
+            ? []
+            : [{ id: nextId + 3, type: 'e2e',
+                description: 'Spec Playwright del flujo principal UI→API.',
+                verify: 'npm run test:e2e', status: 'pending', attempts: 0 }]),
+        ];
+        normalizeExtendedPlan(existing, {
+          dir: state.projectDir,
+          stackBackend: backendId,
+        });
+        history.push(
+          log('planner', `extend: plan fijo por contrato (${eps.length} endpoints) — sesión del planner saltada`),
+        );
+      } else {
       const prompt = loadPrompt('extend-backend', {
         idea: state.idea || existing.idea || '',
         frontContract:
@@ -95,6 +138,7 @@ export async function plannerNode(state) {
           `extend: ${existing.steps.length - before} pasos nuevos (scope → fullstack)`,
         ),
       );
+      }
     }
     // plan.json pre-existente ⇒ resume. Los pasos que no llegaron a
     // 'done' vuelven a 'pending' (un paso 'building' murió a medio
@@ -281,8 +325,25 @@ export async function plannerNode(state) {
  */
 export async function repairPlanNode(state) {
   const errors = state.validationErrors.map((e) => `- ${e}`).join('\n');
+  // Hint del/los pasos que fallaron — el agente corrige esos sin
+  // releer el plan entero (los errores ya los nombran).
+  const steps = Array.isArray(state.plan?.steps) ? state.plan.steps : [];
+  const failedSteps = steps
+    .map((s, i) =>
+      state.validationErrors.some(
+        (e) =>
+          e.includes(`step[${i}]`) ||
+          e.includes(`paso ${s.id}`) ||
+          e.includes(`step ${s.id}`) ||
+          e.includes(`id ${s.id}`),
+      )
+        ? s.id
+        : null,
+    )
+    .filter((id) => id != null)
+    .join(', ');
   const prompt = loadPrompt('plan-repair', {
-    errors,
+    errors: errors + (failedSteps ? `\n\nLos errores del validador apuntan a los pasos: ${failedSteps}` : ''),
     scope: state.scope,
     slug: state.projectSlug,
     stackRules: [
