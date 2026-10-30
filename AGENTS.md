@@ -103,6 +103,16 @@ Aplica a cualquier agente/persona que modifique el orquestador.
    marcar el PR como pendiente. El `GITHUB_TOKEN` nunca llega al
    agente — solo lo usa el script para leer el PR y comentar.
    Solo se mergea con `✅ APROBADO PARA MERGE`.
+   **No borrar la rama (local ni remota) hasta confirmar el merge**
+   (`MERGED <sha>` — nunca encadenar `git push --delete`/`git branch -d`
+   en el mismo comando: si el merge falla, borrar la head branch
+   **cierra el PR automáticamente** y reabrir+recuperar cuesta más).
+   Borrar solo en un paso posterior, verificado el sha en `main`.
+   **Push post-aprobación invalida el merge**: el veredicto lleva
+   `<!-- validate-pr head:<sha7> -->` — un push nuevo deja el PR
+   "pendiente" y el merge puede rechazarse ("head out of date");
+   tras cualquier push extra hay que re-correr `validate:pr` o
+   mergear solo si el cambio no tocó código aprobado.
 
 Las **apps generadas** (`generated-apps/<slug>/`) NO siguen este flujo:
 pushean `main` directo — su validación funcional ya la hace el
