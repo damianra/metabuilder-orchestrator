@@ -214,7 +214,7 @@ La API solo encola, no ejecuta — el worker procesa los jobs como siempre.
 | `--quiet` | Sin reporte por nodo ni actividad de tools (solo resultado/historial final). `status.json` se escribe igual. |
 | `--verbose` | Mensajes de los nodos sin truncar (default: 220 chars por línea). |
 | `--verify-docker` | En `finalVerify`, corre `docker build -t <slug>:verify .` sobre el `Dockerfile` de la app (cada app generada ya lo trae, junto a `.dockerignore`; frontend-only también `nginx.conf`). Si no hay daemon **docker** disponible se omite sin fallar — es docker-only: en hosts con solo podman siempre se omite. |
-| `--no-smoke` | Salta el nodo `smoke` (verificación runtime post-review — levanta el `devCmd` del toolchain y verifica `/api/health`, rutas del api-surface, 404 JSON en `/api/*` y SPA fallback; estricto con DB embebida, warn-only con DB externa). Por defecto el smoke corre siempre; `plan.smoke === false` también lo desactiva. |
+| `--no-smoke` | Salta el nodo `smoke` (verificación runtime pre-review — levanta el `devCmd` del toolchain y verifica `/api/health`, rutas del api-surface, 404 JSON en `/api/*` y SPA fallback; estricto con DB embebida, warn-only con DB externa). Por defecto el smoke corre siempre; `plan.smoke === false` también lo desactiva. |
 
 ## Configuración (`.env`)
 
