@@ -65,8 +65,9 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
   `--resume <slug> --yes` — sin flags de deploy: el CLI restaura
   `plan.deploy`, "lo ingresado previamente"; publicar es acción aparte),
   `add-backend` (encola `--extend <slug> --yes` — convierte un
-  proyecto frontend en fullstack; acepta `idea`/`arch`/`github`/
-  `ghpages`; sin `github` agrega `--no-push`; 409 si ya tiene
+  proyecto frontend en fullstack; acepta `idea`/`arch`/`stackBackend`
+  (cualquier backend del registry — el server valida `kind==='backend'`)/
+  `github`/`ghpages`; sin `github` agrega `--no-push`; 409 si ya tiene
   `server/`),
 - `GET /api/projects/:slug/api-surface` — escanea según el stack del proyecto (`detectBackendStackId` → `apiSurfaceKindOf`): `server/routes/*.js` (`express-routes`, default) o `server/**/*.controller.ts` (`nest-controllers` — `src/` en apps legacy)
   (auto-mount `/api/<file>` + `router.<method>('<path>')`) →
@@ -126,7 +127,8 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
   Endpoint aparte del detalle porque ls-remote pega en la red — la UI
   lo consulta on-demand al montar, no en cada poll de 5s.
 - `GET /api/options` — scopes/verticales/archs/stacks leídos de los
-  registries + `engines` (ids del registry de agentes) y `engine` (el
+  registries (+ `backendStacks` `{id,label}` para el selector del
+  modal add-backend) + `engines` (ids del registry de agentes) y `engine` (el
   configurado en settings.json/env, o null → setup gate en la UI).
 - `GET /api/engines` — probe por engine: `{id,label,bin,installed,
   auth,detail,docsUrl,installHint,authHint}` + `engine` configurado. `installed`

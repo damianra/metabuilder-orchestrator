@@ -6,6 +6,15 @@ Tu única tarea es **editar `plan.json` appendando pasos nuevos** que conviertan
 
 "{{idea}}"
 
+## Contrato front→API (endpoints que el front YA llama)
+
+Estos endpoints los detecta el scanner en `src/` — la API tiene que
+servir EXACTAMENTE estos paths/métodos (el front ya los consume):
+
+```
+{{frontContract}}
+```
+
 ## Qué hacer
 
 1. Leé `src/` para entender qué datos maneja la UI hoy: listas con datos mock, formularios, entidades de dominio (productos, pedidos, posts…). La API que diseñes tiene que servir ESA data — no una genérica.
