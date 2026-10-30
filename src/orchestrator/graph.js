@@ -48,8 +48,9 @@ function hasMoreSteps(state) {
 
 function afterVerify(state) {
   if (!state.lastError) {
-    // paso OK; verificación final OK → sub-agente QA antes de finalize
-    if (state.verifying === 'final') return 'review';
+    // paso OK; verificación final OK → gate determinístico (smoke)
+    // ANTES del review: no gastar tokens del QA en apps que no bootean.
+    if (state.verifying === 'final') return 'smoke';
     return hasMoreSteps(state) ? 'build' : 'finalVerify';
   }
   // falló la verificación
@@ -66,15 +67,16 @@ function afterFix(state) {
 
 function afterReview(state) {
   if (state.status === 'failed') return 'fail';
-  // Review OK → verificación runtime del artifact final (smoke).
-  if (!state.lastError) return 'smoke';
+  // Review OK (sobre una app que ya booteó) → finalize.
+  if (!state.lastError) return 'finalize';
   // Issues de QA → el fixer los corrige y se re-verifica (finalVerify).
   return state.finalRetries < config.maxStepRetries ? 'fix' : 'fail';
 }
 
 function afterSmoke(state) {
-  // Smoke falló (strict, DB embebida o wiring roto) → terminal.
-  return state.status === 'failed' ? 'fail' : 'finalize';
+  // Smoke falló (strict, DB embebida o wiring roto) → terminal, sin
+  // gastar el review. Si bootea → sub-agente QA antes de finalize.
+  return state.status === 'failed' ? 'fail' : 'review';
 }
 
 // ---------- Grafo ----------

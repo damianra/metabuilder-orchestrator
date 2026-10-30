@@ -4,7 +4,7 @@
 
 ```
 preflight → planner → validate ─┬─→ confirm → builder → verify ─┬─→ builder (siguiente paso)
-                                │                               ├─→ finalVerify → review ─┬─→ smoke → finalize → END
+                                │                               ├─→ finalVerify → smoke ─┬─→ review → finalize → END
                                 └─→ repairPlan                  └─→ fixer → verify        └─→ fixer
 ```
 
