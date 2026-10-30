@@ -22,7 +22,7 @@ MetaBuilder convierte una idea en texto libre en una aplicación funcionando (la
 
 ```
 preflight → planner → validate ─┬─→ confirm → builder → verify ─┬─→ builder (siguiente paso)
-                                │                               ├─→ finalVerify → review ─┬─→ finalize → END
+                                │                               ├─→ finalVerify → smoke ─┬─→ review → finalize → END
                                 └─→ repairPlan                  └─→ fixer → verify        └─→ fixer
 ```
 
