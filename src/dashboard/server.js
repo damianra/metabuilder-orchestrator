@@ -515,6 +515,7 @@ export function createDashboardApp({
         backend: listStacks('backend').map((s) => s.id),
       },
       backendMatrix: backendMatrix(),
+      backendStacks: listStacks('backend').map((s) => ({ id: s.id, label: s.label })),
       engines: listEngines(),
       compliance: listCompliance(),
       // engine configurado (settings/env) — null = setup gate pendiente
@@ -1054,6 +1055,11 @@ export function createDashboardApp({
       const args = ['--extend', slug, '--yes'];
       if (req.body.idea) args.push('--idea', String(req.body.idea));
       if (req.body.arch) args.push('--arch', String(req.body.arch));
+      if (req.body.stackBackend) {
+        if (!getStack(String(req.body.stackBackend)))
+          return res.status(400).json({ error: `stack-backend desconocido: ${req.body.stackBackend}` });
+        args.push('--stack-backend', String(req.body.stackBackend));
+      }
       if (req.body.github) args.push('--github');
       else args.push('--no-push');
       if (req.body.ghpages && req.body.github) args.push('--ghpages');

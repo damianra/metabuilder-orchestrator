@@ -39,7 +39,8 @@ export default function ProjectDetail({ slug, onChanged }) {
   const [notice, setNotice] = useState(null);
   // Modal "agregar backend" (v9): scope frontend → --extend a fullstack.
   const [backendOpen, setBackendOpen] = useState(false);
-  const [backendForm, setBackendForm] = useState({ idea: '', arch: 'flat', github: false, ghpages: false });
+  const [backendForm, setBackendForm] = useState({ idea: '', arch: 'flat', stackBackend: 'express-sqlite', github: false, ghpages: false });
+  const [stackOptions, setStackOptions] = useState([]);
   const [archOptions, setArchOptions] = useState([]);
   // Superficie de API: endpoints escaneados de server/routes/ + probe.
   const [apiSurface, setApiSurface] = useState(null);
@@ -303,7 +304,12 @@ export default function ProjectDetail({ slug, onChanged }) {
               onClick={async () => {
                 setBackendOpen(true);
                 if (!archOptions.length)
-                  api.options().then((o) => setArchOptions(o.archs ?? [])).catch(() => {});
+                  api.options()
+                    .then((o) => {
+                      setArchOptions(o.archs ?? []);
+                      setStackOptions(o.backendStacks ?? []);
+                    })
+                    .catch(() => {});
               }}
             >
               <Plus size={15} /> Agregar backend
@@ -858,8 +864,8 @@ export default function ProjectDetail({ slug, onChanged }) {
           >
             <h3 className="text-sm font-bold text-slate-200">Agregar backend a {slug}</h3>
             <p className="mt-1 text-xs text-slate-400">
-              El agente lee el frontend existente y diseña la API (Express + SQLite), la
-              integración UI↔API y los tests — todo sobre este mismo proyecto.
+              El agente lee el frontend existente y diseña la API sobre el stack elegido,
+              la integración UI↔API y los tests — todo sobre este mismo proyecto.
             </p>
             <textarea
               value={backendForm.idea}
@@ -869,6 +875,18 @@ export default function ProjectDetail({ slug, onChanged }) {
               className="mt-3 w-full rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-3 py-2 text-sm outline-none focus:border-accent-500"
             />
             <div className="mt-3 flex flex-wrap items-center gap-3">
+              <label className="text-xs text-slate-400">
+                Stack{' '}
+                <select
+                  value={backendForm.stackBackend}
+                  onChange={(e) => setBackendForm((f) => ({ ...f, stackBackend: e.target.value }))}
+                  className="rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-2 py-1"
+                >
+                  {(stackOptions.length ? stackOptions : [{ id: 'express-sqlite', label: 'Express + SQLite' }]).map((s) => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
+                  ))}
+                </select>
+              </label>
               <label className="text-xs text-slate-400">
                 Arquitectura{' '}
                 <select
@@ -912,6 +930,7 @@ export default function ProjectDetail({ slug, onChanged }) {
                       action: 'add-backend',
                       idea: backendForm.idea.trim() || undefined,
                       arch: backendForm.arch,
+                      stackBackend: backendForm.stackBackend,
                       github: backendForm.github,
                       ghpages: backendForm.ghpages,
                     },

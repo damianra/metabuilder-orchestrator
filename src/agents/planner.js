@@ -8,6 +8,7 @@ import {
 import { resolveStacks, stackIds, stackRuleBullets } from '../stacks/index.js';
 import { runAgentPrompt } from '../tools/acp.js';
 import { normalizeExtendedPlan } from '../tools/extend-plan.js';
+import { frontApiScan } from '../tools/front-api-scan.js';
 import { getVertical } from '../verticals/index.js';
 import { activity, log, loadPrompt, readPlan, runLogPath, textFeed, writePlan } from './common.js';
 
@@ -27,8 +28,16 @@ export async function plannerNode(state) {
     // frontend existente, y cae al resume común (validate→build).
     if (state.extend) {
       const extArch = resolveArchSafe(existing.arch, state.arch);
+      // Contrato front→API (extend acelerado): los endpoints que el
+      // front YA llama — el agente no infiere, implementa la spec.
+      const contract = frontApiScan(state.projectDir)
+        .map((e) => `${e.method} ${e.path} (${e.file})`)
+        .join('\n');
       const prompt = loadPrompt('extend-backend', {
         idea: state.idea || existing.idea || '',
+        frontContract:
+          contract ||
+          '(el front no llama /api/* todavía — diseñar la API desde la idea)',
         stackRules: [
           stackRuleBullets('fullstack', {
             frontend: existing.stacks?.frontend ?? state.stackFrontend ?? undefined,

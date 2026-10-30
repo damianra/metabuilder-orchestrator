@@ -39,6 +39,7 @@ v12, no porque se abra una nueva dirección.
 | 15 | **Review scoped al diff** — el review puede releer todo el proyecto por paso. Limitar su input a archivos tocados por el paso + imports frontera → tokens por review bajan sin perder cobertura en lo nuevo (los checks estáticos cubren el resto). **mergeado PR #112** | S |
 | 16 | **Prompt pruning por relevancia** — hoy inyectamos TODO el AGENTS.md + convenciones en cada llamada (WhatsApp en apps sin WhatsApp, DB externa en sqlite, compliance de pagos sin pagos). Gatear secciones por `appType`/`scope`/`stack` real → ~30-40% menos texto por llamada al agente, mismo output. El template ya se arma por partes — falta el selector. **mergeado PR #114** | S |
 | 17 | **Granularidad del plan** — 6 pasos = 6 ciclos build+verify con overhead de contexto/verify por paso. El planner podría agrupar pasos triviales (scaffolding + componente simple) → menos ciclos = menos tokens re-cargados. Balance: atomicidad para fix/resume. **mergeado PR #116** | S |
+| 18 | **Extend acelerado + selector de stack** — `add-backend` corría pipeline completo con el agente infiriendo la API (lento, fallas de wiring) y solo express-sqlite en el modal. `frontApiScan` extrae los endpoints que el front YA llama → `{{frontContract}}` en el prompt extend (implementa la spec, no adivina); modal con select de stack backend (express/nest/fastapi × db) + `/api/options` `backendStacks` + flag `--stack-backend` forwardeado. | S |
 
 
 ## Límites conocidos (documentados — no accionables hoy)
