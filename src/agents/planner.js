@@ -46,8 +46,9 @@ export async function plannerNode(state) {
         existing.steps = [
           ...(existing.steps ?? []),
           { id: nextId, type: 'backend',
-            description: `Backend ${backendLabel}: implementar en server/ (skeleton ya copiado) los endpoints que el front ya llama — ${eps.join(' · ')}. Schema/seed del dominio; el sample items se reemplaza por el recurso real.`,
-            verify: 'npm run build', status: 'pending', attempts: 0 },
+            description: `Backend ${backendLabel}: implementar en el skeleton backend ya copiado (server/ para express, app/ para fastapi) los endpoints que el front ya llama — ${eps.join(' · ')}. Schema/seed del dominio; el sample items se reemplaza por el recurso real.`,
+            verify: getStack(backendId)?.toolchain?.testCmd ?? 'npm run build',
+            status: 'pending', attempts: 0 },
           { id: nextId + 1, type: 'frontend',
             description: 'Integración UI↔API: la UI ya llama estos endpoints — verificar/ajustar lib/api.js y componentes al contrato real (loadings, errores, privacidad+consent en forms).',
             verify: 'npm run build', status: 'pending', attempts: 0 },
@@ -342,7 +343,7 @@ export async function repairPlanNode(state) {
     .filter((id) => id != null)
     .join(', ');
   const prompt = loadPrompt('plan-repair', {
-    errors: errors + (failedSteps ? `\n\nPasos con error (corregí SOLO esos): ${failedSteps}` : ''),
+    errors: errors + (failedSteps ? `\n\nLos errores del validador apuntan a los pasos: ${failedSteps}` : ''),
     scope: state.scope,
     slug: state.projectSlug,
     stackRules: [
