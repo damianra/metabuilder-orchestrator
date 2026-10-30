@@ -104,7 +104,9 @@ existente (p.ej. un diseño guardado desde la pestaña Diseñar app):
    copia `server/`, appenda `.gitignore` — nunca pisa). AGENTS.md y
    Dockerfile se re-escriben por detección (`server/` → sección
    backend + `Dockerfile.fullstack`), como en cualquier resume.
-3. **planner** (rama `state.extend`): sesión de agente con
+3. **planner** (rama `state.extend`): si `frontApiScan` devolvió
+   endpoints, **plan fijo de 3 pasos** (backend→integración→tests)
+   sin sesión del agente; si no, sesión de agente con
    `prompts/extend-backend.md` — recibe `{{frontContract}}`: los
    `/api/*` que el front YA llama (extraídos por `src/tools/front-api-scan.js`
    — fetch/api.* en `src/`; la API se implementa contra esa spec, no

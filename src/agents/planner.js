@@ -33,6 +33,31 @@ export async function plannerNode(state) {
       const contract = frontApiScan(state.projectDir)
         .map((e) => `${e.method} ${e.path} (${e.file})`)
         .join('\n');
+      // Fast-path: contrato front→API claro → plan fijo sin sesión del
+      // planner (el scanner ya dice qué endpoints implementar).
+      if (contract) {
+        const nextId = Math.max(0, ...(existing.steps ?? []).map((s) => s.id ?? 0)) + 1;
+        const eps = contract.split('\n');
+        const fixed = [
+          { id: nextId, type: 'backend',
+            description: `Backend: implementar en server/ (skeleton ya copiado) los endpoints que el front ya llama — ${eps.join(' · ')}. Schema/seed del dominio; el sample items se reemplaza por el recurso real.`,
+            verify: 'npm run build', status: 'pending', attempts: 0 },
+          { id: nextId + 1, type: 'frontend',
+            description: 'Integración UI↔API: la UI ya llama estos endpoints — verificar/ajustar lib/api.js y componentes al contrato real (loadings, errores, privacidad+consent en forms).',
+            verify: 'npm run build', status: 'pending', attempts: 0 },
+          { id: nextId + 2, type: 'test',
+            description: 'Tests Vitest de las rutas nuevas y de la integración.',
+            verify: 'npx vitest run', status: 'pending', attempts: 0 },
+        ];
+        const plan = normalizeExtendedPlan({ ...existing, steps: [...(existing.steps ?? []), ...fixed] }, state);
+        writePlan(state.projectDir, plan);
+        return {
+          ...state,
+          plan,
+          lastNode: 'planner',
+          history: [...history, log('planner', `extend: plan fijo por contrato (${eps.length} endpoints) — sesión saltada`)],
+        };
+      }
       const prompt = loadPrompt('extend-backend', {
         idea: state.idea || existing.idea || '',
         frontContract:
@@ -281,8 +306,14 @@ export async function plannerNode(state) {
  */
 export async function repairPlanNode(state) {
   const errors = state.validationErrors.map((e) => `- ${e}`).join('\n');
+  // Hint del/los pasos que fallaron — el agente corrige esos sin
+  // releer el plan entero (los errores ya los nombran).
+  const failedSteps = (state.plan?.steps ?? [])
+    .filter((s) => state.validationErrors.some((e) => e.includes(`paso ${s.id}`) || e.includes(`step ${s.id}`) || e.includes(`id ${s.id}`)))
+    .map((s) => s.id)
+    .join(', ');
   const prompt = loadPrompt('plan-repair', {
-    errors,
+    errors: errors + (failedSteps ? `\n\nPasos con error (corregí SOLO esos): ${failedSteps}` : ''),
     scope: state.scope,
     slug: state.projectSlug,
     stackRules: [

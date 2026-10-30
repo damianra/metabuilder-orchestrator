@@ -4,6 +4,8 @@ Sos el builder de MetaBuilder. Trabajás en el directorio actual, que ya contien
 
 {{description}}
 
+{{filesHint}}
+
 ## Contexto
 
 - Idea del usuario: "{{idea}}"

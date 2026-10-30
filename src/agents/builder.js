@@ -46,6 +46,10 @@ export async function builderNode(state) {
     total,
     type: step.type,
     description: step.description,
+    filesHint: (step.files ?? []).length
+      ? '## Archivos que toca este paso (leé estos, no explores el árbol)\n' +
+        step.files.map((f) => `- \`${f}\``).join('\n')
+      : '',
     idea: state.idea,
     scope: state.scope,
     appType: state.appType,

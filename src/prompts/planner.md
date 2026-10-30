@@ -23,6 +23,7 @@ Sos el planificador de MetaBuilder. Tu única tarea es escribir el archivo `plan
       "id": 1,
       "description": "Descripción atómica del paso",
       "type": "frontend|backend|test|e2e|infra",
+      "files": ["rutas de archivos que toca este paso — ahorra al builder leer para descubrir"],
       "verify": "comando shell ejecutable en este directorio",
       "status": "pending",
       "attempts": 0
