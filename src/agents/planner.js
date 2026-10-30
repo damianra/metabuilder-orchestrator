@@ -55,6 +55,13 @@ export async function plannerNode(state) {
             description: `Tests del toolchain del stack (${(getStack(backendId)?.toolchain?.testCmd ?? 'npx vitest run').split(' ').pop() === 'pytest' ? 'pytest' : 'Vitest'}) de las rutas nuevas y de la integración.`,
             verify: getStack(backendId)?.toolchain?.testCmd ?? 'npx vitest run',
             status: 'pending', attempts: 0 },
+          // e2e solo si el plan no lo tiene ya — el requirement
+          // 'e2e con Playwright' re-valida sobre el plan fusionado.
+          ...(existing.steps.some((s) => s.type === 'e2e')
+            ? []
+            : [{ id: nextId + 3, type: 'e2e',
+                description: 'Spec Playwright del flujo principal UI→API.',
+                verify: 'npm run test:e2e', status: 'pending', attempts: 0 }]),
         ];
         normalizeExtendedPlan(existing, {
           dir: state.projectDir,
