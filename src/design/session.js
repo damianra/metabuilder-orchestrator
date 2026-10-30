@@ -100,7 +100,7 @@ export function designStatus(dir = DESIGN_DIR) {
 // contra su API real y `saveDesign` copia el front dentro del mismo
 // proyecto en vez de crear uno nuevo.
 export function createDesign({ attachTo = null, frontendStackId = 'vite-react' } = {}) {
-  const fst = getStack(frontendStackId) ?? getStack('vite-react');
+  const fst = getStack(frontendStackId)?.kind === 'frontend' ? getStack(frontendStackId) : getStack('vite-react');
   touchActivity();
   if (existsSync(join(DESIGN_DIR, 'package.json'))) return { ok: false, error: 'ya existe un diseño en curso — descartalo o guardalo' };
   mkdirSync(DESIGN_DIR, { recursive: true });
