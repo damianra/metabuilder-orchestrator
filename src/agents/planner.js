@@ -51,10 +51,14 @@ export async function plannerNode(state) {
           { id: nextId + 1, type: 'frontend',
             description: 'Integración UI↔API: la UI ya llama estos endpoints — verificar/ajustar lib/api.js y componentes al contrato real (loadings, errores, privacidad+consent en forms).',
             verify: 'npm run build', status: 'pending', attempts: 0 },
-          { id: nextId + 2, type: 'test',
-            description: `Tests del toolchain del stack (${(getStack(backendId)?.toolchain?.testCmd ?? 'npx vitest run').split(' ').pop() === 'pytest' ? 'pytest' : 'Vitest'}) de las rutas nuevas y de la integración.`,
-            verify: getStack(backendId)?.toolchain?.testCmd ?? 'npx vitest run',
-            status: 'pending', attempts: 0 },
+          // Test por toolchain: el requirement del stack front exige
+          // vitest y el backend su testCmd (pytest si es fastapi) —
+          // con backend node comparten el mismo comando → dedup.
+          ...[...new Set(['npx vitest run', getStack(backendId)?.toolchain?.testCmd ?? 'npx vitest run'])]
+            .map((cmd, i) => ({
+              id: nextId + 2 + i, type: 'test',
+              description: `Tests (${/pytest/.test(cmd) ? 'pytest' : 'Vitest'}) de las rutas nuevas y de la integración.`,
+              verify: cmd, status: 'pending', attempts: 0 })),
           // e2e solo si el plan no lo tiene ya — el requirement
           // 'e2e con Playwright' re-valida sobre el plan fusionado.
           ...(existing.steps.some((s) => s.type === 'e2e')
