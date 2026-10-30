@@ -134,7 +134,7 @@ export async function preflightNode(state) {
   const history = [log('preflight', 'verificando binarios y autenticación')];
   const arch = resolveArch(state.arch);
 
-  // Engine de agente: --agent > plan.agent (resume) > settings.json >
+  // Engine de agente: --agent > settings.json(≠auto) > env > plan.agent (resume) >
   // AGENT_PROVIDER > 'auto' (devin si autentica, sino opencode). Un id
   // desconocido es fail temprano — mejor acá que en el primer prompt.
   let savedPlan = null;

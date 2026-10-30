@@ -6,7 +6,8 @@ para todos. El engine se declara como datos en `src/engines/<id>.js`
 `strictConfig`, `docsUrl`/`installHint`/`authHint` — estos últimos son
 los links y comandos que el setup gate del dashboard muestra en las
 cards del engine) + entrada en el `Map` de `src/engines/index.js` —
-`resolveEngineId` decide: `--agent` (state.agent) > `plan.agent`
+`resolveEngineId` decide: `--agent` (state.agent) > `settings.json`
+(si no es `auto`) > `AGENT_PROVIDER` > `plan.agent`
 (resume) > `settings.json` `engine` (`src/tools/settings.js` — el
 dashboard lo escribe, gitignored) > `AGENT_PROVIDER` > `'auto'` —
 auto sonda cada engine con `checkEngineAuth` y gana el primero que

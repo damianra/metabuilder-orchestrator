@@ -10,7 +10,7 @@ MetaBuilder convierte una idea en texto libre en una aplicación funcionando (la
 
 - **Generación end-to-end** — idea en texto libre → plan → builder por pasos → verify real (build + vitest + e2e) → QA reviewer → app lista.
 - **Verticales determinísticos** — `landing`, `orders`, `blog` con plan instantáneo sin gastar sesiones de agente; `custom` con planner LLM.
-- **Multi-engine** — los nodos generativos hablan ACP: [Devin](https://devin.ai) (`devin acp`) u [OpenCode](https://opencode.ai) (`opencode acp`) — se elige por run (`--agent`), por proyecto (`plan.agent`) o global (dashboard/`AGENT_PROVIDER`/`auto`).
+- **Multi-engine** — los nodos generativos hablan ACP: [Devin](https://devin.ai) (`devin acp`) u [OpenCode](https://opencode.ai) (`opencode acp`) — se elige por run (`--agent`) o global (dashboard/`settings.json`/`AGENT_PROVIDER`/`auto`) — en resume gana el engine **activo** (`plan.agent` es solo fallback histórico).
 - **Configurable** — scope (`frontend`/`backend`/`fullstack`), stack (`vite-react`/`nextjs`, `express-sqlite`/`express-postgres`/`express-mysql`/`express-mongo`) y arquitectura backend (`flat`/`mvc`/`layers`/`feature`).
 - **Dashboard completo** — encolar y supervisar runs, feed en vivo del agente, terminal Devin embebida en la app, correr en dev sin containers, docker/podman, tests, eliminar y clonar proyectos, notificaciones al terminar.
 - **Cola batch** — jobs con log propio, cancelación que mata el árbol, reintentar, progreso por pasos en vivo.
@@ -107,7 +107,7 @@ MetaBuilder delega la escritura de código a un agente CLI via **ACP** (Agent Cl
 | **Devin** ([docs.devin.ai/cli](https://docs.devin.ai/cli)) | `devin acp` | `curl -fsSL https://cli.devin.ai/install.sh \| bash` (o `brew install --cask devin-cli` / Devin Desktop) + cuenta Windsurf: `~/.local/share/devin/credentials.toml` con `windsurf_api_key` (lo escribe `devin auth login`). **`devin -p`/`auth status` NO son la vía** — usan session_token que las cuentas Windsurf no producen. |
 | **OpenCode** ([opencode.ai/docs](https://opencode.ai/docs/)) | `opencode acp` | `curl -fsSL https://opencode.ai/v2/install \| bash` o `npm i -g @opencode/cli`, luego `opencode auth login` para configurar el provider (modelo `provider/model` via `OPENCODE_MODEL` o su default). Requiere **v2** con soporte ACP (verificado en v2.1.4 — ojo: `npm i -g opencode-ai` instala v1). |
 
-Cuál se usa, por precedencia: `--agent <id>` (por run) > `plan.agent` (resume) > `settings.json` (lo escribe el dashboard) > `AGENT_PROVIDER` > `auto` (sondea cada engine y gana el primero que autentique). El semáforo de sesiones es compartido entre engines.
+Cuál se usa, por precedencia: `--agent <id>` (por run) > `settings.json` (lo escribe el dashboard — si no es `auto`) > `AGENT_PROVIDER` > `plan.agent` (fallback histórico del resume) > `auto` (sondea cada engine y gana el primero que autentique). El semáforo de sesiones es compartido entre engines.
 
 ## Cola de generaciones (batch)
 
@@ -203,7 +203,7 @@ La API solo encola, no ejecuta — el worker procesa los jobs como siempre.
 | `--stack-backend <id>` | Stack de API: `express-sqlite` (default, SQLite embebida), `express-postgres`, `express-mysql` o `express-mongo` (DB externa via `DB_*` o `MONGO_URI`/`MONGO_DB` en `.env` de la app — api-skeleton-sql con pool + `q()` prepared statements / api-skeleton-mongo con `col(name)` schemaless + CRUD de muestra), `nest-typeorm` (NestJS+TypeORM) o `fastapi` (Python FastAPI+SQLAlchemy, `DATABASE_URL` — requiere python3+pip en el host). Los verticales (`orders`/`blog`) solo aplican a `express-sqlite` — con otro stack el app-type queda `custom`. Idem `plan.stacks`. |
 | `--extend <dir\|slug>` | Agrega backend a un proyecto **frontend** existente (ruta o slug en `generated-apps/`): copia el api-skeleton (mergea, no pisa), una sesión de agente lee la UI y appendea pasos `backend`+integración+`test`+`e2e` al plan (`scope`→`fullstack`) y el pipeline los construye. `--idea` opcional describe el dominio de la API; `--github`/`--ghpages` como siempre. Error si ya tiene `server/`. |
 | `--compliance <ids>` | Perfiles legales/de seguridad extra, separados por coma: `cookies`, `terminos`, `pagos`, `auth`, `menores`. Es **aditivo** — `privacidad` + `notfound` (página 404) ya aplican siempre con frontend, y la idea puede inferir más sola (p.ej. "tienda con checkout" activa `terminos`+`pagos`, "juguetes" → `menores`). Algunos perfiles copian componentes listos (`CookieBanner.jsx`, `AgeGate.jsx`). Persiste en `plan.compliance` (resume lo restaura). |
-| `--agent <id>` | Engine de agente: `devin` (default), `opencode` o `auto` (sondea y gana el primero que autentique). Persiste en `plan.agent` (resume lo restaura). |
+| `--agent <id>` | Engine de agente: `devin` (default), `opencode` o `auto` (sondea y gana el primero que autentique). Persiste en `plan.agent` como fallback histórico (el resume prefiere el engine activo del config). |
 | `--resume <dir\|slug>` | **Reanuda un run** desde su `plan.json` (ruta o nombre en `generated-apps/`). No requiere `--idea` ni `--scope`/`--app-type` (los restaura del plan). Los pasos `done` se saltan, los que no terminaron vuelven a `pending` y el pipeline retoma en el primero pendiente — si están todos hechos, salta a `finalVerify` + QA + finalize. Los flags de deploy (`--github`/`--ghpages`/`--no-push`) aplican igual. |
 | `-y` / `--yes` | No pedir confirmación del plan ni preguntas interactivas. |
 | `--github` | Tras aprobación del QA: crea el repo en GitHub (REST, `GITHUB_TOKEN`) y pushea `main`. **No** publica Pages por sí solo. |
@@ -227,7 +227,7 @@ cp .env.example .env
 | `GITHUB_TOKEN` | PAT clásico scope `repo` (github.com/settings/tokens). Habilita `--github`. |
 | `GITHUB_REPO_URL` | Alternativa a `--github`: pushea a un repo **pre-creado** (SSH). Sin crear repo ni Pages. |
 | `GIT_USER_NAME` / `GIT_USER_EMAIL` | Identidad de los commits en las apps generadas. |
-| `AGENT_PROVIDER` | Engine de agente por defecto (`devin`/`opencode`/`auto`). Menor precedencia que settings.json y `--agent`. |
+| `AGENT_PROVIDER` | Engine de agente por defecto (`devin`/`opencode`/`auto`). Menor precedencia que `--agent` y `settings.json`; mayor que `plan.agent`. |
 | `OPENCODE_BIN` / `OPENCODE_MODEL` | Binario alternativo / modelo `provider/model` para OpenCode (vacío = default del provider). |
 | `DEVIN_MODEL` | Default `swe-2-high`. |
 | `DEVIN_TIMEOUT_MS` | Timeout por sesión Devin (default 15 min). |
