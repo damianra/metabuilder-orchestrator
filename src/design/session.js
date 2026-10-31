@@ -144,6 +144,10 @@ export async function designChat(text, { agent = '', onChunk = () => {}, onActiv
     (history ? `\n\n## Conversación hasta ahora\n\n${history}\n\n` : '\n\n') +
     `Usuario: ${text}`;
 
+  // Guardar el prompt ANTES del agente: si el turno muere (timeout)
+  // el mensaje ya quedó → plan.idea conserva el prompt real.
+  state.messages.push({ role: 'user', text });
+  writeState(state);
   const res = await runAgentPrompt({
     agent,
     prompt,
@@ -154,7 +158,7 @@ export async function designChat(text, { agent = '', onChunk = () => {}, onActiv
   });
   if (!res.ok) return { ok: false, error: res.error, text: res.text };
   const reply = res.text || '(sin respuesta)';
-  state.messages.push({ role: 'user', text }, { role: 'agent', text: reply });
+  state.messages.push({ role: 'agent', text: reply });
   writeState(state);
   return { ok: true, text: reply };
 }

@@ -27,6 +27,7 @@ Este proyecto fue generado por MetaBuilder. Stack esperado:
 - Mantener los pasos atómicos y autocontenidos: cada tarea debe dejar el proyecto en un estado compilable.
 - **Estado (front)**: `lib/api.js` como cliente único del backend (fetch + error handling centralizado); `useState` local por componente, `useReducer` para flujos multi-paso (formularios/wizard/cart). Sin librería de estado (Redux/Zustand/MobX) — fuera del scope: rápido, funcional, fácil de conectar front↔back.
 - Si la app tiene login/usuarios del seed, documentarlos en el README (sección 'Usuarios demo' con email+password dev y el rol de cada uno).
+- Al final del README, una sección 'Prompt' con el prompt original del usuario (si el plan tiene sección BACKEND, incluirla entera).
 - No commitear `node_modules/`, `.env`, `*.sqlite`, `server/uploads/*`, `dist/`, `out/` ni `build/`.
 - Al escribir tests E2E con Playwright, cubrir explícitamente las reglas de UI de arriba.
 {{backendNotes}}
