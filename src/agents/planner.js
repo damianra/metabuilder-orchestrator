@@ -150,9 +150,18 @@ export async function plannerNode(state) {
         if (resumeIndex === existing.steps.length) resumeIndex = i;
       }
     }
-    // Los datos del run original mandan sobre los defaults del CLI;
-    // --idea explícita tiene prioridad sobre la guardada en el plan.
-    existing.idea = state.idea || existing.idea || '';
+    // Los datos del run original mandan sobre los defaults del CLI.
+    // En extend el prompt nuevo NO pisa el original — se appendea bajo
+    // la sección BACKEND (el plan conserva el prompt completo del front
+    // + el del backend que se agrega).
+    if (state.extend && state.idea && existing.idea && !existing.idea.includes(state.idea)) {
+      existing.idea = `${existing.idea}
+
+BACKEND
+${state.idea}`;
+    } else {
+      existing.idea = state.idea || existing.idea || '';
+    }
     existing.projectName = state.projectSlug || existing.projectName;
     // Arquitectura: la del plan guardado manda; --arch explícita solo
     // aplica si el plan no declara una (planes pre-arch → se parchean).

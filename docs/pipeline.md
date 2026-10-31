@@ -207,3 +207,5 @@ datos reales de la API, no mocks. El nodo `smoke` intenta `docker compose
 up -d` si el proyecto trae compose con servicio de DB (postgres/mysql/mongo)
 antes de bootear la API; sin docker o con driver embebido (sqljs/sqlite)
 continúa tolerante.
+
+- `--extend`: el prompt nuevo se **appendea** a `plan.idea` bajo la sección `BACKEND` — el plan conserva el prompt original del front + el del backend (`original\n\nBACKEND\n<nuevo>`).
