@@ -146,7 +146,7 @@ describe('finalCheckCommands', () => {
 
   it('backend fastapi: solo pytest (toolchain python)', () => {
     expect(finalCheckCommands(resolveStacks('backend', { backend: 'fastapi' }))).toEqual([
-      'python -m pytest',
+      '.venv/bin/python -m pytest',
     ]);
   });
 
@@ -155,7 +155,7 @@ describe('finalCheckCommands', () => {
       'npm run build',
       'npx vitest run',
       'npm run test:e2e',
-      'python -m pytest',
+      '.venv/bin/python -m pytest',
     ]);
   });
 });

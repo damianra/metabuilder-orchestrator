@@ -26,10 +26,12 @@ export default {
 
   toolchain: {
     manifest: 'requirements.txt',
-    installCmd: 'pip install -r requirements.txt',
-    testCmd: 'python -m pytest',
+    // Mismo patrón que `fastapi`: el install crea el .venv in-place —
+    // pip del sistema es PEP 668 y los bins viven en .venv/bin.
+    installCmd: 'python3 -m venv .venv && .venv/bin/pip install -r requirements.txt',
+    testCmd: '.venv/bin/python -m pytest',
     testLabel: 'pytest',
-    devCmd: 'uvicorn app.main:app --port 4000',
+    devCmd: '.venv/bin/uvicorn app.main:app --port 4000',
     devPort: 4000,
     dockerfile: 'python',
     dockerfileFullstack: 'fullstack-python',
@@ -72,14 +74,14 @@ export default {
       type: 'test',
       keywords: ['pytest'],
       error: 'falta paso test con pytest',
-      prompt: 'Al menos un paso `type: "test"` que configure pytest con verify `python -m pytest` (los tests usan mongomock — no exigen mongo real).',
+      prompt: 'Al menos un paso `type: "test"` que configure pytest con verify `.venv/bin/python -m pytest` (los tests usan mongomock — no exigen mongo real).',
     },
   ],
 
   readme: {
     stack: '- Python + FastAPI + MongoDB (ODMantic/Motor) (backend)',
     e2eSuffix: '',
-    dev: 'uvicorn app.main:app --port 4000   # API FastAPI en http://localhost:4000 (requiere MONGO_URI en .env)',
+    dev: '.venv/bin/uvicorn app.main:app --port 4000   # API FastAPI en http://localhost:4000 (requiere MONGO_URI en .env)',
     tests: [],
   },
 };

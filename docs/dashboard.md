@@ -201,7 +201,11 @@ via matriz (o acepta stackId legacy), copia `skeletonDir` y persiste
 `{stackId, framework, db}` en `backend-state.json`; el prompt recibe las convenciones
 del stack via `agentsStack`/`agentsDb`), api-surface en vivo +
 probar via `/api/backend/probe`, guardar → plan sintético scope
-`backend`; picker de stack backend en la pantalla de crear —
+`backend` (el copy excluye deps/entornos — `node_modules`, `.venv`,
+`__pycache__`, `*.db`/`.sqlite`, `.env` — y corre el `installCmd` del
+stack en el destino, igual que `saveDesign`: un `.venv` copiado queda
+roto porque sus shebangs guardan el path absoluto del workspace);
+picker de stack backend en la pantalla de crear —
 compliance la infiere el agente), "Diseñar app"
 (`DesignTab.jsx`) y "Fullstack" (`NewAppForm` con
 `fixedScope="fullstack"` — front+back en un solo run, la vía rápida).
