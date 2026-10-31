@@ -12,6 +12,7 @@ import { startDevRun, stopDevRun } from '../dashboard/server.js';
 import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
 import { detectBackendStackId } from '../tools/docker.js';
 import { writeAgentsMd } from '../agents/preflight.js';
+import { writeReadme } from '../agents/finalizer.js';
 import { resolveArchSafe } from '../arch/index.js';
 import { getStack } from '../stacks/index.js';
 
@@ -251,12 +252,15 @@ export function attachFrontendFiles(srcDir, destDir) {
 
 // plan.json del backend → fullstack: stacks.frontend, compliance base
 // y un step `done` sintético del front (misma técnica que saveDesign).
-export function attachPlanUpdate(destDir, frontendStackId = 'vite-react') {
+export function attachPlanUpdate(destDir, frontendStackId = 'vite-react', startedAt = null) {
   const planPath = join(destDir, 'plan.json');
   const plan = JSON.parse(readFileSync(planPath, 'utf8'));
   plan.scope = 'fullstack';
   plan.stacks = { ...(plan.stacks ?? {}), frontend: frontendStackId };
   plan.compliance = [...new Set([...(plan.compliance ?? []), 'privacidad', 'notfound'])];
+  // Planes viejos sin timings (saves pre-fix o pipelines raros):
+  // el attach es el evento que los completa a fullstack.
+  plan.timings ??= { startedAt, finishedAt: new Date().toISOString() };
   const nextId = Math.max(0, ...(plan.steps ?? []).map((s) => s.id ?? 0)) + 1;
   (plan.steps ??= []).push({
     id: nextId,
@@ -301,7 +305,7 @@ async function saveDesignAttach(slug) {
     }
     return { ok: false, error: `npm install en ${slug} falló: ${aInstall?.stderr?.slice(-200) ?? ''}` };
   }
-  attachPlanUpdate(dest, readState().frontendStackId ?? 'vite-react');
+  attachPlanUpdate(dest, readState().frontendStackId ?? 'vite-react', readState().created ?? null);
   const plan = JSON.parse(readFileSync(planPath, 'utf8'));
   writeAgentsMd(dest, {
     withBackend: true,
@@ -311,6 +315,30 @@ async function saveDesignAttach(slug) {
     frontendStack: getStack(readState().frontendStackId ?? 'vite-react'),
     backendStack: getStack(plan.stacks?.backend ?? detectBackendStackId(dest)),
   });
+  // status.json + README.md — el proyecto quedó fullstack: mismos
+  // artefactos que tras un saveBackend/saveDesign o un run.
+  const stPath = join(dest, 'status.json');
+  const prevSt = existsSync(stPath) ? JSON.parse(readFileSync(stPath, 'utf8')) : {};
+  writeFileSync(
+    stPath,
+    JSON.stringify(
+      { ...prevSt, status: 'done', finishedAt: new Date().toISOString() },
+      null,
+      2,
+    ),
+  );
+  try {
+    writeReadme({
+      projectDir: dest,
+      projectSlug: slug,
+      idea: plan.idea ?? `frontend attachado a ${slug}`,
+      agent: null,
+      scope: 'fullstack',
+      plan: { stacks: plan.stacks },
+    });
+  } catch (e) {
+    console.warn(`writeReadme falló en attach(${slug}):`, e?.message);
+  }
   clearInstall(DESIGN_DIR);
   rmSync(DESIGN_DIR, { recursive: true, force: true });
   return { ok: true, slug };
@@ -381,6 +409,22 @@ export async function saveDesign(slug) {
     join(dest, 'status.json'),
     JSON.stringify({ status: 'done', finishedAt: new Date().toISOString() }, null, 2),
   );
+  // README determinístico (mismo template del finalizer) — las apps
+  // workspace salen con los mismos artefactos que las del pipeline.
+  try {
+    writeReadme({
+      projectDir: dest,
+      projectSlug: slug,
+      idea:
+        state.messages?.find((m) => m.role === 'user')?.text
+        ?? 'diseño creado en la pestaña Diseñar app',
+      agent: null,
+      scope: 'frontend',
+      plan: { stacks: { frontend: state.frontendStackId ?? 'vite-react' } },
+    });
+  } catch (e) {
+    console.warn(`writeReadme falló en saveDesign(${slug}):`, e?.message);
+  }
   clearInstall(DESIGN_DIR); // la próxima creación reinstala de cero
   rmSync(DESIGN_DIR, { recursive: true, force: true });
   return { ok: true, slug };

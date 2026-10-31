@@ -794,21 +794,33 @@ export function createDashboardApp({
       validated: plan?.validated ?? false,
       stacks: plan?.stacks ?? null,
         timings: plan?.timings ?? null,
-        // DB externa requerida (postgres|mysql|mongodb en .env.example)
-        // → hint en el detalle para levantar el contenedor.
+        // DB externa requerida (postgres|mysql|mongodb) → hint en el
+        // detalle para levantar el contenedor. La config real (.env)
+        // gana sobre el ejemplo: fastapi comparte un solo .env.example
+        // para las 3 DBs (sqlite default + postgres/mysql comentados)
+        // — solo el .env dice cuál eligió la app. Si el .env existe
+        // pero no declara ninguna var de DB, el ejemplo decide (sigue
+        // siendo la señal del stack).
         externalDb: (() => {
-          try {
-            // nest-typeorm: DB_TYPE=; express-sql: DB_DRIVER=pg|mysql;
-            // mongo/fastapi-mongo: MONGO_URI=; fastapi: DATABASE_URL=
-            const ex = readFileSync(join(dir, '.env.example'), 'utf8')
-              .split('\n')
-              .filter((l) => !l.trimStart().startsWith('#'))
-              .join('\n');
-            return (
-              /DB_(?:TYPE|DRIVER)\s*=\s*(postgres|mysql|mongodb|pg)/i.test(ex) ||
-              /MONGO_URI\s*=|DATABASE_URL\s*=\s*(postgres|mysql|mongodb)/i.test(ex)
-            );
-          } catch { return false; }
+          const active = (f) => {
+            try {
+              return readFileSync(join(dir, f), 'utf8')
+                .split('\n')
+                .filter((l) => !l.trimStart().startsWith('#'))
+                .join('\n');
+            } catch { return ''; }
+          };
+          // nest-typeorm: DB_TYPE=; express-sql: DB_DRIVER=pg|mysql;
+          // mongo/fastapi-mongo: MONGO_URI=; fastapi: DATABASE_URL=
+          const env = active('.env');
+          const ex = /DATABASE_URL|DB_(?:TYPE|DRIVER)|MONGO_URI/i.test(env)
+            ? env
+            : active('.env.example');
+          return (
+            /DB_(?:TYPE|DRIVER)\s*=\s*(postgres|mysql|mongodb|pg)/i.test(ex) ||
+            /MONGO_URI\s*=\s*\S/i.test(ex) ||
+            /DATABASE_URL\s*=\s*(postgres|mysql|mongodb)/i.test(ex)
+          );
         })(),
       agent: plan?.agent ?? null,
       scripts: Object.entries(pkg?.scripts ?? {}).map(([name, command]) => ({ name, command })),

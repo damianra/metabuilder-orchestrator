@@ -12,6 +12,7 @@ import { startDevRun, stopDevRun } from '../dashboard/server.js';
 import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
 import { anyBackendManifest, detectBackendStackId } from '../tools/docker.js';
 import { copyApiSkeleton, writeAgentsMd } from '../agents/preflight.js';
+import { writeReadme } from '../agents/finalizer.js';
 import { getStack, resolveBackendStackId } from '../stacks/index.js';
 import { resolveArchSafe, archInstructionsFor, getArch, listArchs, DEFAULT_ARCH } from '../arch/index.js';
 
@@ -268,6 +269,10 @@ export async function saveBackend(slug) {
         appType: 'custom',
         arch: savedState.arch ?? DEFAULT_ARCH,
         idea: 'api creada en la pestaña Backend (chat experto)',
+        timings: {
+          startedAt: savedState.created ?? null,
+          finishedAt: new Date().toISOString(),
+        },
         stacks: { backend: savedStack.id },
         validated: true,
         steps: [
@@ -311,8 +316,28 @@ export async function saveBackend(slug) {
       frontendStack: undefined,
       backendStack: getStack(savedPlan.stacks?.backend ?? detectBackendStackId(dest)),
     });
-  } catch {
-    /* AGENTS.md falló — el guardado sigue siendo válido */
+  } catch (e) {
+    // AGENTS.md es nice-to-have, no debe dejar estado inconsistente
+    // (dest creado + workspace intacto → retry 409) — pero se loguea.
+    console.warn(`writeAgentsMd falló en saveBackend(${slug}):`, e?.message);
+  }
+  // status.json + README.md — mismos artefactos que saveDesign y que
+  // una app de pipeline: el dashboard los lee igual (chip done, ⏱).
+  writeFileSync(
+    join(dest, 'status.json'),
+    JSON.stringify({ status: 'done', finishedAt: new Date().toISOString() }, null, 2),
+  );
+  try {
+    writeReadme({
+      projectDir: dest,
+      projectSlug: slug,
+      idea: 'api creada en la pestaña Backend (chat experto)',
+      agent: null,
+      scope: 'backend',
+      plan: { stacks: { backend: savedStack.id } },
+    });
+  } catch (e) {
+    console.warn(`writeReadme falló en saveBackend(${slug}):`, e?.message);
   }
   clearInstall(BACKEND_DIR);
   rmSync(BACKEND_DIR, { recursive: true, force: true });
