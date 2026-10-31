@@ -6,6 +6,9 @@
  * estricto, externa warn-only). Opt-out: `--no-smoke` (canal
  * smokeEnabled) o `plan.smoke === false`.
  */
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { execa } from 'execa';
 import { resolveStacksSafe } from '../stacks/index.js';
 import { smokeApp } from '../tools/smoke.js';
 
@@ -26,6 +29,17 @@ export async function smokeNode(state, extra) {
   const dir = state.projectDir;
 
   const results = [];
+  // DB real levantable: si el proyecto trae compose con servicio de DB
+  // (postgres/mysql/mongo) intentar docker compose up -d — tolerante:
+  // sin docker la app puede usar driver embebido (sqljs/sqlite).
+  const compose = ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml']
+    .map((f) => join(dir, f))
+    .find((f) => existsSync(f) && readFileSync(f, 'utf8').includes('db'));
+  if (compose && stacks.backend) {
+    try {
+      await execa('docker', ['compose', 'up', '-d'], { cwd: dir, reject: false, timeout: 60_000 });
+    } catch { /* sin docker — los stacks embebidos (sqljs/sqlite) siguen */ }
+  }
   if (stacks.backend) {
     // Fullstack/backend: el devCmd de la API sirve también dist|out —
     // kind 'api' verifica contrato /api + SPA fallback si hay build.

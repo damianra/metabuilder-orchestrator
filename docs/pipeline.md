@@ -198,3 +198,12 @@ van **scoped**: el prompt incluye los issues de la ronda anterior y pide verific
 solo esos (+ bloqueantes nuevos), no un review fresco. Los issues no corregidos
 quedan en `status.json.pendingIssues` — la app shippea documentada, no colgada.
 `GraphRecursionError` además se atrapa en el runner → `status: failed` limpio.
+
+### Seed y DB levantable en E2E (v13)
+
+El AGENTS.md generado exige `npm run seed` (o `seedCmd` del toolchain): el
+backend puebla la DB con datos realistas de dominio — el front consume
+datos reales de la API, no mocks. El nodo `smoke` intenta `docker compose
+up -d` si el proyecto trae compose con servicio de DB (postgres/mysql/mongo)
+antes de bootear la API; sin docker o con driver embebido (sqljs/sqlite)
+continúa tolerante.
