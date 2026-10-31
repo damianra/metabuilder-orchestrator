@@ -2,7 +2,7 @@
 // (el scanner de proyectos lista todo ese dir) con chat iterativo.
 // La memoria del chat vive en design-state.json — cada mensaje repliega
 // el historial en el prompt (ACP no expone resume cross-session).
-import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { config } from '../config.js';
 import { runAgentPrompt } from '../tools/acp.js';
