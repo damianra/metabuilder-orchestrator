@@ -47,7 +47,13 @@ export async function reviewerNode(state) {
         .join('\n') || '(sin endpoints)'
     : '(sin backend)';
 
-  const prompt = loadPrompt('reviewer', {
+  // Re-review scoped: si ya hubo una ronda con issues, verificar SOLO
+  // que se corrigieron (+ bloqueantes nuevos) — no un review fresco que
+  // genera issues nuevos por ronda hasta agotar el grafo.
+  const prior = state.reviewIssues
+    ? `## Re-review — verificá que se corrigieron estos issues reportados:\n\n${state.reviewIssues}\n\nReportá ISSUES solo si alguno SIGUE roto o encontrás un defecto BLOQUEANTE nuevo (crash, datos perdidos, seguridad). No reportes nits ni mejoras.\n\n`
+    : '';
+  const prompt = prior + loadPrompt('reviewer', {
     idea: state.idea,
     scope: state.scope,
     fileList,
@@ -89,6 +95,10 @@ export async function reviewerNode(state) {
   return {
     lastError: 'QA encontró issues',
     lastOutput: result.issues.slice(-3000),
+    reviewRounds: (state.reviewRounds ?? 0) + 1,
+    reviewIssues: result.issues,
+    // El cap del grafo (rondas >= 2) finaliza con estos pendientes.
+    pendingIssues: (state.reviewRounds ?? 0) >= 1 ? result.issues : null,
     history: [log('review', `issues reportados: ${result.issues.slice(0, 200)}`)],
   };
 }

@@ -33,6 +33,9 @@ export const OrchestratorState = Annotation.Root({
   currentStepIndex: Annotation({ reducer: replace, default: () => 0 }),
   stepRetries: Annotation({ reducer: replace, default: () => 0 }),
   finalRetries: Annotation({ reducer: replace, default: () => 0 }),
+  reviewRounds: Annotation({ reducer: replace, default: () => 0 }),
+  reviewIssues: Annotation({ reducer: replace, default: () => null }),
+  pendingIssues: Annotation({ reducer: replace, default: () => null }),
   lastError: Annotation({ reducer: replace, default: () => null }),
   lastOutput: Annotation({ reducer: replace, default: () => '' }),
 

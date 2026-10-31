@@ -70,7 +70,13 @@ function afterReview(state) {
   // Review OK (sobre una app que ya booteó) → finalize.
   if (!state.lastError) return 'finalize';
   // Issues de QA → el fixer los corrige y se re-verifica (finalVerify).
-  return state.finalRetries < config.maxStepRetries ? 'fix' : 'fail';
+  // Cap de rondas: más de 2 reviews con issues → finalize con
+  // pendingIssues (cada ronda vale ~8 super-steps — sin cap el grafo
+  // reventaba el recursionLimit: review fresco encontraba issues nuevos
+  // por ronda en vez de verificar los reportados).
+  const rounds = state.reviewRounds ?? 1;
+  const canRetry = state.finalRetries < config.maxStepRetries && rounds < 2;
+  return canRetry ? 'fix' : 'finalize';
 }
 
 function afterSmoke(state) {
