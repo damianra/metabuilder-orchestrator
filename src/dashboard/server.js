@@ -793,7 +793,10 @@ export function createDashboardApp({
           try {
             // nest-typeorm: DB_TYPE=; express-sql: DB_DRIVER=pg|mysql;
             // mongo/fastapi-mongo: MONGO_URI=; fastapi: DATABASE_URL=
-            const ex = readFileSync(join(dir, '.env.example'), 'utf8');
+            const ex = readFileSync(join(dir, '.env.example'), 'utf8')
+              .split('\n')
+              .filter((l) => !l.trimStart().startsWith('#'))
+              .join('\n');
             return (
               /DB_(?:TYPE|DRIVER)\s*=\s*(postgres|mysql|mongodb|pg)/i.test(ex) ||
               /MONGO_URI\s*=|DATABASE_URL\s*=\s*(postgres|mysql|mongodb)/i.test(ex)
