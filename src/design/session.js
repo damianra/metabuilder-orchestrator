@@ -269,6 +269,13 @@ async function saveDesignAttach(slug) {
   }
   stopDevRun(DESIGN_DIR);
   attachFrontendFiles(DESIGN_DIR, dest);
+  // Las deps del front se mergearon al package.json del backend →
+  // install en dest (sin rm si falla: es un proyecto backend real).
+  startInstall(dest);
+  const aInstall = await awaitInstall(dest);
+  if (!aInstall?.ok) {
+    return { ok: false, error: `npm install en ${slug} falló: ${aInstall?.stderr?.slice(-200) ?? ''}` };
+  }
   attachPlanUpdate(dest, readState().frontendStackId ?? 'vite-react');
   const plan = JSON.parse(readFileSync(planPath, 'utf8'));
   writeAgentsMd(dest, {
@@ -301,8 +308,12 @@ export async function saveDesign(slug) {
     filter: (src) => !SAVE_EXCLUDE.has(basename(src)),
   });
   // node_modules quedó fuera del copy → install propio en el destino.
+  startInstall(dest);
   const install = await awaitInstall(dest);
-  if (!install?.ok) return { ok: false, error: `npm install en ${slug} falló: ${install?.stderr?.slice(-200) ?? ''}` };
+  if (!install?.ok) {
+    rmSync(dest, { recursive: true, force: true }); // no dejar slug ocupado
+    return { ok: false, error: `npm install en ${slug} falló: ${install?.stderr?.slice(-200) ?? ''}` };
+  }
   rmSync(statePath, { force: true });
   writeFileSync(
     join(dest, 'plan.json'),
