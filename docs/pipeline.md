@@ -15,7 +15,10 @@ agotados van al nodo `fail` (status: failed), no a repairPlan.
 de agente que inspecciona la app contra AGENTS.md + idea. El prompt
 lleva scope — inventario de archivos fuente + api-surface + captura
 `screenshot.png` del build como evidencia visual (warn-only; se
-REcaptura en cada pasada porque el fix-loop rebuildea `dist/`).
+REcaptura en cada pasada porque el fix-loop rebuildea `dist/`) +
+los findings del `uiActionScan` (botones sin handler, handlers vacíos,
+datos mock, llamadas a endpoints inexistentes — warn-only, el agente
+verifica cada sospechoso antes de reportarlo).
 Responde `RESULT: APPROVED`
 (→ finalize) o `RESULT: ISSUES` (→ fixer corrige, consume finalRetries,
 vuelve a finalVerify). El repo remoto se crea recién en finalize: evita

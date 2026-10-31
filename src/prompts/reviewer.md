@@ -16,6 +16,12 @@ API del dominio detectada (verificá wiring front↔back contra esto — rutas q
 {{apiSurface}}
 ```
 
+Accionables sospechosos detectados por scan estático (botones sin handler, handlers vacíos, datos mock renderizados, llamadas a rutas que el backend no tiene) — pueden haber falsos positivos: verificá cada uno antes de reportarlo como issue:
+
+```
+{{actionScan}}
+```
+
 Evidencia visual: {{screenshot}}
 
 ## Qué verificar

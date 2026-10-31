@@ -3,6 +3,7 @@ import { join, relative } from 'node:path';
 import { config } from '../config.js';
 import { runAgentPrompt } from '../tools/acp.js';
 import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
+import { uiActionScan, actionScanBlock } from '../tools/ui-action-scan.js';
 import { stacksFor } from '../stacks/index.js';
 import { captureScreenshot } from '../tools/screenshot.js';
 import { activity, log, loadPrompt, runLogPath, textFeed } from './common.js';
@@ -41,11 +42,19 @@ export async function reviewerNode(state) {
     screenshot = 'screenshot.png';
   }
   const backend = stacksFor(state).backend;
-  const surface = backend
+  const surfaceEntries = backend
     ? apiSurfaceFor(state.projectDir, { kind: apiSurfaceKindOf(backend.id) })
-        .map((e) => `${e.method} ${e.path}`)
-        .join('\n') || '(sin endpoints)'
+    : [];
+  const surface = backend
+    ? surfaceEntries.map((e) => `${e.method} ${e.path}`).join('\n') || '(sin endpoints)'
     : '(sin backend)';
+  // Accionables no cableados (botones muertos, data mock, llamadas a
+  // rutas que el backend no tiene) — el revisor verifica sospechosos
+  // concretos en vez de buscarlos a ciegas. Warn-only: el regex puede
+  // dar falsos positivos, el agente confirma antes de reportar.
+  const actionScan = backend || stacksFor(state).frontend
+    ? actionScanBlock(uiActionScan(state.projectDir, { apiSurface: surfaceEntries }))
+    : '';
 
   // Re-review scoped: si ya hubo una ronda con issues, verificar SOLO
   // que se corrigieron (+ bloqueantes nuevos) — no un review fresco que
@@ -58,6 +67,7 @@ export async function reviewerNode(state) {
     scope: state.scope,
     fileList,
     apiSurface: surface,
+    actionScan,
     screenshot: screenshot
       ? 'Existe `screenshot.png` (captura del build servido). Si tu cliente puede leer imágenes, mirala: es evidencia visual real del diseño (hero, contraste, layout, estados vacíos).'
       : '(sin captura disponible — revisá solo código)',
