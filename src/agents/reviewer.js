@@ -52,9 +52,10 @@ export async function reviewerNode(state) {
   // rutas que el backend no tiene) — el revisor verifica sospechosos
   // concretos en vez de buscarlos a ciegas. Warn-only: el regex puede
   // dar falsos positivos, el agente confirma antes de reportar.
-  const actionScan = backend || stacksFor(state).frontend
-    ? // Sin backend no hay surface — apiSurface: null salta el check de
-      // endpoints faltantes (no flaggear todo fetch de una app front-only).
+  const stacks = stacksFor(state);
+  const actionScan = stacks.frontend
+    ? // Solo apps con front tienen accionables UI; sin backend no hay
+      // surface — apiSurface: null salta el check de endpoints faltantes.
       actionScanBlock(uiActionScan(state.projectDir, { apiSurface: backend ? surfaceEntries : null }))
     : '';
 

@@ -51,19 +51,22 @@ export function uiActionScan(dir, { apiSurface = null } = {}) {
   const findings = [];
   if (!existsSync(dir)) return findings;
   const srcDir = existsSync(join(dir, 'src')) ? join(dir, 'src') : dir;
-  const knownPaths = apiSurface
-    ? new Set(
-        apiSurface.map((e) => (typeof e === 'string' ? e : e.path)).map((p) => p.replace(/<[^>]+>|\{[^}]+\}|:\w+/g, '{param}')),
-      )
-    : null;
   // Normaliza params dinámicos por SEGMENTO completo (`/api/items/42`,
-  // `/api/items/${id}`, uuid) — `/api/v1/users` no se toca.
+  // `/api/items/${id}`, uuid) + trailing slash (`router.get('/')` da
+  // surface `/api/items/` vs call `/api/items`) — `/api/v1/` no se toca.
   const norm = (p) =>
     p
       .replace(/\$\{[^}]+\}/g, '{param}')
       .replace(/\/\d+(?=\/|$)/g, '/{param}')
       .replace(/\/[0-9a-f-]{8,}(?=\/|$)/gi, '/{param}')
       .replace(/\/$/, '');
+  const knownPaths = apiSurface
+    ? new Set(
+        apiSurface
+          .map((e) => (typeof e === 'string' ? e : e.path))
+          .map((p) => norm(p.replace(/<[^>]+>|\{[^}]+\}|:\w+/g, '{param}'))),
+      )
+    : null;
 
   for (const file of walk(srcDir, srcDir)) {
     const text = readFileSync(join(srcDir, file), 'utf8');
