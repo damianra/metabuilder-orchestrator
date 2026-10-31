@@ -10,7 +10,7 @@ import { startInstall, awaitInstall, clearInstall } from '../tools/install.js';
 import { loadPrompt } from '../agents/common.js';
 import { startDevRun, stopDevRun } from '../dashboard/server.js';
 import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
-import { detectBackendStackId, writeDockerFiles } from '../tools/docker.js';
+import { detectBackendStackId, detectOutDir, writeDockerFiles } from '../tools/docker.js';
 import { writeAgentsMd } from '../agents/preflight.js';
 import { writeReadme } from '../agents/finalizer.js';
 import { initGitRepo } from '../agents/common.js';
@@ -349,7 +349,7 @@ async function saveDesignAttach(slug) {
         frontend: true,
         backend: true,
         backendStackId: plan.stacks?.backend,
-        outDir: 'dist',
+        outDir: detectOutDir(dest) ?? 'dist',
       });
     }
   } catch (e) {
@@ -447,7 +447,7 @@ export async function saveDesign(slug) {
   // initial commit — la app nace repo como las del pipeline.
   try {
     if (!existsSync(join(dest, 'Dockerfile'))) {
-      writeDockerFiles(dest, { frontend: true, backend: false, outDir: 'dist' });
+      writeDockerFiles(dest, { frontend: true, backend: false, outDir: detectOutDir(dest) ?? 'dist' });
     }
   } catch (e) {
     console.warn(`writeDockerFiles falló en saveDesign(${slug}):`, e?.message);
