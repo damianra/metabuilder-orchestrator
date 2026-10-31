@@ -271,6 +271,7 @@ async function saveDesignAttach(slug) {
   attachFrontendFiles(DESIGN_DIR, dest);
   // Las deps del front se mergearon al package.json del backend →
   // install en dest (sin rm si falla: es un proyecto backend real).
+  clearInstall(dest);
   startInstall(dest);
   const aInstall = await awaitInstall(dest);
   if (!aInstall?.ok) {
@@ -308,6 +309,7 @@ export async function saveDesign(slug) {
     filter: (src) => !SAVE_EXCLUDE.has(basename(src)),
   });
   // node_modules quedó fuera del copy → install propio en el destino.
+  clearInstall(dest); // la cache por dir devuelve resultado viejo sin re-correr
   startInstall(dest);
   const install = await awaitInstall(dest);
   if (!install?.ok) {
