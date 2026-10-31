@@ -5,6 +5,7 @@
 3. Si una URL está vacía, no se debe mostrar ningún icono ni intentar abrirse ninguna ventana.
 4. Los botones de acción (ej. "Guardar", "Enviar") deben estar deshabilitados (`disabled`) por defecto y solo habilitarse cuando se detecten cambios reales en los campos del formulario.
 5. Si una consulta a la API no devuelve resultados, la UI debe mostrar un estado de fallback informativo (nunca una pantalla en blanco o un error crudo).
+6. Todo elemento accionable debe estar cableado: cada `<button>`/link/form tiene handler real que llama a la API, navega o muta estado — prohibido handler vacío (`() => {}`), `console.log`/`alert` como acción, y datos mock/hardcodeados renderizados en lugar de fetch (un chart o tabla se alimenta del backend; si el endpoint no existe, el componente no se renderiza — regla 2).
 
 ## Guía de diseño (obligatoria — el resultado debe verse moderno y limpio)
 
