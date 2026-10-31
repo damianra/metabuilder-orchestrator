@@ -9,7 +9,7 @@ vi.mock('../../api.js', () => ({
       Promise.resolve({
         scopes: ['fullstack', 'frontend', 'backend'],
         appTypes: ['landing', 'orders'],
-        archs: ['flat', 'mvc'],
+        archs: [{ id: 'flat', label: 'flat (routes auto-montadas)' }, { id: 'mvc', label: 'MVC clásico' }],
         stacks: { frontend: ['vite-react'], backend: ['express-sqlite'] },
         engines: ['devin'],
         engine: 'devin',
