@@ -46,6 +46,7 @@ export default function ProjectDetail({ slug, onChanged }) {
   // Superficie de API: endpoints escaneados de server/routes/ + probe.
   const [apiSurface, setApiSurface] = useState(null);
   const [probe, setProbe] = useState(null); // {path, status, body}
+  const [ideaFull, setIdeaFull] = useState(false);
 
   // Flag GitHub al montar — no solo al abrir el modal de backend
   // (ese botón no existe en proyectos fullstack/backend y el flag
@@ -285,7 +286,20 @@ export default function ProjectDetail({ slug, onChanged }) {
               {project.slug} · actualizado {timeAgo(project.updatedAt)}
             </p>
             {project.idea && (
-              <p className="mt-2 max-w-2xl text-sm text-slate-400 line-clamp-2">{project.idea}</p>
+              <div className="mt-2 max-w-2xl">
+                <p className={`text-sm text-slate-400 whitespace-pre-wrap ${ideaFull ? '' : 'line-clamp-2'}`}>
+                  {project.idea}
+                </p>
+                {project.idea.length > 160 && (
+                  <button
+                    type="button"
+                    onClick={() => setIdeaFull((v) => !v)}
+                    className="mt-1 text-xs text-accent-400 hover:text-accent-300"
+                  >
+                    {ideaFull ? 'ver menos' : 'ver completo'}
+                  </button>
+                )}
+              </div>
             )}
           </div>
           <div className="flex items-center gap-2">
