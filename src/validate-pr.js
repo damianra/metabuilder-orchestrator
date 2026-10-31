@@ -1,4 +1,3 @@
-const ENGINE_FLAG = process.argv.includes('--engine') ? process.argv[process.argv.indexOf('--engine') + 1] : null;
 // Sub-agente de validación de PRs del orquestador.
 // Uso:
 //   npm run validate:pr -- <numero>   un PR puntual
@@ -115,6 +114,8 @@ async function listPendingPRs(owner, repo) {
 
 const main = async () => {
   const args = process.argv.slice(2);
+const eIdx = args.indexOf('--engine');
+const ENGINE_FLAG = eIdx >= 0 ? args.splice(eIdx, 2)[1] : null;
   const watchArg = args.find((a) => a === '--watch' || a.startsWith('--watch='));
   const watchIdx = args.indexOf('--watch');
   // --watch=10 | --watch 10 | --watch (default 5). Valores <= 0 → default.

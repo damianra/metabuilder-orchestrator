@@ -94,7 +94,7 @@ Aplica a cualquier agente/persona que modifique el orquestador.
 5. **Validación funcional antes de merge — la hace un sub-agente**:
    `npm run validate:pr -- <N>` valida un PR puntual; `npm run
    validate:pr` sin args valida **todos los PRs abiertos pendientes**
-   (auto-descubrimiento); `--watch [min]` hace polling continuo
+   (auto-descubrimiento); `--watch [min]` hace polling continuo; `--engine <id>` fija el engine del sub-agente sin tocar `settings.json`
    (default 5 min). En todos los casos crea un worktree temporal del
    head, corre una sesión Devin (`prompts/pr-validator.md`) que revisa
    el diff + ejecuta la validación (`npm test`, `node --check`, smokes

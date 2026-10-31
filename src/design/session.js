@@ -326,6 +326,7 @@ export async function saveDesign(slug) {
     rmSync(dest, { recursive: true, force: true }); // no dejar slug ocupado
     return { ok: false, error: `npm install en ${slug} falló: ${install?.stderr?.slice(-200) ?? ''}` };
   }
+  const state = readState(); // leer antes de borrar statePath (plan usa messages/created)
   rmSync(statePath, { force: true });
   writeFileSync(
     join(dest, 'plan.json'),
@@ -334,10 +335,10 @@ export async function saveDesign(slug) {
         projectName: slug,
         scope: 'frontend',
         appType: 'custom',
-        idea: readState().messages?.find((m) => m.role === 'user')?.text?.slice(0, 300)
+        idea: state.messages?.find((m) => m.role === 'user')?.text?.slice(0, 300)
               ?? 'diseño creado en la pestaña Diseñar app',
         timings: {
-          startedAt: readState().created ?? null,
+          startedAt: state.created ?? null,
           finishedAt: new Date().toISOString(),
         },
         compliance: ['privacidad', 'notfound'],
