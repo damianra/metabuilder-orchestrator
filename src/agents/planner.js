@@ -31,7 +31,7 @@ export async function plannerNode(state) {
       // Contrato front→API (extend acelerado): los endpoints que el
       // front YA llama — el agente no infiere, implementa la spec.
       const contract = frontApiScan(state.projectDir)
-        .map((e) => `${e.method} ${e.path} (${e.file})`)
+        .map((e) => `${e.method} ${e.path} (${e.file})${e.fields?.length ? ` → consume: ${e.fields.join(', ')}` : ''}`)
         .join('\n');
       // Fast-path: contrato front→API claro → plan fijo sin sesión del
       // planner (el scanner ya dice qué endpoints implementar). Los

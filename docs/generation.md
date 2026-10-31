@@ -293,3 +293,5 @@ generado debe cumplir y que Playwright verifica.
 Solo fuentes con licencia de uso comercial + redistribución (Unsplash/Pexels/Pixabay); el agente **descarga** a `public/images/` (no hotlink — la request de terceros filtraría IP del visitante y el URL podría rotar) y registra fuente+licencia en `public/images/LICENSES.txt`. Regla inyectada vía `AGENTS.ui.md` cuando hay frontend — la whitelist de dominios vive en `src/tools/image-policy.js` (`IMAGE_SOURCES`), agregar una fuente = una línea. Si ninguna
 fuente libre aplica → `public/images/placeholder.svg` (asset propio del
 skeleton, dashed "Seleccionar imagen" — el usuario lo reemplaza).
+
+`frontApiScan` además captura los campos que el front consume por endpoint (`fields`) — el extend contract muestra `GET /api/x → consume: a, b` para que el backend extienda con el DTO exacto.
