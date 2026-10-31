@@ -143,14 +143,14 @@ CONVENTIONS['fastapi'] =
   `- \`app/routers/<name>.py\` exporta \`router\` (APIRouter) → se monta solo en \`/api/<name>\` — agregar un endpoint = agregar un archivo.
 - \`app/db.py\` arma engine/session por \`DATABASE_URL\` en .env (sqlite default; postgres/mysql por URL — el driver pip va en requirements.txt).
 - \`app/models.py\` las entities SQLAlchemy, \`app/schemas.py\` los Pydantic, \`app/seed.py\` seed idempotente (solo si la tabla está vacía).
-- \`uvicorn app.main:app --port 4000\` levanta la API; \`python -m pytest\` corre los tests (TestClient + \`DATABASE_URL\` de test).
+- \`.venv/bin/uvicorn app.main:app --port 4000\` levanta la API; \`.venv/bin/python -m pytest\` corre los tests (TestClient + \`DATABASE_URL\` de test). El install crea \`.venv/\` — python/pip/pytest/uvicorn van siempre por \`.venv/bin/<tool>\`.
 - Sin uploads ni security pack en el skeleton — middleware/routers propios si hacen falta.
 - La muestra \`items\` del skeleton: reemplazarla por el recurso real del dominio (rename/refactor completo) o eliminarla si no aplica — \`/api/items\` no debe quedar en la app final.`;
 CONVENTIONS['fastapi-mongo'] =
   `- \`app/routers/<name>.py\` exporta \`router\` (APIRouter) → se monta solo en \`/api/<name>\` — agregar un endpoint = agregar un archivo.
 - \`app/db.py\` arma client/engine por \`MONGO_URI\`/\`MONGO_DB\` en .env — ODMantic sobre Motor (async): los Model son pydantic y van directo como \`response_model\`, sin schemas.py.
 - \`app/models.py\` los Model ODMantic, \`app/seed.py\` seed idempotente (solo si la colección está vacía).
-- \`uvicorn app.main:app --port 4000\` levanta la API; \`python -m pytest\` corre los tests (TestClient + mongomock — sin mongo real).
+- \`.venv/bin/uvicorn app.main:app --port 4000\` levanta la API; \`.venv/bin/python -m pytest\` corre los tests (TestClient + mongomock — sin mongo real). El install crea \`.venv/\` — python/pip/pytest/uvicorn van siempre por \`.venv/bin/<tool>\`.
 - Endpoints async (\`await engine.find/save/delete\`); ids \`ObjectId\` en path.
 - Sin uploads ni security pack en el skeleton — middleware/routers propios si hacen falta.
 - La muestra \`items\` del skeleton: reemplazarla por el recurso real del dominio (rename/refactor completo) o eliminarla si no aplica — \`/api/items\` no debe quedar en la app final.`;
@@ -215,10 +215,18 @@ const SAVE_EXCLUDE = new Set([
   'dev-run.json',
   'dev-run.log',
   '.env', // secrets del workspace nunca van a la app guardada
+  // Entornos/cachés python del workspace: un .venv copiado queda roto
+  // (shebangs/symlinks con path absoluto del origen) — el install en
+  // dest lo recrea. Las caches son recreables y no aportan.
+  '.venv',
+  'venv',
+  '__pycache__',
+  '.pytest_cache',
 ]);
-const SAVE_SKIP = (src) => src.endsWith('.sqlite'); // dbs de prueba del dev-run
+// Dbs de prueba del dev-run y bytecode suelto — no van a la app.
+const SAVE_SKIP = (src) => src.endsWith('.sqlite') || src.endsWith('.db') || src.endsWith('.pyc');
 
-export function saveBackend(slug) {
+export async function saveBackend(slug) {
   if (!anyBackendManifest(BACKEND_DIR)) return { ok: false, error: 'no hay sesión para guardar' };
   const dest = join(config.generatedAppsDir, slug);
   if (existsSync(dest)) return { ok: false, error: `ya existe ${slug}` };
@@ -230,6 +238,16 @@ export function saveBackend(slug) {
   });
   rmSync(statePath, { force: true });
   const savedStack = getStack(detectBackendStackId(BACKEND_DIR)) ?? getStack('express-sqlite');
+  // Deps fuera del copy (node_modules/.venv) → install propio en el
+  // destino con el toolchain del stack, igual que saveDesign. Falla →
+  // se borra dest y el workspace queda intacto para reintentar.
+  clearInstall(dest);
+  startInstall(dest, savedStack.toolchain?.installCmd ?? 'npm install');
+  const install = await awaitInstall(dest);
+  if (!install?.ok) {
+    rmSync(dest, { recursive: true, force: true }); // no dejar slug ocupado
+    return { ok: false, error: `install en ${slug} falló: ${install?.stderr?.slice(-200) ?? ''}` };
+  }
   writeFileSync(
     join(dest, 'plan.json'),
     JSON.stringify(

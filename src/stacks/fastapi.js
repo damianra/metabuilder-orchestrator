@@ -28,10 +28,13 @@ export default {
 
   toolchain: {
     manifest: 'requirements.txt',
-    installCmd: 'pip install -r requirements.txt',
-    testCmd: 'python -m pytest',
+    // El install crea el .venv in-place: pip del sistema es PEP 668
+    // (externally-managed) y los bins del toolchain viven en .venv/bin
+    // — sin venv propio ni install ni dev/test/spawn encuentran nada.
+    installCmd: 'python3 -m venv .venv && .venv/bin/pip install -r requirements.txt',
+    testCmd: '.venv/bin/python -m pytest',
     testLabel: 'pytest',
-    devCmd: 'uvicorn app.main:app --port 4000',
+    devCmd: '.venv/bin/uvicorn app.main:app --port 4000',
     devPort: 4000,
     dockerfile: 'python',
     // Con frontend, el runtime no puede ser node — fullstack-python
@@ -75,14 +78,14 @@ export default {
       type: 'test',
       keywords: ['pytest'],
       error: 'falta paso test con pytest',
-      prompt: 'Al menos un paso `type: "test"` que configure pytest con verify `python -m pytest`.',
+      prompt: 'Al menos un paso `type: "test"` que configure pytest con verify `.venv/bin/python -m pytest`.',
     },
   ],
 
   readme: {
     stack: '- Python + FastAPI + SQLAlchemy (backend)',
     e2eSuffix: '',
-    dev: 'uvicorn app.main:app --port 4000   # API FastAPI en http://localhost:4000',
+    dev: '.venv/bin/uvicorn app.main:app --port 4000   # API FastAPI en http://localhost:4000',
     tests: [],
   },
 };

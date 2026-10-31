@@ -123,7 +123,8 @@ export async function smokeApp(dir, stack, {
     if (died !== null) {
       // Retry único: uvicorn instalado por pip --user queda fuera del
       // PATH del spawn en algunas máquinas — `python3 -m uvicorn` no.
-      if (bin === 'uvicorn' && died === 127) {
+      // (bin 'uvicorn' o '.venv/bin/uvicorn' si el venv no se creó)
+      if ((bin === 'uvicorn' || bin.endsWith('/uvicorn')) && died === 127) {
         bin = 'python3';
         args = ['-m', 'uvicorn', ...args];
         died = null;

@@ -1030,10 +1030,10 @@ export function createDashboardApp({
     }
   });
 
-  app.post('/api/backend/save', (req, res) => {
+  app.post('/api/backend/save', async (req, res) => {
     const slug = String(req.body?.slug ?? '').trim();
     if (!SLUG_RE.test(slug)) return res.status(400).json({ error: 'slug inválido (a-z0-9-)' });
-    const r = saveBackend(slug);
+    const r = await saveBackend(slug);
     res.status(r.ok ? 201 : 409).json(r);
   });
 

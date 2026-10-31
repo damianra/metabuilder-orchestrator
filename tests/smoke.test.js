@@ -204,9 +204,9 @@ describe('smokeApp', () => {
   it('uvicorn ENOENT (error→close -2, orden real) → retry python3 -m uvicorn', async () => {
     const port = await freePort();
     const dir = apiDir();
-    const stack = stackWith(getStack('fastapi'), port); // devCmd real 'uvicorn ...'
+    const stack = stackWith(getStack('fastapi'), port); // devCmd real '.venv/bin/uvicorn ...'
     const spawnFn = (bin) => {
-      if (bin === 'uvicorn') {
+      if (bin.endsWith('/uvicorn')) {
         const c = new EventEmitter();
         c.stdout = new EventEmitter();
         c.stderr = new EventEmitter();
