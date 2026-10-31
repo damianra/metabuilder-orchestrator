@@ -268,6 +268,12 @@ async function saveDesignAttach(slug) {
     return { ok: false, error: `${slug} ya tiene frontend` };
   }
   stopDevRun(DESIGN_DIR);
+  // Snapshot para rollback: si el install falla, el backend queda con
+  // package.json envenenado + front copiado + retry bloqueado por el
+  // guard "ya tiene frontend" — restaurar package.json y borrar solo
+  // lo que el copy agregó (lo que ya existía se conserva).
+  const pkgBackup = readFileSync(join(dest, 'package.json'), 'utf8');
+  const preexisting = new Set(readdirSync(dest));
   attachFrontendFiles(DESIGN_DIR, dest);
   // Las deps del front se mergearon al package.json del backend →
   // install en dest (sin rm si falla: es un proyecto backend real).
@@ -275,6 +281,10 @@ async function saveDesignAttach(slug) {
   startInstall(dest);
   const aInstall = await awaitInstall(dest);
   if (!aInstall?.ok) {
+    writeFileSync(join(dest, 'package.json'), pkgBackup);
+    for (const f of readdirSync(DESIGN_DIR).filter((n) => !ATTACH_EXCLUDE.has(n) && !preexisting.has(n))) {
+      rmSync(join(dest, f), { recursive: true, force: true });
+    }
     return { ok: false, error: `npm install en ${slug} falló: ${aInstall?.stderr?.slice(-200) ?? ''}` };
   }
   attachPlanUpdate(dest, readState().frontendStackId ?? 'vite-react');
