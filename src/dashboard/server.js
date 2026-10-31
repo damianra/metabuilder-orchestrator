@@ -787,6 +787,22 @@ export function createDashboardApp({
       validated: plan?.validated ?? false,
       stacks: plan?.stacks ?? null,
         timings: plan?.timings ?? null,
+        // DB externa requerida (postgres|mysql|mongodb en .env.example)
+        // → hint en el detalle para levantar el contenedor.
+        externalDb: (() => {
+          try {
+            // nest-typeorm: DB_TYPE=; express-sql: DB_DRIVER=pg|mysql;
+            // mongo/fastapi-mongo: MONGO_URI=; fastapi: DATABASE_URL=
+            const ex = readFileSync(join(dir, '.env.example'), 'utf8')
+              .split('\n')
+              .filter((l) => !l.trimStart().startsWith('#'))
+              .join('\n');
+            return (
+              /DB_(?:TYPE|DRIVER)\s*=\s*(postgres|mysql|mongodb|pg)/i.test(ex) ||
+              /MONGO_URI\s*=|DATABASE_URL\s*=\s*(postgres|mysql|mongodb)/i.test(ex)
+            );
+          } catch { return false; }
+        })(),
       agent: plan?.agent ?? null,
       scripts: Object.entries(pkg?.scripts ?? {}).map(([name, command]) => ({ name, command })),
       repoUrl: toWebUrl(remote || null),

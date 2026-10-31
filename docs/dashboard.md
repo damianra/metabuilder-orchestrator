@@ -306,3 +306,5 @@ opciones, JSON malformado → texto plano. Cero cambios de contrato —
 es texto dentro del stream SSE.
 
 - `POST /api/design/save` — copia el workspace a `generated-apps/<slug>` (sin node_modules) y corre `npm install` en el destino antes de responder; el attach hace lo propio sobre el backend (las deps del front mergeadas).
+
+- `GET /api/projects/:slug` expone `externalDb` (true si `.env.example` pide DB externa — `DB_TYPE|DB_DRIVER|MONGO_URI|DATABASE_URL` con postgres/mysql/mongodb/pg) → el detalle muestra el chip 'DB externa — docker' para que el usuario levante el contenedor.
