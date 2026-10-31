@@ -786,6 +786,7 @@ export function createDashboardApp({
       planSteps: plan?.steps ?? [],
       validated: plan?.validated ?? false,
       stacks: plan?.stacks ?? null,
+        timings: plan?.timings ?? null,
       agent: plan?.agent ?? null,
       scripts: Object.entries(pkg?.scripts ?? {}).map(([name, command]) => ({ name, command })),
       repoUrl: toWebUrl(remote || null),
