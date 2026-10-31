@@ -288,7 +288,14 @@ export default function ProjectDetail({ slug, onChanged }) {
               <p className="mt-2 max-w-2xl text-sm text-slate-400 line-clamp-2">{project.idea}</p>
             )}
           </div>
-          <StatusBadge status={project.status} />
+          <div className="flex items-center gap-2">
+            <StatusBadge status={project.status} />
+            {project.timings?.startedAt && project.timings?.finishedAt && (
+              <span className="rounded-full bg-slate-800 px-2.5 py-1 font-medium text-slate-400 ring-1 ring-accent-500/40">
+                ⏱ {Math.round((new Date(project.timings.finishedAt) - new Date(project.timings.startedAt)) / 60000)}min
+              </span>
+            )}
+          </div>
         </div>
         {project.lastError && (
           <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{project.lastError}</p>
@@ -790,9 +797,6 @@ export default function ProjectDetail({ slug, onChanged }) {
                 ['arch', project.arch],
                 ['front', project.stacks?.frontend],
                 ['back', project.stacks?.backend],
-                ...(project.timings?.startedAt && project.timings?.finishedAt
-                  ? [['⏱', `${Math.round((new Date(project.timings.finishedAt) - new Date(project.timings.startedAt)) / 60000)}min`]]
-                  : []),
               ]
                 .filter(([, v]) => v)
                 .map(([k, v]) => (
