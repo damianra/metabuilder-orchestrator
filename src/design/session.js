@@ -362,6 +362,10 @@ export async function saveDesign(slug) {
       2,
     ),
   );
+  writeFileSync(
+    join(dest, 'status.json'),
+    JSON.stringify({ status: 'done', finishedAt: new Date().toISOString() }, null, 2),
+  );
   clearInstall(DESIGN_DIR); // la próxima creación reinstala de cero
   rmSync(DESIGN_DIR, { recursive: true, force: true });
   return { ok: true, slug };
