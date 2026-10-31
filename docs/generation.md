@@ -287,3 +287,7 @@ mysql/mongo), NestJS+TypeORM o FastAPI+SQLAlchemy (Python). Testing:
 Vitest/pytest / Playwright (e2e solo si hay frontend). Ver
 `src/templates/AGENTS.md` para las 5 reglas de UI que el código
 generado debe cumplir y que Playwright verifica.
+
+### Imágenes en apps generadas (v13)
+
+Solo fuentes con licencia de uso comercial + redistribución (Unsplash/Pexels/Pixabay); el agente **descarga** a `public/images/` (no hotlink — la request de terceros filtraría IP del visitante y el URL podría rotar) y registra fuente+licencia en `public/images/LICENSES.txt`. Regla inyectada vía `AGENTS.ui.md` cuando hay frontend.
