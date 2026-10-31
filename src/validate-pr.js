@@ -1,3 +1,4 @@
+const ENGINE_FLAG = process.argv.includes('--engine') ? process.argv[process.argv.indexOf('--engine') + 1] : null;
 // Sub-agente de validación de PRs del orquestador.
 // Uso:
 //   npm run validate:pr -- <numero>   un PR puntual
@@ -83,6 +84,7 @@ async function validateOnePR({ prNumber, owner, repo }) {
     console.log('   sub-agente validando…\n');
     const feed = textFeed();
     const res = await runAgentPrompt({
+      agent: ENGINE_FLAG || undefined,
       prompt,
       cwd: worktree,
       timeoutMs: config.devinTimeoutMs,

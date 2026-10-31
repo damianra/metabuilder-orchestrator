@@ -334,7 +334,12 @@ export async function saveDesign(slug) {
         projectName: slug,
         scope: 'frontend',
         appType: 'custom',
-        idea: 'diseño creado en la pestaña Diseñar app',
+        idea: readState().messages?.find((m) => m.role === 'user')?.text?.slice(0, 300)
+              ?? 'diseño creado en la pestaña Diseñar app',
+        timings: {
+          startedAt: readState().created ?? null,
+          finishedAt: new Date().toISOString(),
+        },
         compliance: ['privacidad', 'notfound'],
         validated: true,
         steps: [

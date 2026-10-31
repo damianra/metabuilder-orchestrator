@@ -790,6 +790,9 @@ export default function ProjectDetail({ slug, onChanged }) {
                 ['arch', project.arch],
                 ['front', project.stacks?.frontend],
                 ['back', project.stacks?.backend],
+                ...(project.timings?.startedAt && project.timings?.finishedAt
+                  ? [['⏱', `${Math.round((new Date(project.timings.finishedAt) - new Date(project.timings.startedAt)) / 60000)}min`]]
+                  : []),
               ]
                 .filter(([, v]) => v)
                 .map(([k, v]) => (
