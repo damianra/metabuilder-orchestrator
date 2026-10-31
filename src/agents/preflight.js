@@ -1,5 +1,6 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { complianceFor, complianceOverlayDirs } from '../compliance/index.js';
+import { imageSourcesText } from '../tools/image-policy.js';
 import { basename, dirname, join } from 'node:path';
 
 // Copia solo los archivos del overlay que falten en el proyecto —
@@ -123,7 +124,10 @@ export function writeAgentsMd(dir, { withBackend, arch, frontendStack, backendSt
     .replaceAll('{{backendDb}}', backendStack?.agentsDb ?? 'SQLite (archivo local, sin servidores externos)')
     .replaceAll('{{testing}}', testLabels.join(' + '))
     .replaceAll('{{devScripts}}', devScripts)
-    .replaceAll('{{uiSections}}', withFrontend ? fragment('AGENTS.ui.md') : '')
+    .replaceAll(
+      '{{uiSections}}',
+      withFrontend ? fragment('AGENTS.ui.md').replaceAll('{{imageSources}}', imageSourcesText()) : '',
+    )
     .replaceAll('{{whatsappSection}}', whatsapp ? fragment('AGENTS.whatsapp.md') : '')
     .replaceAll('{{backendNotes}}', backendStack?.agentsNotes ?? '');
   const rules = withBackend ? `\n## Arquitectura backend\n\n${arch.agentsRules}\n` : '';
