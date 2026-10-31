@@ -344,8 +344,13 @@ const readDevRun = (dir) => {
 // estaba ocupado). Se scanea el tail del log en el endpoint.
 const parseDevUrls = (logText) => {
   if (!logText) return [];
+  // Solo el run actual: dev-run.log es append-only y puertos de corridas
+  // anteriores quedaban linkeados (vite cayendo a 5174, etc.) — se
+  // scanea solo la sección del último '━━ dev run' del log.
+  const lastRun = logText.split('━━ dev run').pop() ?? logText;
   const found = new Set();
-  for (const m of logText.matchAll(/https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d+)\/?/g))
+  
+  for (const m of lastRun.matchAll(/https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d+)\/?/g))
     found.add(`http://localhost:${m[1]}`);
   return [...found];
 };
