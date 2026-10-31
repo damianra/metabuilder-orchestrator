@@ -2,7 +2,7 @@
 // (el scanner de proyectos lista todo ese dir) con chat iterativo.
 // La memoria del chat vive en design-state.json — cada mensaje repliega
 // el historial en el prompt (ACP no expone resume cross-session).
-import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { config } from '../config.js';
 import { runAgentPrompt } from '../tools/acp.js';
@@ -260,7 +260,7 @@ export function attachPlanUpdate(destDir, frontendStackId = 'vite-react') {
   writeFileSync(planPath, JSON.stringify(plan, null, 2));
 }
 
-function saveDesignAttach(slug) {
+async function saveDesignAttach(slug) {
   const dest = join(config.generatedAppsDir, slug);
   const planPath = join(dest, 'plan.json');
   if (!existsSync(dest) || !existsSync(planPath)) return { ok: false, error: `no existe el backend ${slug}` };
@@ -268,7 +268,25 @@ function saveDesignAttach(slug) {
     return { ok: false, error: `${slug} ya tiene frontend` };
   }
   stopDevRun(DESIGN_DIR);
+  // Snapshot para rollback: si el install falla, el backend queda con
+  // package.json envenenado + front copiado + retry bloqueado por el
+  // guard "ya tiene frontend" — restaurar package.json y borrar solo
+  // lo que el copy agregó (lo que ya existía se conserva).
+  const pkgBackup = readFileSync(join(dest, 'package.json'), 'utf8');
+  const preexisting = new Set(readdirSync(dest));
   attachFrontendFiles(DESIGN_DIR, dest);
+  // Las deps del front se mergearon al package.json del backend →
+  // install en dest (sin rm si falla: es un proyecto backend real).
+  clearInstall(dest);
+  startInstall(dest);
+  const aInstall = await awaitInstall(dest);
+  if (!aInstall?.ok) {
+    writeFileSync(join(dest, 'package.json'), pkgBackup);
+    for (const f of readdirSync(DESIGN_DIR).filter((n) => !ATTACH_EXCLUDE.has(n) && !preexisting.has(n))) {
+      rmSync(join(dest, f), { recursive: true, force: true });
+    }
+    return { ok: false, error: `npm install en ${slug} falló: ${aInstall?.stderr?.slice(-200) ?? ''}` };
+  }
   attachPlanUpdate(dest, readState().frontendStackId ?? 'vite-react');
   const plan = JSON.parse(readFileSync(planPath, 'utf8'));
   writeAgentsMd(dest, {
@@ -284,7 +302,7 @@ function saveDesignAttach(slug) {
   return { ok: true, slug };
 }
 
-export function saveDesign(slug) {
+export async function saveDesign(slug) {
   if (!existsSync(join(DESIGN_DIR, 'package.json'))) return { ok: false, error: 'no hay diseño para guardar' };
   // Modo attach: el target viene de design-state (se eligió al crear),
   // no del input — slug del body se ignora.
@@ -295,11 +313,19 @@ export function saveDesign(slug) {
   stopDevRun(DESIGN_DIR);
   mkdirSync(config.generatedAppsDir, { recursive: true });
   // Sin node_modules ni state files de sesión — la app guardada arranca
-  // con install propio (awaitInstall) y sin el historial del chat.
+  // con install propio (awaitInstall en dest) y sin el historial del chat.
   cpSync(DESIGN_DIR, dest, {
     recursive: true,
     filter: (src) => !SAVE_EXCLUDE.has(basename(src)),
   });
+  // node_modules quedó fuera del copy → install propio en el destino.
+  clearInstall(dest); // la cache por dir devuelve resultado viejo sin re-correr
+  startInstall(dest);
+  const install = await awaitInstall(dest);
+  if (!install?.ok) {
+    rmSync(dest, { recursive: true, force: true }); // no dejar slug ocupado
+    return { ok: false, error: `npm install en ${slug} falló: ${install?.stderr?.slice(-200) ?? ''}` };
+  }
   rmSync(statePath, { force: true });
   writeFileSync(
     join(dest, 'plan.json'),

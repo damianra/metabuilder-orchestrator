@@ -304,3 +304,5 @@ desconocida → fallback reply con el label). Guard-rails: solo
 mensajes del agente (el input del usuario nunca se parsea), máx 4
 opciones, JSON malformado → texto plano. Cero cambios de contrato —
 es texto dentro del stream SSE.
+
+- `POST /api/design/save` — copia el workspace a `generated-apps/<slug>` (sin node_modules) y corre `npm install` en el destino antes de responder; el attach hace lo propio sobre el backend (las deps del front mergeadas).

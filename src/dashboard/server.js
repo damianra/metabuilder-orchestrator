@@ -1015,7 +1015,7 @@ export function createDashboardApp({
     res.status(r.ok ? 201 : 409).json(r);
   });
 
-  app.post('/api/design/save', (req, res) => {
+  app.post('/api/design/save', async (req, res) => {
     const slug = String(req.body?.slug ?? '').trim();
     // Attach mode: el target es state.attachTo — slug del body no
     // aplica (el front se copia dentro del proyecto backend).
@@ -1032,7 +1032,7 @@ export function createDashboardApp({
         return res.status(409).json({ error: `${attachTo} tiene un job en curso` });
       }
     }
-    const r = saveDesign(slug);
+    const r = await saveDesign(slug);
     res.status(r.ok ? 201 : 409).json(r);
   });
 
