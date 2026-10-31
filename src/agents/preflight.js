@@ -24,7 +24,7 @@ import { getEngine, resolveEngineAuto, resolveEngineId } from '../engines/index.
 import { startInstall } from '../tools/install.js';
 import { ensureProjectDir } from '../tools/slug.js';
 import { writeDockerFiles, detectFrontend, detectStackId, detectOutDir, hasBackendDir, anyManifest, installCommands } from '../tools/docker.js';
-import { resolveArch, resolveArchSafe } from '../arch/index.js';
+import { resolveArch, resolveArchSafe, archAgentsRulesFor } from '../arch/index.js';
 import { resolveStacks, resolveStacksSafe } from '../stacks/index.js';
 import { getVertical } from '../verticals/index.js';
 import { activity, log, readPlan } from './common.js';
@@ -135,7 +135,7 @@ export function writeAgentsMd(dir, { withBackend, arch, frontendStack, backendSt
     )
     .replaceAll('{{whatsappSection}}', whatsapp ? fragment('AGENTS.whatsapp.md') : '')
     .replaceAll('{{backendNotes}}', backendStack?.agentsNotes ?? '');
-  const rules = withBackend ? `\n## Arquitectura backend\n\n${arch.agentsRules}\n` : '';
+  const rules = withBackend ? `\n## Arquitectura backend\n\n${archAgentsRulesFor(arch, backendStack)}\n` : '';
   writeFileSync(join(dir, 'AGENTS.md'), base + rules);
 }
 
