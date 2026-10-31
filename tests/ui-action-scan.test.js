@@ -28,10 +28,22 @@ describe('uiActionScan', () => {
   it('handler vacío/mock → empty-handler + mock-data', () => {
     mk('b.jsx', `const mockData = [{x:1}];
       <button onClick={() => {}}>nada</button>
+      <button onClick={() => console.log('x')}>mock</button>
       <Chart data={[1,2,3]} />`);
     const kinds = uiActionScan(dir).map((x) => x.kind);
-    expect(kinds).toContain('empty-handler');
+    expect(kinds.filter((k) => k === 'empty-handler')).toHaveLength(2);
     expect(kinds).toContain('mock-data');
+  });
+
+  it('sin falsos positivos: handler real, fetch con ${id}, prefetch, ruta versionada', () => {
+    mk('ok.jsx', `export default () => (<div>
+      <button onClick={() => { navigate('/x') }}>real</button>
+      <button onClick={() => { console.log('x'); doThing() }}>real2</button>
+    </div>);
+    fetch(\`/api/items/\${id}\`); prefetch('/api/items'); fetch('/api/v1/users');`);
+    const f = uiActionScan(dir, { apiSurface: ['/api/items/:id', '/api/v1/users'] });
+    expect(f.filter((x) => x.kind === 'empty-handler')).toHaveLength(0);
+    expect(f.filter((x) => x.kind === 'missing-endpoint')).toHaveLength(0);
   });
 
   it('fetch a endpoint inexistente → missing-endpoint', () => {

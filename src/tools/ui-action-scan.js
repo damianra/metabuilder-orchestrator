@@ -28,9 +28,15 @@ const walk = (dir, base, out = []) => {
 };
 
 // Rutas llamadas por el front: fetch('/api/x'), api.get|post|put|delete('/api/x')
-const CALL_RE = /(?:fetch|api\.(?:get|post|put|delete|patch))\s*\(\s*['"`]([^'"`]+)['"`]/g;
+// (\b antes de fetch — `prefetch`/`apiFetch` propios no son la api).
+const CALL_RE = /\b(?:fetch|api\.(?:get|post|put|delete|patch))\s*\(\s*['"`]([^'"`]+)['"`]/g;
 const BUTTON_RE = /<button\b[^>]*>/g;
-const EMPTY_HANDLER_RE = /onClick=\{\s*\(?[\w\s,()]*\)?\s*=>\s*(\(\s*\)|\{\s*(?:console\.log|alert|TODO|\/\/)?[^{}]*\})\s*\}/;
+// Handler REALMENTE vacío: `() => {}` / `() => ()` — no cualquier cuerpo.
+const EMPTY_HANDLER_RE = /onClick=\{[^{}]*=>\s*(\{\s*\}|\(\s*\))\s*\}/;
+// Handler cuyo ÚNICO statement es ruido (console.log/alert/TODO) — uno
+// con console.log + lógica real no es mock.
+const MOCK_HANDLER_RE =
+  /onClick=\{[^{}]*=>\s*\{?\s*(?:console\.log\s*\([^)]*\)|alert\s*\([^)]*\)|TODO\b)[^{};]*;?\s*\}?\s*\}/;
 const MOCK_IDENT_RE = /\b(mock|dummy|sample|demo)\w*\s*=\s*(\[|\{)/i;
 const LITERAL_DATA_RE = /\b(?:data|items|rows|options|series)=\{\s*\[\s*[{0-9'"]/;
 
@@ -50,7 +56,14 @@ export function uiActionScan(dir, { apiSurface = null } = {}) {
         apiSurface.map((e) => (typeof e === 'string' ? e : e.path)).map((p) => p.replace(/<[^>]+>|\{[^}]+\}|:\w+/g, '{param}')),
       )
     : null;
-  const norm = (p) => p.replace(/\d+|[0-9a-f-]{8,}/g, '{param}').replace(/\/$/, '');
+  // Normaliza params dinámicos por SEGMENTO completo (`/api/items/42`,
+  // `/api/items/${id}`, uuid) — `/api/v1/users` no se toca.
+  const norm = (p) =>
+    p
+      .replace(/\$\{[^}]+\}/g, '{param}')
+      .replace(/\/\d+(?=\/|$)/g, '/{param}')
+      .replace(/\/[0-9a-f-]{8,}(?=\/|$)/gi, '/{param}')
+      .replace(/\/$/, '');
 
   for (const file of walk(srcDir, srcDir)) {
     const text = readFileSync(join(srcDir, file), 'utf8');
@@ -67,8 +80,8 @@ export function uiActionScan(dir, { apiSurface = null } = {}) {
 
     for (let i = 0; i < lines.length; i++) {
       const l = lines[i];
-      // 2) Handler vacío/mock
-      if (EMPTY_HANDLER_RE.test(l)) {
+      // 2) Handler vacío o de mock
+      if (EMPTY_HANDLER_RE.test(l) || MOCK_HANDLER_RE.test(l)) {
         findings.push({ kind: 'empty-handler', file, line: i + 1, detail: l.trim().slice(0, 80) });
       }
       // 3) Datos literales donde debería haber fetch
