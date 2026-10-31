@@ -319,6 +319,16 @@ export default function ProjectDetail({ slug, onChanged }) {
           >
             {busy === 'resume' ? spin : <Play size={15} />} Resume
           </button>
+          {project.scope === 'backend' && (
+            <button
+              className={btn}
+              disabled={Boolean(busy)}
+              title="Agrega frontend al proyecto: abre el diseñador con este backend como destino del attach"
+              onClick={() => { window.location.hash = `#/design?attach=${slug}`; }}
+            >
+              <Plus size={15} /> Agregar frontend
+            </button>
+          )}
           {project.scope === 'frontend' && (
             <button
               className={btn}

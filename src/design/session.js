@@ -228,17 +228,23 @@ export function attachFrontendFiles(srcDir, destDir) {
     filter: (src) => !ATTACH_EXCLUDE.has(basename(src)),
   });
   const pkgPath = join(destDir, 'package.json');
-  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
   const frontPkg = JSON.parse(readFileSync(join(srcDir, 'package.json'), 'utf8'));
-  // backend gana en clashes de scripts (test/api/dev:api) — el front
-  // solo agrega dev/build/preview/test:e2e que el back no define.
-  pkg.scripts = { ...(frontPkg.scripts ?? {}), ...(pkg.scripts ?? {}) };
-  // En deps también gana el backend en clashes de versión (consistencia
-  // con scripts: el proyecto preexistente es la autoridad).
-  for (const f of ['dependencies', 'devDependencies']) {
-    pkg[f] = { ...(frontPkg[f] ?? {}), ...(pkg[f] ?? {}) };
+  // Backend sin package.json (fastapi: requirements.txt): no hay nada
+  // que mergear — el package.json del front queda como el del proyecto.
+  if (!existsSync(pkgPath)) {
+    writeFileSync(pkgPath, JSON.stringify(frontPkg, null, 2) + '\n');
+  } else {
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+    // backend gana en clashes de scripts (test/api/dev:api) — el front
+    // solo agrega dev/build/preview/test:e2e que el back no define.
+    pkg.scripts = { ...(frontPkg.scripts ?? {}), ...(pkg.scripts ?? {}) };
+    // En deps también gana el backend en clashes de versión (consistencia
+    // con scripts: el proyecto preexistente es la autoridad).
+    for (const f of ['dependencies', 'devDependencies']) {
+      pkg[f] = { ...(frontPkg[f] ?? {}), ...(pkg[f] ?? {}) };
+    }
+    writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
   }
-  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
   const giSrc = join(srcDir, '.gitignore');
   if (existsSync(giSrc)) appendFileSync(join(destDir, '.gitignore'), '\n' + readFileSync(giSrc, 'utf8'));
 }
@@ -275,8 +281,11 @@ async function saveDesignAttach(slug) {
   // Snapshot para rollback: si el install falla, el backend queda con
   // package.json envenenado + front copiado + retry bloqueado por el
   // guard "ya tiene frontend" — restaurar package.json y borrar solo
-  // lo que el copy agregó (lo que ya existía se conserva).
-  const pkgBackup = readFileSync(join(dest, 'package.json'), 'utf8');
+  // lo que el copy agregó (lo que ya existía se conserva). Backend
+  // python (sin package.json): el backup es null y el rollback borra
+  // el package.json que el attach creó.
+  const destPkg = join(dest, 'package.json');
+  const pkgBackup = existsSync(destPkg) ? readFileSync(destPkg, 'utf8') : null;
   const preexisting = new Set(readdirSync(dest));
   attachFrontendFiles(DESIGN_DIR, dest);
   // Las deps del front se mergearon al package.json del backend →
@@ -285,7 +294,8 @@ async function saveDesignAttach(slug) {
   startInstall(dest);
   const aInstall = await awaitInstall(dest);
   if (!aInstall?.ok) {
-    writeFileSync(join(dest, 'package.json'), pkgBackup);
+    if (pkgBackup === null) rmSync(destPkg, { force: true });
+    else writeFileSync(destPkg, pkgBackup);
     for (const f of readdirSync(DESIGN_DIR).filter((n) => !ATTACH_EXCLUDE.has(n) && !preexisting.has(n))) {
       rmSync(join(dest, f), { recursive: true, force: true });
     }

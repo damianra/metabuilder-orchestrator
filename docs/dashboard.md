@@ -256,6 +256,19 @@ proyectos que se mergean):
 4. Post-extend el detalle gana la sección **API** (`api-surface` +
    `probe`) — los endpoints que el agente acaba de construir.
 
+La dirección inversa (backend → frontend) va por **attach**:
+
+- `ProjectDetail` muestra **Agregar frontend** solo si
+  `project.scope === 'backend'` → navega a `#/design?attach=<slug>` —
+  `DesignTab` preselecciona ese backend en el select "para backend"
+  (el mismo attach que se elige a mano al crear un diseño).
+- Al guardar, `saveDesignAttach` copia el front dentro del backend:
+  merge de `package.json` por clave si existe (backends node) o el del
+  front directo si no (backends python — `fastapi` no trae
+  `package.json`), `npm install` con rollback al snapshot si falla, y
+  `attachPlanUpdate` pasa el plan a `fullstack` + step `done`
+  sintético del front.
+
 Sin engine configurado, `SetupGate` ocupa la pantalla completa: cards
 por engine con estado del probe (`GET /api/engines`), links a docs de
 instalación y "re-chequear"; el header muestra chip "motor: <label>"

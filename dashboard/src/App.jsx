@@ -14,10 +14,13 @@ const parseHash = () => {
   const m = window.location.hash.match(/^#\/p\/([a-z0-9-]+)/);
   if (m) return { view: 'detail', slug: m[1] };
   const c = window.location.hash.match(/[?&]clone=([a-z0-9-]+)/)?.[1] ?? null;
+  // ?attach=<slug> viene del detalle de un proyecto backend → diseño
+  // con el backend destino ya seleccionado (attach front).
+  const a = window.location.hash.match(/[?&]attach=([a-z0-9-]+)/)?.[1] ?? null;
   if (window.location.hash.startsWith('#/backend')) return { view: 'list', clone: c };
   if (window.location.hash.startsWith('#/fullstack')) return { view: 'fullstack', clone: c };
   if (window.location.hash.startsWith('#/proyectos')) return { view: 'projects', clone: c };
-  return { view: 'design' }; // landing = Diseñar app (#/ y #/design)
+  return { view: 'design', attach: a }; // landing = Diseñar app (#/ y #/design)
 };
 
 export default function App() {
@@ -199,6 +202,7 @@ export default function App() {
             <ProjectDetail slug={route.slug} onChanged={refresh} />
           ) : route.view === 'design' ? (
             <DesignTab
+              attachSlug={route.attach}
               onSaved={(slug) => {
                 // Guardado → detalle del proyecto: ahí vive "agregar
                 // backend" para completar el flujo diseño→fullstack.
