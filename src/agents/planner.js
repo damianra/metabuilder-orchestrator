@@ -152,13 +152,18 @@ export async function plannerNode(state) {
     }
     // Los datos del run original mandan sobre los defaults del CLI.
     // En extend el prompt nuevo NO pisa el original — se appendea bajo
-    // la sección BACKEND (el plan conserva el prompt completo del front
-    // + el del backend que se agrega).
-    if (state.extend && state.idea && existing.idea && !existing.idea.includes(state.idea)) {
-      existing.idea = `${existing.idea}
+    // la sección BACKEND; si ya está incluido (substring) se conserva
+    // el plan como está, nunca se aplica semántica de resume.
+    if (state.extend) {
+      if (state.idea && !existing.idea) {
+        existing.idea = state.idea;
+      } else if (state.idea && !existing.idea.includes(state.idea)) {
+        existing.idea = `${existing.idea}
 
 BACKEND
 ${state.idea}`;
+      }
+      // idea ya incluida o sin --idea → conservar existing.idea intacta.
     } else {
       existing.idea = state.idea || existing.idea || '';
     }
