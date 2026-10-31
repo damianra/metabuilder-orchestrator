@@ -205,7 +205,10 @@ probar via `/api/backend/probe`, guardar → plan sintético scope
 `__pycache__`, `*.db`/`.sqlite`, `.env` — y corre el `installCmd` del
 stack en el destino, igual que `saveDesign`: un `.venv` copiado queda
 roto porque sus shebangs guardan el path absoluto del workspace);
-picker de stack backend en la pantalla de crear —
+pickers de stack backend y de arquitectura en la pantalla de crear
+(`backend-state.json` persiste `stackId`+`arch` — el arch viaja al
+prompt del experto como convención, con variante python para fastapi,
+y al `plan.arch` del saveBackend);
 compliance la infiere el agente), "Diseñar app"
 (`DesignTab.jsx`) y "Fullstack" (`NewAppForm` con
 `fixedScope="fullstack"` — front+back en un solo run, la vía rápida).

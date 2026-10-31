@@ -45,7 +45,7 @@ export default function BackendTab({ onSaved }) {
 
   const refresh = useCallback(() => api.backendStatus().then(setStatus).catch(() => {}), []);
   const [options, setOptions] = useState(null);
-  const [dims, setDims] = useState({ framework: 'express', db: 'sqlite' });
+  const [dims, setDims] = useState({ framework: 'express', db: 'sqlite', arch: 'flat' });
   useEffect(() => { api.options().then(setOptions).catch(() => {}); }, []);
 
   useEffect(() => {
@@ -209,6 +209,17 @@ export default function BackendTab({ onSaved }) {
                 <option key={d.id} value={d.id}>{d.label}</option>
               ))}
             </select>
+            <select
+              data-testid="backend-arch"
+              title="Arquitectura del backend — viaja al prompt del experto y al plan.json"
+              value={dims.arch}
+              onChange={(e) => setDims((d) => ({ ...d, arch: e.target.value }))}
+              className="w-full rounded-lg border border-accent-500/40 bg-slate-900 px-3 py-2 text-sm text-slate-300"
+            >
+              {(options?.archs ?? []).map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
           </div>
           <button
             data-testid="backend-create"
@@ -232,6 +243,11 @@ export default function BackendTab({ onSaved }) {
           {status.stackId && (
             <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-400 ring-1 ring-accent-500/40">
               {status.stackId}
+            </span>
+          )}
+          {status.arch && (
+            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-400 ring-1 ring-accent-500/40">
+              {status.arch}
             </span>
           )}
         </h2>

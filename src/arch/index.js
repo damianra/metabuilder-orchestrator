@@ -59,6 +59,18 @@ export function applyArch(plan, arch) {
 }
 
 /**
+ * Instrucciones del patrón según el stack destino: los defs traen
+ * variante `instructionsFastapi`/`agentsRulesFastapi` para stacks
+ * python (layout `app/` en vez de `server/`); en cualquier otro caso
+ * se usa el texto Node. El campo es opcional — falta → fallback Node.
+ */
+export const archInstructionsFor = (arch, stack) =>
+  (stack?.framework === 'fastapi' ? arch.instructionsFastapi : null) ?? arch.instructions;
+
+export const archAgentsRulesFor = (arch, stack) =>
+  (stack?.framework === 'fastapi' ? arch.agentsRulesFastapi : null) ?? arch.agentsRules;
+
+/**
  * Bullet para planner.md: qué arquitectura deben declarar los pasos
  * backend en un plan escrito por Devin (appType custom).
  */

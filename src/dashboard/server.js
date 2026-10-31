@@ -983,9 +983,9 @@ export function createDashboardApp({
   app.get('/api/backend', (req, res) => res.json(backendStatus()));
 
   app.post('/api/backend', (req, res) => {
-    // Dimensiones sueltas (framework+db, picker nuevo) o stackId
+    // Dimensiones sueltas (framework+db+arch, picker nuevo) o stackId
     // directo (back-compat) — createBackend resuelve el stack.
-    const r = createBackend(req.body?.framework, req.body?.db, req.body?.stackId);
+    const r = createBackend(req.body?.framework, req.body?.db, req.body?.stackId, req.body?.arch);
     res.status(r.ok ? 201 : 409).json(r);
   });
 

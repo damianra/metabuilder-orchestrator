@@ -13,7 +13,7 @@ import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
 import { anyBackendManifest, detectBackendStackId } from '../tools/docker.js';
 import { copyApiSkeleton, writeAgentsMd } from '../agents/preflight.js';
 import { getStack, resolveBackendStackId } from '../stacks/index.js';
-import { resolveArchSafe } from '../arch/index.js';
+import { resolveArchSafe, archInstructionsFor, getArch, listArchs, DEFAULT_ARCH } from '../arch/index.js';
 
 export const BACKEND_DIR = join(config.rootDir, 'backend-work');
 const statePath = join(BACKEND_DIR, 'backend-state.json');
@@ -81,10 +81,13 @@ export function backendStatus(dir = BACKEND_DIR) {
 // copyApiSkeleton (preflight): promueve package.partial.json →
 // package.json y gitignore.partial → .gitignore (sin esto el publish
 // de la app guardada commitearía .env/*.sqlite/node_modules).
-export function createBackend(framework = 'express', db = 'sqlite', stackId = null) {
+export function createBackend(framework = 'express', db = 'sqlite', stackId = null, arch = null) {
   touchActivity();
   if (anyBackendManifest(BACKEND_DIR)) {
     return { ok: false, error: 'ya existe una sesión de backend — descartala o guardala' };
+  }
+  if (arch && !getArch(arch)) {
+    return { ok: false, error: `arch inválido (${listArchs().join('|')})` };
   }
   // Dimensiones sueltas (picker framework × db) o stackId directo
   // (back-compat) — el registry resuelve el stack.
@@ -103,6 +106,9 @@ export function createBackend(framework = 'express', db = 'sqlite', stackId = nu
     // persistimos los del def para no guardar metadata engañosa.
     framework: stack.framework ?? framework,
     db: stack.dbs?.includes(db) ? db : (stack.dbs?.[0] ?? db),
+    // Patrón de organización elegido en el picker — viaja al prompt
+    // del experto y al plan.json sintético del saveBackend.
+    arch: arch ?? DEFAULT_ARCH,
   });
   startInstall(BACKEND_DIR, stack.toolchain?.installCmd ?? 'npm install');
   return { ok: true };
@@ -165,10 +171,13 @@ export async function backendChat(text, { agent = '', onChunk = () => {}, onActi
     .map((m) => `${m.role === 'user' ? 'Usuario' : 'Experto'}: ${m.text}`)
     .join('\n');
   const st = getStack(state.stackId ?? 'express-sqlite');
+  // La arquitectura elegida en el picker es una convención más: el
+  // texto del patrón se adapta al stack (variante python en fastapi).
+  const arch = resolveArchSafe(state.arch, DEFAULT_ARCH);
   const prompt =
     loadPrompt('backend-designer', {
       backendFramework: st?.agentsStack ?? 'Node.js + Express',
-      stackConventions: CONVENTIONS[st?.id ?? 'express-sqlite'],
+      stackConventions: `${CONVENTIONS[st?.id ?? 'express-sqlite']}\n- ${archInstructionsFor(arch, st)}`,
     }) +
     (history ? `\n\n## Conversación hasta ahora\n\n${history}\n\n` : '\n\n') +
     `Usuario: ${text}`;
@@ -236,6 +245,7 @@ export async function saveBackend(slug) {
     recursive: true,
     filter: (src) => !SAVE_EXCLUDE.has(basename(src)) && !SAVE_SKIP(src),
   });
+  const savedState = readState(); // antes de borrar statePath — lleva el arch del picker
   rmSync(statePath, { force: true });
   const savedStack = getStack(detectBackendStackId(BACKEND_DIR)) ?? getStack('express-sqlite');
   // Deps fuera del copy (node_modules/.venv) → install propio en el
@@ -255,7 +265,7 @@ export async function saveBackend(slug) {
         projectName: slug,
         scope: 'backend',
         appType: 'custom',
-        arch: 'flat',
+        arch: savedState.arch ?? DEFAULT_ARCH,
         idea: 'api creada en la pestaña Backend (chat experto)',
         stacks: { backend: savedStack.id },
         validated: true,
@@ -264,7 +274,7 @@ export async function saveBackend(slug) {
             id: 1,
             type: 'backend',
             description:
-              `API implementada iterando en chat de backend — ${savedStack.label} sobre su skeleton con arquitectura flat`,
+              `API implementada iterando en chat de backend — ${savedStack.label} sobre su skeleton con arquitectura ${savedState.arch ?? DEFAULT_ARCH}`,
             verify: savedStack.toolchain?.testCmd ?? 'npm test',
             status: 'done',
             attempts: 1,

@@ -117,9 +117,15 @@ otro stack el app-type queda `custom` (gate en enqueue/CLI/form).
 ## Patrones de arquitectura de backend
 
 `src/arch/` declara cada patrón como datos (`flat`, `mvc`, `layers`,
-`feature` + `index.js` con `resolveArch`/`applyArch`/`archRuleBullet`).
+`feature` + `index.js` con `resolveArch`/`applyArch`/`archRuleBullet`/
+`archInstructionsFor`/`archAgentsRulesFor` — estos dos últimos eligen
+la variante `*Fastapi` del texto cuando el stack destino es python).
+Cada def puede declarar `instructionsFastapi`/`agentsRulesFastapi`
+(layout `app/`); sin ellos se usa el texto Node (`server/`).
 Flag `--arch <id>` (o pregunta interactiva cuando el scope tiene
-backend); `state.arch` → `plan.arch` persiste (resume lo restaura).
+backend — también picker en la pestaña Backend, que lo persiste en
+`backend-state.json` y lo inyecta al prompt del experto como
+convención); `state.arch` → `plan.arch` persiste (resume lo restaura).
 `applyArch(plan, arch)` garantiza que cada paso `backend` declare su
 patrón: respeta descripciones que ya dicen "arquitectura <id>" y
 appenda el bloque canónico a las que no — funciona igual para planes
