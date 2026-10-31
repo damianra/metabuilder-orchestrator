@@ -289,12 +289,12 @@ export default function ProjectDetail({ slug, onChanged }) {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <StatusBadge status={project.status} />
             {project.timings?.startedAt && project.timings?.finishedAt && (
-              <span className="rounded-full bg-slate-800 px-2.5 py-1 font-medium text-slate-400 ring-1 ring-accent-500/40">
+              <span className="inline-flex items-center rounded-full bg-slate-800 px-2.5 py-0.5 text-xs font-semibold text-slate-400 ring-1 ring-accent-500/40">
                 ⏱ {Math.round((new Date(project.timings.finishedAt) - new Date(project.timings.startedAt)) / 60000)}min
               </span>
             )}
+            <StatusBadge status={project.status} />
           </div>
         </div>
         {project.lastError && (
