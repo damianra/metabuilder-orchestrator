@@ -194,6 +194,27 @@ describe('GET /api/projects/:slug', () => {
     expect((await api('/api/projects/nope')).status).toBe(404);
     expect((await api('/api/projects/..%2F..%2Fetc')).status).toBe(404);
   });
+
+  it('externalDb lee el .env real antes que el .env.example', async () => {
+    // fastapi: el .env.example es compartido (sqlite default) pero el
+    // .env eligió postgres → chip externa.
+    const dir = seedApp('py-pg');
+    writeFileSync(join(dir, '.env'), 'DATABASE_URL=postgresql+psycopg2://u:p@h:5432/db\n');
+    writeFileSync(join(dir, '.env.example'), 'DATABASE_URL=sqlite:///./app.db\n');
+    const pg = await api('/api/projects/py-pg');
+    expect(pg.body.externalDb).toBe(true);
+
+    // La config real gana: .env sqlite con example postgres → sin chip.
+    const dir2 = seedApp('py-sqlite');
+    writeFileSync(join(dir2, '.env'), 'DATABASE_URL=sqlite:///./app.db\n');
+    writeFileSync(join(dir2, '.env.example'), 'DATABASE_URL=postgresql+psycopg2://u:p@h/db\n');
+    expect((await api('/api/projects/py-sqlite')).body.externalDb).toBe(false);
+
+    // Sin .env → el ejemplo decide (stacks que lo declaran activo).
+    const dir3 = seedApp('no-env');
+    writeFileSync(join(dir3, '.env.example'), 'DB_TYPE=postgres\n');
+    expect((await api('/api/projects/no-env')).body.externalDb).toBe(true);
+  });
 });
 
 describe('POST /api/runs', () => {

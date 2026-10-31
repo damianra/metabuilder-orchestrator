@@ -186,7 +186,7 @@ describe('attach: backend → diseño (v10)', () => {
         steps: [{ id: 1, type: 'backend', status: 'done' }],
       }),
     );
-    attachPlanUpdate(dir);
+    attachPlanUpdate(dir, 'vite-react', '2026-01-01T00:00:00Z');
     const plan = JSON.parse(readFileSync(join(dir, 'plan.json'), 'utf8'));
     expect(plan.scope).toBe('fullstack');
     expect(plan.stacks.frontend).toBe('vite-react');
@@ -194,6 +194,9 @@ describe('attach: backend → diseño (v10)', () => {
     expect(plan.steps).toHaveLength(2);
     expect(plan.steps[1]).toMatchObject({ id: 2, type: 'frontend', status: 'done' });
     expect(plan.steps[1].description).toContain('Vite');
+    // Plan legacy sin timings → el attach lo completa (chip ⏱).
+    expect(plan.timings).toMatchObject({ startedAt: '2026-01-01T00:00:00Z' });
+    expect(plan.timings.finishedAt).toBeTruthy();
     rmSync(dir, { recursive: true, force: true });
   });
 });

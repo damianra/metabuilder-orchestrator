@@ -327,4 +327,6 @@ es texto dentro del stream SSE.
 
 - `POST /api/design/save` — copia el workspace a `generated-apps/<slug>` (sin node_modules) y corre `npm install` en el destino antes de responder; el attach hace lo propio sobre el backend (las deps del front mergeadas).
 
-- `GET /api/projects/:slug` expone `externalDb` (true si `.env.example` pide DB externa — `DB_TYPE|DB_DRIVER|MONGO_URI|DATABASE_URL` con postgres/mysql/mongodb/pg) → el detalle muestra el chip 'DB externa — docker' para que el usuario levante el contenedor.
+- `GET /api/projects/:slug` expone `externalDb` → el detalle muestra el chip 'DB externa — docker' para que el usuario levante el contenedor. La config real (`.env`) gana sobre `.env.example` — fastapi comparte un solo example para las 3 DBs (sqlite default + postgres/mysql comentados), así que el ejemplo no discrimina la elegida; si el `.env` existe pero no declara var de DB, el ejemplo decide. Matchea `DB_TYPE|DB_DRIVER|MONGO_URI|DATABASE_URL` con postgres/mysql/mongodb/pg.
+
+Los saves de workspace (`saveDesign`/`saveBackend`/`saveDesignAttach`) escriben los mismos artefactos que una app de pipeline en lo esencial: `plan.json` sintético con `timings`, `status.json` `{status:'done'}` y `README.md` (template del finalizer) — por eso el detalle muestra chip `done` + `⏱` y no `unknown`.
