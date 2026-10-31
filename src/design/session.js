@@ -342,6 +342,7 @@ export async function saveDesign(slug) {
           finishedAt: new Date().toISOString(),
         },
         compliance: ['privacidad', 'notfound'],
+        stacks: { frontend: state.frontendStackId ?? 'vite-react' },
         validated: true,
         steps: [
           {
