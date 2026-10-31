@@ -260,7 +260,7 @@ export function attachPlanUpdate(destDir, frontendStackId = 'vite-react') {
   writeFileSync(planPath, JSON.stringify(plan, null, 2));
 }
 
-function saveDesignAttach(slug) {
+async function saveDesignAttach(slug) {
   const dest = join(config.generatedAppsDir, slug);
   const planPath = join(dest, 'plan.json');
   if (!existsSync(dest) || !existsSync(planPath)) return { ok: false, error: `no existe el backend ${slug}` };
@@ -284,7 +284,7 @@ function saveDesignAttach(slug) {
   return { ok: true, slug };
 }
 
-export function saveDesign(slug) {
+export async function saveDesign(slug) {
   if (!existsSync(join(DESIGN_DIR, 'package.json'))) return { ok: false, error: 'no hay diseño para guardar' };
   // Modo attach: el target viene de design-state (se eligió al crear),
   // no del input — slug del body se ignora.
@@ -295,11 +295,14 @@ export function saveDesign(slug) {
   stopDevRun(DESIGN_DIR);
   mkdirSync(config.generatedAppsDir, { recursive: true });
   // Sin node_modules ni state files de sesión — la app guardada arranca
-  // con install propio (awaitInstall) y sin el historial del chat.
+  // con install propio (awaitInstall en dest) y sin el historial del chat.
   cpSync(DESIGN_DIR, dest, {
     recursive: true,
     filter: (src) => !SAVE_EXCLUDE.has(basename(src)),
   });
+  // node_modules quedó fuera del copy → install propio en el destino.
+  const install = await awaitInstall(dest);
+  if (!install?.ok) return { ok: false, error: `npm install en ${slug} falló: ${install?.stderr?.slice(-200) ?? ''}` };
   rmSync(statePath, { force: true });
   writeFileSync(
     join(dest, 'plan.json'),
