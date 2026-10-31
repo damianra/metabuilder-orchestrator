@@ -245,8 +245,9 @@ export async function saveBackend(slug) {
     recursive: true,
     filter: (src) => !SAVE_EXCLUDE.has(basename(src)) && !SAVE_SKIP(src),
   });
-  const savedState = readState(); // antes de borrar statePath — lleva el arch del picker
-  rmSync(statePath, { force: true });
+  const savedState = readState(); // lleva el arch del picker — el state
+  // file se borra junto al workspace al final: si el install en dest
+  // falla, el retry necesita arch + historial intactos.
   const savedStack = getStack(detectBackendStackId(BACKEND_DIR)) ?? getStack('express-sqlite');
   // Deps fuera del copy (node_modules/.venv) → install propio en el
   // destino con el toolchain del stack, igual que saveDesign. Falla →

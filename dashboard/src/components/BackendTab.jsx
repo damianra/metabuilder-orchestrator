@@ -191,7 +191,7 @@ export default function BackendTab({ onSaved }) {
               value={dims.framework}
               onChange={(e) => {
                 const fw = e.target.value;
-                setDims({ framework: fw, db: options?.backendMatrix?.[fw]?.dbs[0]?.id ?? 'sqlite' });
+                setDims((d) => ({ ...d, framework: fw, db: options?.backendMatrix?.[fw]?.dbs[0]?.id ?? 'sqlite' }));
               }}
               className="w-full rounded-lg border border-accent-500/40 bg-slate-900 px-3 py-2 text-sm text-slate-300"
             >
