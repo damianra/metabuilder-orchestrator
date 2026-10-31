@@ -189,6 +189,19 @@ describe('DesignTab', () => {
     expect(api.action).toHaveBeenCalledWith('mi-api', { action: 'run-dev' });
   });
 
+  it('attachSlug (#/design?attach=) preselecciona el backend del attach', async () => {
+    state.design = { exists: false, messages: [] };
+    api.createDesign.mockClear();
+    await renderTab({ attachSlug: 'mi-api' });
+    await act(async () => {});
+    const sel = screen.getByTestId('design-backend-for');
+    expect(sel.value).toBe('mi-api');
+    await act(async () => {
+      fireEvent.click(screen.getByText('Nuevo diseño'));
+    });
+    expect(api.createDesign).toHaveBeenCalledWith('mi-api', 'vite-react');
+  });
+
   it('descartar pide confirmación y recién ahí llama api.discardDesign', async () => {
     state.design = { exists: true, messages: [] };
     api.discardDesign.mockClear();

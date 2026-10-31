@@ -152,6 +152,30 @@ describe('attach: backend → diseño (v10)', () => {
     rmSync(base, { recursive: true, force: true });
   });
 
+  it('attachFrontendFiles sin package.json en el backend (python) escribe el del front', () => {
+    const base = mkdtempSync(join(tmpdir(), 'mb-attach-'));
+    const src = join(base, 'design');
+    const dest = join(base, 'back');
+    mkdirSync(join(src, 'src'), { recursive: true });
+    writeFileSync(
+      join(src, 'package.json'),
+      JSON.stringify({ name: 'd', scripts: { dev: 'vite' }, devDependencies: { vite: '^7' } }),
+    );
+    writeFileSync(join(src, 'index.html'), '<html>');
+    mkdirSync(join(dest, 'app'), { recursive: true });
+    writeFileSync(join(dest, 'requirements.txt'), 'fastapi>=0.115\n');
+
+    attachFrontendFiles(src, dest);
+
+    // Sin merge posible: el package.json del front pasa entero — el
+    // backend python no tenía deps/scripts que preservar.
+    const pkg = JSON.parse(readFileSync(join(dest, 'package.json'), 'utf8'));
+    expect(pkg).toMatchObject({ name: 'd', scripts: { dev: 'vite' } });
+    expect(existsSync(join(dest, 'index.html'))).toBe(true);
+    expect(readFileSync(join(dest, 'requirements.txt'), 'utf8')).toContain('fastapi');
+    rmSync(base, { recursive: true, force: true });
+  });
+
   it('attachPlanUpdate marca fullstack + step done + compliance base', () => {
     const dir = mkdtempSync(join(tmpdir(), 'mb-attach-'));
     writeFileSync(

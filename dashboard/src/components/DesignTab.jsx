@@ -45,7 +45,7 @@ function ProposalCard({ proposal, onPick, disabled }) {
 // El historial persiste en el server (design-state.json) — `inflight`
 // cubre el ida y vuelta del mensaje en curso, que todavía no está
 // persistido mientras el SSE streamea.
-export default function DesignTab({ onSaved }) {
+export default function DesignTab({ onSaved, attachSlug }) {
   const [status, setStatus] = useState(null); // GET /api/design
   const [input, setInput] = useState('');
   const [inflight, setInflight] = useState(null); // { user, reply }
@@ -56,7 +56,10 @@ export default function DesignTab({ onSaved }) {
   // Attach (v10): al crear se puede elegir un proyecto backend — el
   // agente diseña contra su API real y guardar lo copia dentro de él.
   const [backends, setBackends] = useState([]);
-  const [backendFor, setBackendFor] = useState('');
+  // `attachSlug` llega de #/design?attach=<slug> (botón "Agregar
+  // frontend" en el detalle de un proyecto backend): preselecciona el
+  // destino del attach en el select "para backend".
+  const [backendFor, setBackendFor] = useState(attachSlug ?? '');
   const [stackFrontend, setStackFrontend] = useState('vite-react');
   const [frameKey, setFrameKey] = useState(0);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -87,6 +90,12 @@ export default function DesignTab({ onSaved }) {
         .catch(() => setBackends([]));
     }
   }, [status?.exists]);
+
+  // Navegación tardía: el slug de ?attach puede llegar con un workspace
+  // ya abierto — solo aplica en pantalla de "nuevo diseño".
+  useEffect(() => {
+    if (attachSlug && status?.exists === false) setBackendFor(attachSlug);
+  }, [attachSlug, status?.exists]);
   const devRunning = Boolean(status?.devRunning);
 
   useEffect(() => {
