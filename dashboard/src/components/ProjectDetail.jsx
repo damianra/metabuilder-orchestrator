@@ -289,6 +289,14 @@ export default function ProjectDetail({ slug, onChanged }) {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {project.externalDb && (
+              <span
+                className="inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400 ring-1 ring-amber-500/40"
+                title="La API necesita una DB externa (postgres/mysql/mongodb). Levantar el contenedor: docker compose up -d db — o usar DB_TYPE=sqlite embebido."
+              >
+                DB externa — docker
+              </span>
+            )}
             {project.timings?.startedAt && project.timings?.finishedAt && (
               <span className="inline-flex items-center rounded-full bg-slate-800 px-2.5 py-0.5 text-xs font-semibold text-slate-400 ring-1 ring-accent-500/40">
                 ⏱ {Math.round((new Date(project.timings.finishedAt) - new Date(project.timings.startedAt)) / 60000)}min

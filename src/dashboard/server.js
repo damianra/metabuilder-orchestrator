@@ -787,6 +787,15 @@ export function createDashboardApp({
       validated: plan?.validated ?? false,
       stacks: plan?.stacks ?? null,
         timings: plan?.timings ?? null,
+        // DB externa requerida (postgres|mysql|mongodb en .env.example)
+        // → hint en el detalle para levantar el contenedor.
+        externalDb: (() => {
+          try {
+            return /DB_TYPE\s*=\s*(postgres|mysql|mongodb)/i.test(
+              readFileSync(join(dir, '.env.example'), 'utf8'),
+            );
+          } catch { return false; }
+        })(),
       agent: plan?.agent ?? null,
       scripts: Object.entries(pkg?.scripts ?? {}).map(([name, command]) => ({ name, command })),
       repoUrl: toWebUrl(remote || null),
