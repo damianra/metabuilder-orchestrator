@@ -32,7 +32,7 @@ export async function smokeNode(state, extra) {
   // DB real levantable: si el proyecto trae compose con servicio de DB
   // (postgres/mysql/mongo) intentar docker compose up -d — tolerante:
   // sin docker la app puede usar driver embebido (sqljs/sqlite).
-  const compose = ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml']
+  const compose = ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml']
     .map((f) => join(dir, f))
     .find((f) => existsSync(f) && readFileSync(f, 'utf8').includes('db'));
   if (compose && stacks.backend) {

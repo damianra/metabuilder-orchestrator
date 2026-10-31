@@ -104,7 +104,8 @@ const scriptLines = (s) => {
   if (t.e2eCmd) lines.push(`- \`${t.e2eCmd}\` — suite e2e`);
   // Contrato seed: el backend expone un comando que puebla la DB con
   // datos realistas de dominio — el front consume datos reales, no mocks.
-  const seed = t.seedCmd ?? (s?.kind === 'backend' ? 'npm run seed' : null);
+  const npmToolchain = [t.devCmd, t.testCmd, t.buildCmd].some((c) => c?.includes('npm'));
+  const seed = t.seedCmd ?? (s?.kind === 'backend' && npmToolchain ? 'npm run seed' : null);
   if (seed) lines.push(`- \`${seed}\` — puebla la DB con datos realistas (el front consume datos reales)`);
   return lines;
 };
