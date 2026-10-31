@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="Sin imagen">
+  <rect width="800" height="450" fill="#1e293b"/>
+  <rect x="16" y="16" width="768" height="418" rx="16" fill="none" stroke="#64748b" stroke-width="3" stroke-dasharray="14 10"/>
+  <g fill="none" stroke="#64748b" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <!-- ícono "imagen" estilo lucide -->
+    <rect x="330" y="140" width="140" height="140" rx="10"/>
+    <circle cx="365" cy="175" r="12" fill="#64748b" stroke="none"/>
+    <path d="M340 260 l45 -45 l30 30 l35 -30 l20 25 v40 h-130 z" fill="#64748b" stroke="none"/>
+  </g>
+  <text x="400" y="330" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" font-weight="600" fill="#94a3b8">Seleccionar imagen</text>
+</svg>

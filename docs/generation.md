@@ -290,4 +290,6 @@ generado debe cumplir y que Playwright verifica.
 
 ### Imágenes en apps generadas (v13)
 
-Solo fuentes con licencia de uso comercial + redistribución (Unsplash/Pexels/Pixabay); el agente **descarga** a `public/images/` (no hotlink — la request de terceros filtraría IP del visitante y el URL podría rotar) y registra fuente+licencia en `public/images/LICENSES.txt`. Regla inyectada vía `AGENTS.ui.md` cuando hay frontend.
+Solo fuentes con licencia de uso comercial + redistribución (Unsplash/Pexels/Pixabay); el agente **descarga** a `public/images/` (no hotlink — la request de terceros filtraría IP del visitante y el URL podría rotar) y registra fuente+licencia en `public/images/LICENSES.txt`. Regla inyectada vía `AGENTS.ui.md` cuando hay frontend. Si ninguna
+fuente libre aplica → `public/images/placeholder.svg` (asset propio del
+skeleton, dashed "Seleccionar imagen" — el usuario lo reemplaza).
