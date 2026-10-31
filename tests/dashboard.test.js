@@ -103,7 +103,8 @@ describe('GET /api/options', () => {
     expect(status).toBe(200);
     expect(body.scopes).toEqual(['frontend', 'backend', 'fullstack']);
     expect(body.appTypes).toContain('custom');
-    expect(body.archs).toContain('flat');
+    expect(body.archs.map((a) => a.id)).toContain('flat');
+    expect(body.archs.find((a) => a.id === 'flat').label).toBeTruthy();
     expect(body.stacks.frontend).toContain('vite-react');
     expect(body.stacks.frontend).toContain('nextjs');
     expect(body.stacks.backend).toContain('express-sqlite');

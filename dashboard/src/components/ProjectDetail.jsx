@@ -919,8 +919,8 @@ export default function ProjectDetail({ slug, onChanged }) {
                   onChange={(e) => setBackendForm((f) => ({ ...f, arch: e.target.value }))}
                   className="rounded-lg border border-accent-500/40 bg-slate-950 text-slate-200 placeholder:text-slate-500 px-2 py-1"
                 >
-                  {(archOptions.length ? archOptions : ['flat']).map((a) => (
-                    <option key={a} value={a}>{a}</option>
+                  {(archOptions.length ? archOptions : [{ id: 'flat', label: 'flat (routes auto-montadas)' }]).map((a) => (
+                    <option key={a.id} value={a.id}>{a.label}</option>
                   ))}
                 </select>
               </label>

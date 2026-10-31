@@ -20,7 +20,7 @@ import { slugify } from '../tools/slug.js';
 import { buildReport, resolveRunId } from '../report.js';
 import { writeDockerFiles, detectFrontend, detectOutDir, detectStackId, detectBackendStackId, hasBackendDir } from '../tools/docker.js';
 import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
-import { listArchs } from '../arch/index.js';
+import { listArchs, getArch } from '../arch/index.js';
 import { getCompliance, listCompliance } from '../compliance/index.js';
 import {
   createDesign,
@@ -514,7 +514,9 @@ export function createDashboardApp({
     res.json({
       scopes: SCOPES,
       appTypes: [...listVerticals(), 'custom'],
-      archs: listArchs(),
+      // {id,label} como backendStacks — los pickers muestran el label
+      // del patrón ("MVC clásico"), no el id crudo.
+      archs: listArchs().map((id) => ({ id, label: getArch(id).label })),
       stacks: {
         frontend: listStacks('frontend').map((s) => s.id),
         backend: listStacks('backend').map((s) => s.id),

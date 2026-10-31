@@ -196,7 +196,7 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
             disabled={!hasBackend}
             onChange={(e) => set('arch', e.target.value)}
           >
-            {(options?.archs ?? []).map((a) => <option key={a} value={a}>{a}</option>)}
+            {(options?.archs ?? []).map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
           </select>
         </div>
         <div>

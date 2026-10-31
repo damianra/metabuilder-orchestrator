@@ -217,7 +217,7 @@ export default function BackendTab({ onSaved }) {
               className="w-full rounded-lg border border-accent-500/40 bg-slate-900 px-3 py-2 text-sm text-slate-300"
             >
               {(options?.archs ?? []).map((a) => (
-                <option key={a} value={a}>{a}</option>
+                <option key={a.id} value={a.id}>{a.label}</option>
               ))}
             </select>
           </div>
