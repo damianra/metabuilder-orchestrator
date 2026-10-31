@@ -205,7 +205,8 @@ El AGENTS.md generado exige `npm run seed` (o `seedCmd` del toolchain): el
 backend puebla la DB con datos realistas de dominio — el front consume
 datos reales de la API, no mocks. El nodo `smoke` intenta `docker compose
 up -d` si el proyecto trae compose con servicio de DB (postgres/mysql/mongo)
-antes de bootear la API; sin docker o con driver embebido (sqljs/sqlite)
-continúa tolerante.
+antes de bootear la API — con fallback a `podman compose` en hosts sin
+docker (mismo probe docker→podman que el engine de containers); sin
+ninguno o con driver embebido (sqljs/sqlite) continúa tolerante.
 
 - `--extend`: el prompt nuevo se **appendea** a `plan.idea` bajo la sección `BACKEND` — el plan conserva el prompt original del front + el del backend (`original\n\nBACKEND\n<nuevo>`).

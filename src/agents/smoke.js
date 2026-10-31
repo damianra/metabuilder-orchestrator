@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { execa } from 'execa';
 import { resolveStacksSafe } from '../stacks/index.js';
 import { smokeApp } from '../tools/smoke.js';
+import { run as shellRun } from '../tools/shell.js';
 
 const stamp = (msg) => ({ ts: new Date().toISOString(), node: 'smoke', msg });
 const icon = { pass: '✓', warn: '⚠', fail: '✗' };
@@ -36,9 +37,20 @@ export async function smokeNode(state, extra) {
     .map((f) => join(dir, f))
     .find((f) => existsSync(f) && readFileSync(f, 'utf8').includes('db'));
   if (compose && stacks.backend) {
-    try {
-      await execa('docker', ['compose', 'up', '-d'], { cwd: dir, reject: false, timeout: 60_000 });
-    } catch { /* sin docker — los stacks embebidos (sqljs/sqlite) siguen */ }
+    // docker primero, podman como fallback — mismo probe que el engine
+    // de containers del dashboard/finalizer. En hosts podman-only el
+    // compose de DB igual levanta (`podman compose` delega al provider
+    // externo en podman ≥4); sin ninguno, embebidos (sqljs/sqlite) siguen.
+    const engine = (await shellRun('docker info', { cwd: dir, timeoutMs: 10_000 })).ok
+      ? 'docker'
+      : (await shellRun('podman info', { cwd: dir, timeoutMs: 10_000 })).ok
+        ? 'podman'
+        : null;
+    if (engine) {
+      try {
+        await execa(engine, ['compose', 'up', '-d'], { cwd: dir, reject: false, timeout: 60_000 });
+      } catch { /* engine sin compose provider — la app sigue con embebido */ }
+    }
   }
   if (stacks.backend) {
     // Fullstack/backend: el devCmd de la API sirve también dist|out —
