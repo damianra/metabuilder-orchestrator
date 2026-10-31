@@ -19,6 +19,13 @@ import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import { run } from './tools/shell.js';
 import { runAgentPrompt } from './tools/acp.js';
+
+// --engine <id>: override del engine de la sesión (sin tocar settings).
+// Se quita del argv para que el parseo del número de PR lo ignore.
+const ENGINE_FLAG = (() => {
+  const i = process.argv.indexOf('--engine');
+  return i >= 0 ? process.argv.splice(i, 2)[1] : null;
+})();
 import { commentOnPR, getPR, getPRComments, listOpenPRs } from './tools/github.js';
 import { activity, loadPrompt, textFeed } from './agents/common.js';
 
@@ -114,8 +121,6 @@ async function listPendingPRs(owner, repo) {
 
 const main = async () => {
   const args = process.argv.slice(2);
-const eIdx = args.indexOf('--engine');
-const ENGINE_FLAG = eIdx >= 0 ? args.splice(eIdx, 2)[1] : null;
   const watchArg = args.find((a) => a === '--watch' || a.startsWith('--watch='));
   const watchIdx = args.indexOf('--watch');
   // --watch=10 | --watch 10 | --watch (default 5). Valores <= 0 → default.
