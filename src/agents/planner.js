@@ -46,7 +46,10 @@ export async function plannerNode(state) {
         existing.steps = [
           ...(existing.steps ?? []),
           { id: nextId, type: 'backend',
-            description: `Backend ${backendLabel}: implementar en el skeleton backend ya copiado (server/ para express, app/ para fastapi) los endpoints que el front ya llama — ${eps.join(' · ')}. Schema/seed del dominio; el sample items se reemplaza por el recurso real.`,
+            description: `Backend ${backendLabel}: implementar en el skeleton backend ya copiado (server/ para express, app/ para fastapi) los endpoints que el front ya llama — ${eps.join(' · ')}. Schema/seed del dominio; el sample items se reemplaza por el recurso real.` +
+              (backendId === 'fastapi'
+                ? ' Migraciones Alembic: tras definir app/models.py generar la baseline con `.venv/bin/alembic revision --autogenerate` contra una DB limpia y verificar `.venv/bin/alembic upgrade head`.'
+                : ''),
             verify: getStack(backendId)?.toolchain?.testCmd ?? 'npm run build',
             status: 'pending', attempts: 0 },
           { id: nextId + 1, type: 'frontend',

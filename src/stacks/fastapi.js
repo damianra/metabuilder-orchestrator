@@ -20,7 +20,8 @@ export default {
   agentsDb:
     'SQLAlchemy via DATABASE_URL en .env (sqlite local default; postgres/mysql por URL + driver pip)',
   agentsNotes: `- **Backend**: cada \`app/routers/<name>.py\` con \`APIRouter\` se auto-monta en \`/api/<name>\` — no tocar \`app/main.py\` ni \`app/db.py\`. Models SQLAlchemy en \`app/models.py\`, schemas pydantic en \`app/schemas.py\`.
-- **Capa de datos**: \`app/db.py\` con \`DATABASE_URL\` (sqlite por default — postgres/mysql via env); seed idempotente en \`init_db\`.
+- **Capa de datos**: \`app/db.py\` con \`DATABASE_URL\` (sqlite por default — postgres/mysql via env); \`init_db()\` aplica las migraciones Alembic a head al arrancar; seed idempotente.
+- **Migraciones (Alembic)**: el skeleton trae \`alembic.ini\` + \`alembic/\` configurados (env.py toma \`DATABASE_URL\` o el engine de \`init_db\`). Tras definir \`app/models.py\` generar la baseline con \`.venv/bin/alembic revision --autogenerate -m "initial schema"\` **contra una DB limpia** (borrar app.db o apuntar DATABASE_URL a un sqlite temporario — con tablas ya creadas el diff sale vacío) y verificar \`.venv/bin/alembic upgrade head\`. Todo cambio de schema posterior = nueva revisión autogenerada; prohibido \`create_all\`/DDL manual ni tocar \`alembic_version\`.
 - **Sin uploads en el skeleton** — agregar como endpoint propio si hacen falta.
 - **Secretos/config**: \`.env\` (gitignored) — \`python-dotenv\` ya cargado en \`app/main.py\`. Declarar toda variable en \`.env.example\`.
 - **Docker**: los provee el orquestador — el contenedor corre \`uvicorn app.main:app\` (el backend sirve \`dist/\` si existe).`,
@@ -71,7 +72,15 @@ export default {
       keywords: ['sqlalchemy'],
       error: 'falta paso de SQLAlchemy',
       prompt:
-        'La capa de datos es SQLAlchemy vía `DATABASE_URL` en .env — `app/db.py` arma engine/session/Base, `app/models.py` las entities y `app/seed.py` el seed idempotente (solo si la tabla está vacía).',
+        'La capa de datos es SQLAlchemy vía `DATABASE_URL` en .env — `app/db.py` arma engine/session/Base, `app/models.py` las entities y `app/seed.py` el seed idempotente (solo si la tabla está vacía). El schema lo gobierna Alembic: `init_db()` corre `upgrade head` al boot.',
+    },
+    {
+      check: 'some',
+      type: null,
+      keywords: ['alembic'],
+      error: 'falta paso de migraciones Alembic',
+      prompt:
+        'Tras definir `app/models.py`, paso que genere la baseline Alembic: `.venv/bin/alembic revision --autogenerate -m "initial schema"` contra una DB limpia (borrar app.db o apuntar DATABASE_URL a un sqlite temporario — con tablas ya creadas el diff autogenerate sale vacío) y verifique `.venv/bin/alembic upgrade head` + `.venv/bin/alembic downgrade -1 && upgrade head` (roundtrip). El skeleton ya trae alembic.ini + alembic/ — no scaffold desde cero. Cambios de schema posteriores = nueva revisión autogenerada, nunca create_all/DDL manual.',
     },
     {
       check: 'some',

@@ -12,6 +12,10 @@ import { hasMarker } from '../stacks/helpers.js';
  *
  * `outDir` = directorio de build del stack frontend ('dist' en Vite,
  * 'out' en Next export) — los templates llevan @OUT_DIR@.
+ * `@ALEMBIC@` (línea propia) → los COPY de alembic.ini + alembic/
+ * cuando el proyecto tiene migraciones (alembic.ini presente); sin
+ * alembic.ini el placeholder desaparece — los templates python son
+ * compartidos con stacks sin migraciones (fastapi-mongo).
  */
 
 // --- Detección por stack defs ---
@@ -68,7 +72,13 @@ export function writeDockerFiles(dir, { frontend, backend, outDir, backendStackI
       ? backStack?.toolchain?.dockerfile ?? 'backend'
       : 'frontend';
   const tpl = readFileSync(join(tdir, `Dockerfile.${variant}`), 'utf8');
-  writeFileSync(join(dir, 'Dockerfile'), tpl.replaceAll('@OUT_DIR@', outDir ?? 'dist'));
+  const alembic = existsSync(join(dir, 'alembic.ini'))
+    ? 'COPY alembic.ini ./\nCOPY alembic ./alembic\n'
+    : '';
+  writeFileSync(
+    join(dir, 'Dockerfile'),
+    tpl.replaceAll('@OUT_DIR@', outDir ?? 'dist').replaceAll('@ALEMBIC@\n', alembic),
+  );
   copyFileSync(join(tdir, '.dockerignore'), join(dir, '.dockerignore'));
   if (variant === 'frontend') {
     copyFileSync(join(tdir, 'nginx.conf'), join(dir, 'nginx.conf'));
