@@ -235,7 +235,20 @@ build del front. `app/db.py` arma engine/session/Base por
 `DATABASE_URL` en `.env` (sqlite local default; postgres/mysql por
 URL — el driver pip se declara comentado en `requirements.txt`),
 `app/models.py` entities, `app/schemas.py` Pydantic, `app/seed.py`
-seed idempotente. Tests pytest + TestClient en `tests/`
+seed idempotente.
+
+Migraciones con **Alembic** incluidas de fábrica: `alembic.ini` +
+`alembic/` (`env.py` resuelve la URL por `config.attributes['engine']`
+→ `DATABASE_URL` → `sqlalchemy.url` del ini; `versions/` arranca
+vacía con `.gitkeep`). `init_db()` corre `run_migrations()` al
+arrancar: con revisiones aplica `upgrade head`; sin revisiones cae a
+`create_all` (skeleton recién copiado); y una DB legacy con tablas
+pero sin `alembic_version` se completa con `create_all` + `stamp
+head`. El requirement `alembic` del stack exige un paso del plan que
+genere la baseline autogenerada contra DB limpia — `validatePlan`
+rechaza planes fastapi sin paso que mencione alembic.
+
+Tests pytest + TestClient en `tests/`
 (`conftest.py` raíz para que `import app` resuelva). No trae
 `package.partial.json` — `copyApiSkeleton` lo tolera desde v12 #1.
 
@@ -280,7 +293,12 @@ Express), `fullstack-python` (build node → `dist|out/` servido por
 FastAPI — lo elige `toolchain.dockerfileFullstack`), `frontend`
 (build → nginx:alpine + `nginx.conf` con SPA fallback). El dir de
 salida viene de `stack.buildDir` (placeholder `@OUT_DIR@` en los
-templates). En `--resume` la variante y el outDir se detectan por el
+templates); `@ALEMBIC@` (línea propia de los templates python)
+despliega los `COPY alembic.ini + alembic/` solo si el proyecto trae
+`alembic.ini` — el template es compartido con `fastapi-mongo`, que
+no tiene migraciones. El Dockerfile se escribe DESPUÉS de copiar el
+skeleton para ver los archivos reales. En `--resume` la variante y
+el outDir se detectan por el
 filesystem (`vite.config.js`/`next.config.*`/`server/`). Los `FROM`
 usan nombres fully-qualified (`docker.io/library/...`) — podman sin
 unqualified-search registries rechaza short-names (docker los

@@ -160,6 +160,24 @@ describe('writeDockerFiles', () => {
     expect(dff).toContain('uvicorn');
     expect(dff).toContain('/app/dist');
   });
+
+  it('alembic: @ALEMBIC@ copia migraciones solo si hay alembic.ini', () => {
+    const d = tmp();
+    writeFileSync(join(d, 'alembic.ini'), '[alembic]\n');
+    writeDockerFiles(d, { frontend: false, backend: true, backendStackId: 'fastapi' });
+    const df = readFileSync(join(dir, 'Dockerfile'), 'utf8');
+    expect(df).toContain('COPY alembic.ini ./');
+    expect(df).toContain('COPY alembic ./alembic');
+    expect(df).not.toContain('@ALEMBIC@');
+
+    // Sin alembic.ini (p.ej. fastapi-mongo, mismo template) el
+    // placeholder desaparece sin dejar líneas COPY inválidas.
+    const d2 = tmp();
+    writeDockerFiles(d2, { frontend: false, backend: true, backendStackId: 'fastapi-mongo' });
+    const df2 = readFileSync(join(dir, 'Dockerfile'), 'utf8');
+    expect(df2).not.toContain('alembic');
+    expect(df2).not.toContain('@ALEMBIC@');
+  });
 });
 
 describe('toolchain por stack: markers, manifest e install (v12 #1)', () => {

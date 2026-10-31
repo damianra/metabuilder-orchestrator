@@ -308,14 +308,6 @@ export async function preflightNode(state) {
     frontendStack: stacks.frontend,
     backendStack: stacks.backend,
   });
-  const dockerVariant = writeDockerFiles(dir, {
-    frontend: state.scope !== 'backend',
-    backend: state.scope !== 'frontend',
-    backendStackId: stacks.backend?.id,
-    outDir: stacks.frontend?.buildDir ?? 'dist',
-  });
-  history.push(log('preflight', `Dockerfile escrito (${dockerVariant})`));
-
   // Vertical conocido con frontend → copiar el skeleton del stack
   // frontend activo. Scope con backend → skeleton del stack backend;
   // el overlay del vertical aporta schema/seed/routes si existe.
@@ -392,6 +384,16 @@ export async function preflightNode(state) {
       }
     }
   }
+
+  // Dockerfile determinístico — DESPUÉS del skeleton para que vea los
+  // archivos reales del proyecto (alembic.ini → COPY de migraciones).
+  const dockerVariant = writeDockerFiles(dir, {
+    frontend: state.scope !== 'backend',
+    backend: state.scope !== 'frontend',
+    backendStackId: stacks.backend?.id,
+    outDir: stacks.frontend?.buildDir ?? 'dist',
+  });
+  history.push(log('preflight', `Dockerfile escrito (${dockerVariant})`));
 
   return {
     projectSlug: slug,
