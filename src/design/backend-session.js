@@ -13,6 +13,8 @@ import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
 import { anyBackendManifest, detectBackendStackId } from '../tools/docker.js';
 import { copyApiSkeleton, writeAgentsMd } from '../agents/preflight.js';
 import { writeReadme } from '../agents/finalizer.js';
+import { writeDockerFiles } from '../tools/docker.js';
+import { initGitRepo } from '../agents/common.js';
 import { getStack, resolveBackendStackId } from '../stacks/index.js';
 import { resolveArchSafe, archInstructionsFor, getArch, listArchs, DEFAULT_ARCH } from '../arch/index.js';
 
@@ -339,6 +341,23 @@ export async function saveBackend(slug) {
   } catch (e) {
     console.warn(`writeReadme falló en saveBackend(${slug}):`, e?.message);
   }
+  // Dockerfile + .dockerignore determinísticos si el agente no dejó
+  // uno propio (misma escritura que preflight — dockerize queda listo
+  // desde el save) + git init con initial commit: la app nace repo
+  // como las del pipeline (publish solo lo haría lazily, sin historia).
+  try {
+    if (!existsSync(join(dest, 'Dockerfile'))) {
+      writeDockerFiles(dest, {
+        frontend: false,
+        backend: true,
+        backendStackId: savedStack.id,
+      });
+    }
+  } catch (e) {
+    console.warn(`writeDockerFiles falló en saveBackend(${slug}):`, e?.message);
+  }
+  const gitInit = await initGitRepo(dest);
+  if (!gitInit?.ok) console.warn(`git init falló en saveBackend(${slug}):`, gitInit?.stderr);
   clearInstall(BACKEND_DIR);
   rmSync(BACKEND_DIR, { recursive: true, force: true });
   return { ok: true, slug };
