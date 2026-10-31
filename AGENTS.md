@@ -74,6 +74,11 @@ node -e "import('./src/tools/shell.js').then(m=>m.run('echo ok',{cwd:'/tmp'}).th
   `checkEngineAuth()` (handshake ACP).
 - **Un nodo no puede llamarse igual que un canal de estado** (LangGraph).
 - Todo fallo terminal va al nodo `fail` (`status: 'failed'`), nunca a END.
+- **Los procesos levantados para probar se detienen al terminar** —
+  registrar pid/puerto al arrancar y antes de cerrar la tarea verificar
+  con `pgrep -f`/`ss -ltn` que no queden procs/ports vivos; matar solo
+  los propios, nunca los del usuario. Preferir `run-dev` del dashboard
+  (queda trackeado en `dev-run.json`) sobre `nohup` sueltos.
 
 ## Flujo de trabajo Git (obligatorio en ESTE repo)
 
