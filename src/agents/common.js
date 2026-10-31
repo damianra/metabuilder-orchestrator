@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { run } from '../tools/shell.js';
 
 export const log = (node, msg) => ({ ts: new Date().toISOString(), node, msg });
 
@@ -69,4 +70,26 @@ function interpolate(text, vars) {
     text = text.replaceAll(`{{${k}}}`, String(v));
   }
   return text;
+}
+
+/**
+ * `git init` + initial commit idempotente en la app guardada — las
+ * apps de workspace (pestañas Backend/Diseño) nacen con repo propio
+ * igual que las del pipeline (publish hace init lazily si falta, pero
+ * sin historia hasta entonces). El caller decide qué hacer con el
+ * resultado (los saves lo tratan warn-only).
+ */
+export async function initGitRepo(dir) {
+  const g = (args) =>
+    run(`git ${args}`, { cwd: dir, timeoutMs: 60_000, env: { GIT_TERMINAL_PROMPT: '0' } });
+  const init = await g('init -b main');
+  if (!init.ok) return init;
+  await g('add -A');
+  if (!(await g('diff --cached --quiet')).ok) {
+    return g(
+      '-c user.name="MetaBuilder" -c user.email="metabuilder@localhost" ' +
+        'commit -m "chore: initial commit — MetaBuilder workspace"',
+    );
+  }
+  return { ok: true };
 }

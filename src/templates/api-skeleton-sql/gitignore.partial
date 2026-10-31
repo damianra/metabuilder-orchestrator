@@ -6,3 +6,4 @@ docker-build.*
 test-run.*
 dev-run.*
 publish.*
+node_modules/

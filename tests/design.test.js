@@ -199,5 +199,18 @@ describe('attach: backend → diseño (v10)', () => {
     expect(plan.timings.finishedAt).toBeTruthy();
     rmSync(dir, { recursive: true, force: true });
   });
+
+  it('initGitRepo crea .git con initial commit idempotente', async () => {
+    const { initGitRepo } = await import('../src/agents/common.js');
+    const dir = mkdtempSync(join(tmpdir(), 'mb-git-'));
+    writeFileSync(join(dir, 'x.txt'), 'hola');
+    const r = await initGitRepo(dir);
+    expect(r.ok).toBe(true);
+    expect(existsSync(join(dir, '.git'))).toBe(true);
+    // Segunda corrida sin cambios → ok, sin commit nuevo.
+    const r2 = await initGitRepo(dir);
+    expect(r2.ok).toBe(true);
+    rmSync(dir, { recursive: true, force: true });
+  });
 });
 

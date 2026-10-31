@@ -10,9 +10,10 @@ import { startInstall, awaitInstall, clearInstall } from '../tools/install.js';
 import { loadPrompt } from '../agents/common.js';
 import { startDevRun, stopDevRun } from '../dashboard/server.js';
 import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
-import { detectBackendStackId } from '../tools/docker.js';
+import { detectBackendStackId, detectOutDir, writeDockerFiles } from '../tools/docker.js';
 import { writeAgentsMd } from '../agents/preflight.js';
 import { writeReadme } from '../agents/finalizer.js';
+import { initGitRepo } from '../agents/common.js';
 import { resolveArchSafe } from '../arch/index.js';
 import { getStack } from '../stacks/index.js';
 
@@ -339,6 +340,23 @@ async function saveDesignAttach(slug) {
   } catch (e) {
     console.warn(`writeReadme falló en attach(${slug}):`, e?.message);
   }
+  // Dockerfile fullstack si no hay uno propio (variante por stack del
+  // back — fastapi → fullstack-python con @ALEMBIC@ si hay alembic.ini)
+  // + git init idempotente: el repo queda con historia post-attach.
+  try {
+    if (!existsSync(join(dest, 'Dockerfile'))) {
+      writeDockerFiles(dest, {
+        frontend: true,
+        backend: true,
+        backendStackId: plan.stacks?.backend,
+        outDir: detectOutDir(dest) ?? 'dist',
+      });
+    }
+  } catch (e) {
+    console.warn(`writeDockerFiles falló en attach(${slug}):`, e?.message);
+  }
+  const gitInit = await initGitRepo(dest);
+  if (!gitInit?.ok) console.warn(`git init falló en attach(${slug}):`, gitInit?.stderr);
   clearInstall(DESIGN_DIR);
   rmSync(DESIGN_DIR, { recursive: true, force: true });
   return { ok: true, slug };
@@ -425,6 +443,17 @@ export async function saveDesign(slug) {
   } catch (e) {
     console.warn(`writeReadme falló en saveDesign(${slug}):`, e?.message);
   }
+  // Dockerfile frontend (nginx) si no hay uno propio + git init con
+  // initial commit — la app nace repo como las del pipeline.
+  try {
+    if (!existsSync(join(dest, 'Dockerfile'))) {
+      writeDockerFiles(dest, { frontend: true, backend: false, outDir: detectOutDir(dest) ?? 'dist' });
+    }
+  } catch (e) {
+    console.warn(`writeDockerFiles falló en saveDesign(${slug}):`, e?.message);
+  }
+  const gitInit = await initGitRepo(dest);
+  if (!gitInit?.ok) console.warn(`git init falló en saveDesign(${slug}):`, gitInit?.stderr);
   clearInstall(DESIGN_DIR); // la próxima creación reinstala de cero
   rmSync(DESIGN_DIR, { recursive: true, force: true });
   return { ok: true, slug };
