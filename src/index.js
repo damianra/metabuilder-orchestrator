@@ -298,6 +298,7 @@ function writeStatus(node) {
         {
           node,
           status: snapshot.status,
+          pendingIssues: snapshot.pendingIssues ?? null,
           step: Math.min(snapshot.currentStepIndex ?? 0, total),
           totalSteps: total,
           lastError: snapshot.lastError ?? null,
@@ -361,7 +362,7 @@ for (;;) {
     // Recursion limit (loops review↔fix) → fail limpio, no crash uncaught.
     if (/Recursion limit|GRAPH_RECURSION_LIMIT/i.test(e.message ?? e.lc_error_code ?? '')) {
       const state = await app.getState(runConfig).catch(() => null);
-      result = { ...(state?.values ?? result ?? input), status: 'failed', lastError: `loop review/fix agotó el límite del grafo` };
+      result = { ...(state?.values ?? result ?? input), status: 'failed', lastError: 'loop review/fix agotó el límite del grafo', history: state?.values?.history ?? result?.history ?? [] };
       break;
     }
     throw e;
