@@ -349,12 +349,22 @@ if (!args.quiet) {
 let result;
 let input = initial;
 for (;;) {
-  const stream = await app.stream(input, { ...runConfig, streamMode: 'updates' });
-  for await (const chunk of stream) {
-    for (const [node, update] of Object.entries(chunk)) {
-      if (node === '__interrupt__') continue;
-      reportUpdate(node, update);
+  try {
+    const stream = await app.stream(input, { ...runConfig, streamMode: 'updates' });
+    for await (const chunk of stream) {
+      for (const [node, update] of Object.entries(chunk)) {
+        if (node === '__interrupt__') continue;
+        reportUpdate(node, update);
+      }
     }
+  } catch (e) {
+    // Recursion limit (loops review↔fix) → fail limpio, no crash uncaught.
+    if (/Recursion limit|GRAPH_RECURSION_LIMIT/i.test(e.message ?? e.lc_error_code ?? '')) {
+      const state = await app.getState(runConfig).catch(() => null);
+      result = { ...(state?.values ?? result ?? input), status: 'failed', lastError: `loop review/fix agotó el límite del grafo` };
+      break;
+    }
+    throw e;
   }
 
   const state = await app.getState(runConfig);

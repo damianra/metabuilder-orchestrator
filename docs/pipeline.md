@@ -188,3 +188,13 @@ inyectables) + `src/agents/smoke.js`.
   un 409 o fallo persistente cae al GET de confirmación.
 - **Commit en re-runs**: si la app ya tiene todo commiteado, el finalize
   salta el commit vía `git diff --cached --quiet`.
+
+### Cap de rondas review↔fix (v13)
+
+El loop `review → fix → finalVerify → smoke → review` tiene tope: `reviewRounds >= 2`
+con issues → `finalize` (no `fix`) — cada ronda consume ~8 super-steps del grafo
+(sin cap reventaba `GraphRecursionError: 25` en crash uncaught). Las re-reviews
+van **scoped**: el prompt incluye los issues de la ronda anterior y pide verificar
+solo esos (+ bloqueantes nuevos), no un review fresco. Los issues no corregidos
+quedan en `status.json.pendingIssues` — la app shippea documentada, no colgada.
+`GraphRecursionError` además se atrapa en el runner → `status: failed` limpio.
