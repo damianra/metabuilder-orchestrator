@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Archive,
   ExternalLink,
   LoaderCircle,
   Play,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api.js';
 import { parseProposal } from '../util.js';
+import LibraryPanel from './LibraryPanel.jsx';
 import MobilePreview from './MobilePreview.jsx';
 
 const spin = <LoaderCircle size={15} className="animate-spin" />;
@@ -84,11 +86,30 @@ export default function MobileTab({ onSaved }) {
     chatEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages.length, inflight]);
 
-  const create = async () => {
+  // `reference` = slug de la biblioteca (v15): el diseño nuevo nace
+  // con .reference/<slug>/ + spec en el prompt del agente (acepta
+  // referencias web — el agente las traduce a RN/NativeWind).
+  const create = async (reference) => {
     setBusy('create');
     setError(null);
     try {
-      await api.createMobile();
+      await api.createMobile(typeof reference === 'string' ? reference : undefined);
+      await refresh();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  // Archivar en la biblioteca — conserva workspace+historial+spec
+  // (y screenshot del preview Expo Web si está corriendo).
+  const archive = async () => {
+    setBusy('archive');
+    setError(null);
+    try {
+      const r = await api.archiveMobile({});
+      if (!r.ok) setError(r.error);
       await refresh();
     } catch (e) {
       setError(e.message);
@@ -223,6 +244,10 @@ export default function MobileTab({ onSaved }) {
           </button>
           {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
         </div>
+        <LibraryPanel
+          onRestore={() => refresh()}
+          onReference={(it) => create(it.slug)}
+        />
       </section>
     );
   }
@@ -277,6 +302,15 @@ export default function MobileTab({ onSaved }) {
             className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-500/50 hover:bg-emerald-500/15 disabled:opacity-40"
           >
             {busy === 'save' ? spin : <Save size={12} />} guardar como app
+          </button>
+          <button
+            title="Archiva el diseño en la biblioteca — conserva el código, el historial y un spec para reutilizar"
+            data-testid="mobile-archive"
+            onClick={archive}
+            disabled={Boolean(busy)}
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-accent-300 ring-1 ring-accent-400/50 hover:bg-accent-500/10 disabled:opacity-40"
+          >
+            {busy === 'archive' ? spin : <Archive size={12} />} archivar
           </button>
           <button
             title={confirmDiscard ? 'Confirmá para borrar el workspace' : 'Descarta el diseño y borra el workspace'}

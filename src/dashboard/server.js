@@ -23,6 +23,7 @@ import { apiSurfaceFor, apiSurfaceKindOf } from '../tools/api-surface.js';
 import { listArchs, getArch } from '../arch/index.js';
 import { getCompliance, listCompliance } from '../compliance/index.js';
 import {
+  archiveDesign,
   createDesign,
   designChat,
   designDev,
@@ -30,6 +31,7 @@ import {
   designStatus,
   designStopDev,
   discardDesign,
+  restoreDesign,
   saveDesign,
 } from '../design/session.js';
 import {
@@ -44,6 +46,7 @@ import {
   saveBackend,
 } from '../design/backend-session.js';
 import {
+  archiveMobile,
   createMobile,
   discardMobile,
   mobileChat,
@@ -51,8 +54,15 @@ import {
   mobileIdleSweep,
   mobileStatus,
   mobileStopDev,
+  restoreMobile,
   saveMobile,
 } from '../design/mobile-session.js';
+import {
+  deleteEntry,
+  getEntry,
+  LIB_SLUG_RE,
+  listLibrary,
+} from '../design/library.js';
 import { getVertical, listVerticals } from '../verticals/index.js';
 import { getStack, listStacks, resolveBackendStackId, backendMatrix, resolveStacksSafe } from '../stacks/index.js';
 import { getEngine as getAgentEngine, listEngines } from '../engines/index.js';
@@ -986,7 +996,7 @@ export function createDashboardApp({
     }
     if (req.body?.stackFrontend && getStack(String(req.body.stackFrontend))?.kind !== 'frontend')
         return res.status(400).json({ error: `stack-frontend desconocido: ${req.body.stackFrontend}` });
-    const r = createDesign({ attachTo: forSlug || null, frontendStackId: req.body?.stackFrontend });
+    const r = createDesign({ attachTo: forSlug || null, frontendStackId: req.body?.stackFrontend, reference: req.body?.reference });
     res.status(r.ok ? 201 : 409).json(r);
   });
 
@@ -1083,7 +1093,7 @@ export function createDashboardApp({
   app.get('/api/mobile', (req, res) => res.json(mobileStatus()));
 
   app.post('/api/mobile', (req, res) => {
-    const r = createMobile();
+    const r = createMobile(req.body?.reference);
     res.status(r.ok ? 201 : 409).json(r);
   });
 
@@ -1112,6 +1122,56 @@ export function createDashboardApp({
     res.status(r.ok ? 200 : 409).json(r);
   });
   app.post('/api/mobile/stop-dev', (req, res) => res.json(mobileStopDev()));
+
+  // ---- Biblioteca de diseños archivados (v15) ----
+  // Archivar = conservar workspace+state+spec(+screenshot) en
+  // design-library/<slug>/ en vez de descartarlo; restaurar devuelve
+  // la sesión a su tab y "usar como referencia" la inyecta en el
+  // prompt del agente + copia el código a .reference/<slug>/.
+  app.post('/api/design/archive', async (req, res) => {
+    const r = await archiveDesign({
+      slug: String(req.body?.slug ?? '').trim() || undefined,
+      name: String(req.body?.name ?? '').trim(),
+      description: String(req.body?.description ?? '').trim(),
+    });
+    res.status(r.ok ? 201 : 409).json(r);
+  });
+
+  app.post('/api/mobile/archive', async (req, res) => {
+    const r = await archiveMobile({
+      slug: String(req.body?.slug ?? '').trim() || undefined,
+      name: String(req.body?.name ?? '').trim(),
+      description: String(req.body?.description ?? '').trim(),
+    });
+    res.status(r.ok ? 201 : 409).json(r);
+  });
+
+  app.get('/api/design-library', (req, res) => res.json(listLibrary()));
+
+  // Restore same-kind: meta.kind decide si vuelve a design-work o
+  // a mobile-work — un Expo restaurado como Vite no correría.
+  app.post('/api/design-library/:slug/restore', (req, res) => {
+    const meta = getEntry(req.params.slug);
+    if (!meta) return res.status(404).json({ ok: false, error: `no existe el diseño ${req.params.slug}` });
+    const r = meta.kind === 'mobile' ? restoreMobile(req.params.slug) : restoreDesign(req.params.slug);
+    res.status(r.ok ? 200 : 409).json(r);
+  });
+
+  app.delete('/api/design-library/:slug', (req, res) => {
+    const r = deleteEntry(req.params.slug);
+    res.status(r.ok ? 200 : 404).json(r);
+  });
+
+  // Screenshot opcional — solo existe si al archivar había preview
+  // corriendo Y Playwright instalado (dep opcional).
+  app.get('/api/design-library/:slug/screenshot', (req, res) => {
+    if (!LIB_SLUG_RE.test(req.params.slug ?? '')) {
+      return res.status(400).json({ error: 'slug inválido' });
+    }
+    const file = join(config.rootDir, 'design-library', req.params.slug, 'screenshot.png');
+    if (!existsSync(file)) return res.status(404).json({ error: 'sin captura' });
+    res.sendFile(file);
+  });
 
   app.post('/api/mobile/save', async (req, res) => {
     const slug = String(req.body?.slug ?? '').trim();

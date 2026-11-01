@@ -78,7 +78,7 @@ producción (Expo SDK 54 / RN 0.81, Prebuild CNG, NativeWind v4, Moti).
   las versiones verificadas en producción (SDK 54 / RN 0.81.5): Expo
   rompe con cualquier deriva de versiones; el agente no elige números.
 
-## Visión v15 (propuesta aprobada — pendiente de implementación)
+## Visión v15 (implementada)
 
 **Biblioteca de diseños archivados** — hoy `descartar` hace `rmSync`
 del workspace (`design-work/` o `mobile-work/`) y se pierde todo:
@@ -93,8 +93,8 @@ se convirtió en app y reutilizarlo después:
 | Archivar | Botón junto a *descartar*: mueve workspace → biblioteca; `descartar` sigue borrando de verdad |
 | Restaurar | `cpSync` de vuelta a `design-work/` o `mobile-work/` + `writeState` → el chat continúa y *guardar como app* funciona igual |
 | Referencia | Picker al crear diseño nuevo → inyecta `spec.md` al prompt del agente (mismo patrón que `apiContextBlock`) + copia el workspace archivado a `.reference/<slug>/` para que el agente lea estilos/animaciones exactos |
-| `spec.md` | Resumen de estilos/animaciones — opciones: generado por el agente ACP al archivar (mejor calidad), extracción heurística, o texto manual (MVP) |
-| Screenshot | `screenshot.png` del preview al archivar — requiere Playwright como dep opcional (el iframe es cross-origin, no hay alternativa barata); fallback "sin captura" si falta |
+| `spec.md` | Resumen de estilos/animaciones — implementado con extracción heurística del código (paleta hex, clases animate/transition, keyframes, Moti, fuentes, iconos lucide, estructura). Generación por agente ACP queda como mejora futura |
+| Screenshot | `screenshot.png` del preview al archivar — Playwright como dep opcional vía `import()` dinámico (el iframe es cross-origin); fallback "sin captura" si falta |
 | UI | Sección biblioteca (cards + thumbnail + chip web/mobile) con acciones restaurar / usar como referencia / eliminar |
 
 **Cross-kind**: restaurar solo aplica same-kind (un diseño Expo no va

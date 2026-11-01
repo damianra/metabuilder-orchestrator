@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Archive,
   ExternalLink,
   LoaderCircle,
   Palette,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api.js';
 import { parseProposal } from '../util.js';
+import LibraryPanel from './LibraryPanel.jsx';
 
 const spin = <LoaderCircle size={15} className="animate-spin" />;
 
@@ -110,11 +112,29 @@ export default function DesignTab({ onSaved, attachSlug }) {
     chatEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages.length, inflight]);
 
-  const create = async () => {
+  // `reference` = slug de la biblioteca (v15): el diseño nuevo nace
+  // con .reference/<slug>/ + spec en el prompt del agente.
+  const create = async (reference) => {
     setBusy('create');
     setError(null);
     try {
-      await api.createDesign(backendFor || undefined, stackFrontend);
+      await api.createDesign(backendFor || undefined, stackFrontend, reference || undefined);
+      await refresh();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  // Archivar en la biblioteca — a diferencia de descartar, conserva
+  // workspace+historial+spec (y screenshot si hay preview corriendo).
+  const archive = async () => {
+    setBusy('archive');
+    setError(null);
+    try {
+      const r = await api.archiveDesign({});
+      if (!r.ok) setError(r.error);
       await refresh();
     } catch (e) {
       setError(e.message);
@@ -290,7 +310,7 @@ export default function DesignTab({ onSaved, attachSlug }) {
           </div>
           <button
             data-testid="design-create"
-            onClick={create}
+            onClick={() => create()}
             disabled={busy === 'create'}
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-700 disabled:opacity-40"
           >
@@ -298,6 +318,10 @@ export default function DesignTab({ onSaved, attachSlug }) {
           </button>
           {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
         </div>
+        <LibraryPanel
+          onRestore={() => refresh()}
+          onReference={(it) => create(it.slug)}
+        />
       </section>
     );
   }
@@ -386,6 +410,15 @@ export default function DesignTab({ onSaved, attachSlug }) {
           >
             {busy === 'save' ? spin : <Save size={12} />}{' '}
             {attachTo ? `guardar en ${attachTo}` : 'guardar como app'}
+          </button>
+          <button
+            title="Archiva el diseño en la biblioteca — conserva el código, el historial y un spec para reutilizar"
+            data-testid="design-archive"
+            onClick={archive}
+            disabled={Boolean(busy)}
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-accent-300 ring-1 ring-accent-400/50 hover:bg-accent-500/10 disabled:opacity-40"
+          >
+            {busy === 'archive' ? spin : <Archive size={12} />} archivar
           </button>
           <button
             title={confirmDiscard ? 'Confirmá para borrar el workspace' : 'Descarta el diseño y borra el workspace'}
