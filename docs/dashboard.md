@@ -185,14 +185,23 @@ UI estilo **retro-gamer oscuro con temas por área**: fondo tintado
 por tab + CRT scanline + cards con `glow-card` (halo neón por
 acento) + labels de sección en monospace uppercase; la paleta
 `accent-*` resuelve por CSS vars (`tailwind.config.js` +
-`index.css`): Diseñar app → **Obscura** — tema CLARO (canvas Cloud
-Mist `#e3f1fe`, un solo acento Signal Orange `#ff5e24`, headings en
-Jersey 10 pixel ≥36px, body en Manrope, superficies slate re-mapeadas
-a paper/graphite por overrides scoped, motif `motif-obscura` = sprites
-de nubes pixel en los bordes),
-Backend → rojo con scanline reforzada de terminal, Fullstack →
-ámbar con blueprint grid (taller), Mobile → emerald con scanline
-de terminal (el estilo que antes tenía Backend), detalle → sky neutro. El cambio
+`index.css`): Diseñar app → **estudio de diseño** (navy `#0a1120` +
+rampa blue-500, headings en Jersey 10 pixel ≥36px, body en Manrope;
+motif `motif-studio` = dot-grid tipo canvas Figma + sprites line-art
+de herramientas —cursor/pluma/bezier/regla/swatch/crosshair—
+dispersados con deriva por capa + un cursor `fixed` que "deambula"
+por el viewport y un swatch flotante; todo `pointer-events:none`),
+Backend → **ciudad nocturna gold** (charcoal `#09090d` + gold;
+motif `motif-gotham` = skyline tile `repeat-x` con ventanas
+encendidas al pie + luna con halo, arcos góticos, estrellas, antena
+de señal + haz de luz `fixed` que barre el cielo con `clip-path` y
+bruma cálida en el horizonte), Fullstack → **la pila** (ámbar +
+motif `motif-stack` = grid blueprint + iconografía db/`</>`/capas/
+`{}`/server/git/flujo/prompt/plug/hexágono + un punto "request" que
+cruza la vista y un bloque de capas que se ensambla), Mobile →
+**taller mobile** (emerald + motif `motif-mobile` = phones, app
+grids, wifi, ripple táctil, batería, burbuja de chat, barra de
+gestos + scanline sutil heredado del tema terminal), detalle → sky neutro. El cambio
 de tab corre `.animate-view-enter` (wrapper keyed) y los elementos
 interactivos llevan transición suave.
 

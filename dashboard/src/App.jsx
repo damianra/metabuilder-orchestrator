@@ -107,13 +107,13 @@ export default function App() {
   const queued = jobs.filter((j) => j.status === 'pending').length;
 
   // Tema + motif por área — cada tab se siente en su territorio:
-  // diseño = Obscura (paper nube + pixel), backend/mobile = terminal,
-  // fullstack = taller blueprint, detalle = neutro.
+  // diseño = estudio azul, backend = ciudad nocturna gold, mobile =
+  // taller emerald, fullstack = arquitectura amber, detalle = neutro.
   const theme = {
-    design: 'theme-obscura motif-obscura',
-    list: 'theme-backend motif-terminal',
-    fullstack: 'theme-fullstack motif-blueprint',
-    mobile: 'theme-mobile motif-terminal',
+    design: 'theme-design motif-studio',
+    list: 'theme-backend motif-gotham',
+    fullstack: 'theme-fullstack motif-stack',
+    mobile: 'theme-mobile motif-mobile',
     detail: 'theme-neutral',
     projects: 'theme-neutral',
   }[route.view];
