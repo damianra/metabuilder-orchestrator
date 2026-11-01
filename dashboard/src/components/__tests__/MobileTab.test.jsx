@@ -21,6 +21,13 @@ vi.mock('../../api.js', () => ({
     mobileStopDev: vi.fn(() => Promise.resolve({ stopped: true })),
     mobileSave: vi.fn((slug) => Promise.resolve({ ok: true, slug })),
     mobileChat: vi.fn(() => Promise.resolve({ ok: true, text: 'listo, pantalla nueva' })),
+    archiveMobile: vi.fn(() => Promise.resolve({ ok: true, slug: 'mi-diseno' })),
+    // Biblioteca (v15): LibraryPanel hace poll de api.library al montar.
+    library: vi.fn(() => Promise.resolve([])),
+    restoreLibrary: vi.fn(() => Promise.resolve({ ok: true })),
+    deleteLibrary: vi.fn(() => Promise.resolve({ ok: true })),
+    libraryShot: vi.fn((slug) => `/api/design-library/${slug}/screenshot`),
+    libraryPrompt: vi.fn(() => Promise.resolve({ ok: true, text: '# spec', source: 'spec' })),
   },
 }));
 
