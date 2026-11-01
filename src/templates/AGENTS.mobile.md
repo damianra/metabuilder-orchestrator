@@ -64,6 +64,27 @@ con utilidades CSS-web-only, `<form>`, `<input>`).
 - **Nunca** editar `android/` ni `ios/` — `expo prebuild` los
   regenera (CNG) y todo cambio manual se pierde.
 
+### Firma y Play Store (build nativo — fuera del toolchain de este repo)
+
+- El pipeline genera y verifica la app vía preview web; el **APK/AAB
+  nativo no se compila acá** (exige Java 17–21 + Android SDK — no
+  instalarlos "por las dudas").
+- **Vía recomendada — EAS Build** (`eas build --platform android`):
+  EAS genera y guarda el *upload keystore* en la cuenta Expo, sin
+  archivos locales (`eas credentials` para ver/descargar). Activá
+  **Google Play App Signing** en Play Console: Google firma con su
+  key y el upload key perdido se resetea — es el camino seguro.
+- **Vía local** (solo si no hay EAS): `keytool -genkeypair -v
+  -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+  -keystore keys/upload-keystore.jks`; `keys/` está gitignored —
+  backup del keystore FUERA del repo (perderlo = no más updates).
+  `npx expo prebuild` genera `android/`; los passwords van como env
+  vars `MYAPP_UPLOAD_STORE_PASSWORD`/`MYAPP_UPLOAD_KEY_PASSWORD`
+  (nunca commiteadas ni en `gradle.properties` trackeado) →
+  `cd android && ./gradlew bundleRelease` produce el `.aab`.
+- Nunca commitear keystores, fingerprints ni passwords de firma —
+  `keys/`, `*.keystore`, `*.jks` ya están en `.gitignore`.
+
 ### Equivalencias web → mobile (para traducir las reglas genéricas)
 
 - "Checkbox de consentimiento en formularios": en mobile, un

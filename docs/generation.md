@@ -103,7 +103,11 @@ plan — `--stack-frontend expo-mobile`, `plan.stacks.frontend`,
 `scope:'frontend'` en POST /api/runs y `detectFrontendStack` lo tratan
 como frontend (preview web vía `react-native-web` en :8081 + Playwright
 headless sobre ese render; `buildCmd` es solo un smoke de bundle web,
-el APK nativo es fase opt-in fuera del toolchain). Tres cortes
+el APK nativo es fase opt-in fuera del toolchain — la firma para
+Play Store está documentada en `src/templates/AGENTS.mobile.md`:
+EAS Build como vía recomendada (keystore auto-gestionado en la
+cuenta Expo) o build local con `keytool` + keystore en `keys/`
+gitignored y passwords por env vars). Tres cortes
 determinísticos: los **verticales web no aplican** (appType queda
 `custom` — vertical explícito = error 400/exit 2), los **perfiles de
 compliance web se ignoran** (validator + planner los filtran) y su
