@@ -9,6 +9,7 @@ import QueuePanel from './components/QueuePanel.jsx';
 import SetupGate from './components/SetupGate.jsx';
 import DesignTab from './components/DesignTab.jsx';
 import BackendTab from './components/BackendTab.jsx';
+import MobileTab from './components/MobileTab.jsx';
 
 const parseHash = () => {
   const m = window.location.hash.match(/^#\/p\/([a-z0-9-]+)/);
@@ -56,7 +57,9 @@ export default function App() {
       .project(route.clone)
       .then((p) => {
         // Mobile es scope frontend pero vive en su propio tab — un
-        // stack frontend de kind mobile enruta ahí.
+        // stack frontend de kind mobile enruta ahí. El param ?clone se
+        // descarta a propósito: MobileTab es un chat de sesión (no un
+        // formulario con prefill) — el clone solo fija el tab correcto.
         const want = mobileIds.includes(p?.stacks?.frontend)
           ? '#/mobile'
           : p?.scope === 'fullstack'
@@ -110,7 +113,7 @@ export default function App() {
     design: 'theme-design motif-canvas',
     list: 'theme-backend motif-terminal',
     fullstack: 'theme-fullstack motif-blueprint',
-    mobile: 'theme-mobile motif-crt',
+    mobile: 'theme-mobile motif-terminal',
     detail: 'theme-neutral',
     projects: 'theme-neutral',
   }[route.view];
@@ -231,9 +234,14 @@ export default function App() {
             // genera front+back en un solo run (la vía rápida).
             <NewAppForm fixedScope="fullstack" onEnqueued={refresh} cloneSlug={route.clone} />
           ) : route.view === 'mobile' ? (
-            // Tab "Mobile": mismo form pero scope frontend + stack
-            // mobile (postea scope:'frontend' + stackFrontend expo-*).
-            <NewAppForm fixedScope="mobile" onEnqueued={refresh} cloneSlug={route.clone} />
+            // Tab "Mobile": chat diseñador mobile sobre mobile-work/
+            // (espejo de Diseñar app) con preview Expo Web en marco.
+            <MobileTab
+              onSaved={(slug) => {
+                window.location.hash = `#/p/${slug}`;
+                refresh();
+              }}
+            />
           ) : route.view === 'projects' ? (
             <>
               <QueuePanel jobs={jobs} worker={worker} onChanged={refresh} />

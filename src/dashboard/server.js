@@ -43,6 +43,16 @@ import {
   discardBackend,
   saveBackend,
 } from '../design/backend-session.js';
+import {
+  createMobile,
+  discardMobile,
+  mobileChat,
+  mobileDev,
+  mobileIdleSweep,
+  mobileStatus,
+  mobileStopDev,
+  saveMobile,
+} from '../design/mobile-session.js';
 import { getVertical, listVerticals } from '../verticals/index.js';
 import { getStack, listStacks, resolveBackendStackId, backendMatrix, resolveStacksSafe } from '../stacks/index.js';
 import { getEngine as getAgentEngine, listEngines } from '../engines/index.js';
@@ -1067,6 +1077,49 @@ export function createDashboardApp({
     res.status(r.ok ? 201 : 409).json(r);
   });
 
+  // ---- Mobile-work: chat diseñador sobre app-skeleton-expo ----
+  // Mismo contrato que /api/design* pero el workspace es el skeleton
+  // mobile y el preview corre `npm run web` de Expo en :8081.
+  app.get('/api/mobile', (req, res) => res.json(mobileStatus()));
+
+  app.post('/api/mobile', (req, res) => {
+    const r = createMobile();
+    res.status(r.ok ? 201 : 409).json(r);
+  });
+
+  app.delete('/api/mobile', (req, res) => res.json(discardMobile()));
+
+  app.post('/api/mobile/chat', async (req, res) => {
+    const text = String(req.body?.text ?? '').trim();
+    if (!text) return res.status(400).json({ error: 'text requerido' });
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    });
+    const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    const r = await mobileChat(text, {
+      agent: req.body?.agent ?? '',
+      onChunk: (t) => send('chunk', { text: t }),
+      onActivity: (a) => send('activity', { text: a }),
+    });
+    send(r.ok ? 'done' : 'error', r.ok ? { text: r.text } : { error: r.error });
+    res.end();
+  });
+
+  app.post('/api/mobile/dev', (req, res) => {
+    const r = mobileDev();
+    res.status(r.ok ? 200 : 409).json(r);
+  });
+  app.post('/api/mobile/stop-dev', (req, res) => res.json(mobileStopDev()));
+
+  app.post('/api/mobile/save', async (req, res) => {
+    const slug = String(req.body?.slug ?? '').trim();
+    if (!SLUG_RE.test(slug)) return res.status(400).json({ error: 'slug inválido (a-z0-9-)' });
+    const r = await saveMobile(slug);
+    res.status(r.ok ? 201 : 409).json(r);
+  });
+
   app.post('/api/design/save', async (req, res) => {
     const slug = String(req.body?.slug ?? '').trim();
     // Attach mode: el target es state.attachTo — slug del body no
@@ -1345,6 +1398,7 @@ const main = async () => {
   setInterval(() => {
     designIdleSweep();
     backendIdleSweep();
+    mobileIdleSweep();
   }, 60_000).unref();
   // Import lazy: terminal.js carga ws (y node-pty on-demand) — si algo
   // falta, la API HTTP sigue sirviendo y solo la terminal falla.

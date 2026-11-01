@@ -186,9 +186,9 @@ por tab + CRT scanline + cards con `glow-card` (halo neón por
 acento) + labels de sección en monospace uppercase; la paleta
 `accent-*` resuelve por CSS vars (`tailwind.config.js` +
 `index.css`): Diseñar app → violeta con dot-grid de canvas,
-Backend → emerald con scanline reforzada de terminal, Fullstack →
-ámbar con blueprint grid (taller), Mobile → fuchsia con scanline,
-detalle → sky neutro. El cambio
+Backend → rojo con scanline reforzada de terminal, Fullstack →
+ámbar con blueprint grid (taller), Mobile → emerald con scanline
+de terminal (el estilo que antes tenía Backend), detalle → sky neutro. El cambio
 de tab corre `.animate-view-enter` (wrapper keyed) y los elementos
 interactivos llevan transición suave.
 
@@ -213,17 +213,22 @@ y al `plan.arch` del saveBackend);
 compliance la infiere el agente), "Diseñar app"
 (`DesignTab.jsx`), "Fullstack" (`NewAppForm` con
 `fixedScope="fullstack"` — front+back en un solo run, la vía rápida)
-y "Mobile" (`NewAppForm` con `fixedScope="mobile"` — postea
-`scope:'frontend'` + `stackFrontend` de `stacks.mobile` (expo-mobile);
-vertical locked a custom y sin sección de compliance — ambos son
-web-only). En el detalle de una app mobile (`project.stacks.frontend`
+y "Mobile" (`MobileTab.jsx`: chat iterativo con el diseñador mobile
+sobre `mobile-work/` = skeleton `app-skeleton-expo`, espejo del tab
+Diseñar app — `src/design/mobile-session.js` + `prompts/mobile-designer.md`
+— con el preview Expo Web (:8081) servido dentro del marco Android de
+`MobilePreview.jsx` en vez de iframe plano; guardar produce un plan
+sintético `stacks.frontend:'expo-mobile'` + `compliance:[]`). En el
+detalle de una app mobile (`project.stacks.frontend`
 ∈ `stacks.mobile`), el bloque "Dev local" embebe `MobilePreview.jsx`:
-iframe con marco de teléfono (390×844, notch) sobre la URL del dev-run
-(`npm run web` de Expo, :8081) — el iframe ES el viewport mobile.
-Los endpoints `/api/backend*` son espejo de `/api/design*`
-(status/create/delete/chat-SSE/dev/stop-dev/probe/save) sobre
-`src/design/backend-session.js`; el idle-parking usa el mismo
-`DESIGN_IDLE_MS`. Diseñar app: chat iterativo con el
+iframe con marco Android (390×844, punch-hole + barra de gestos) sobre
+la URL del dev-run (`npm run web` de Expo, :8081) — el iframe ES el
+viewport mobile.
+Los endpoints `/api/backend*` y `/api/mobile*` son espejo de
+`/api/design*` (status/create/delete/chat-SSE/dev/stop-dev[/probe]/save)
+sobre `src/design/backend-session.js` y `src/design/mobile-session.js`;
+el idle-parking usa el mismo `DESIGN_IDLE_MS` (los tres sweeps corren
+en el mismo interval). Diseñar app: chat iterativo con el
 agente sobre un workspace Vite (`design-work/`), preview en vivo en
 iframe (la URL se lee de `GET /api/design` → `urls`, parseada del
 dev-run.log), input de slug para guardar como app real y descartar
@@ -294,6 +299,11 @@ para cambiarlo en cualquier momento (`POST /api/settings`).
 - `POST /api/design/save` — `{slug}` → mueve el workspace a
   `generated-apps/<slug>` con plan.json sintético (sin node_modules ni
   state files) → todas las acciones de proyecto quedan habilitadas.
+- `/api/mobile*` — mismo contrato que `/api/design*` sobre
+  `mobile-work/` (skeleton `app-skeleton-expo`, state en
+  `mobile-state.json`, `save` produce plan sintético con
+  `stacks.frontend:'expo-mobile'` + `compliance:[]`); el chat usa
+  `prompts/mobile-designer.md` y el preview corre `npm run web` (:8081).
 
 Idle-parking: `designIdleSweep()` corre en un `setInterval` (60s,
 `unref`) en `main()` — frena el vite dev del workspace cuando la
