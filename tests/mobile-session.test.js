@@ -6,8 +6,10 @@ import {
   MOBILE_DIR,
   mobileIdleSweep,
   mobileStatus,
+  personalize,
 } from '../src/design/mobile-session.js';
 import { config } from '../src/config.js';
+import { cpSync, existsSync, readFileSync } from 'node:fs';
 
 // Espejo de tests/design.test.js — la sesión mobile comparte el
 // contrato del diseño web sobre un workspace Expo (mobile-work/).
@@ -56,6 +58,36 @@ describe('mobile design session', () => {
     const st = mobileStatus(d);
     expect(st.devRunning).toBe(true);
     expect(st.urls).toContain('http://localhost:8081');
+  });
+
+  it('personalize re-sustituye mobile-work por el slug real (sin bundle id doblado)', () => {
+    // Simula el workspace post-createMobile: placeholders del skeleton
+    // ya resueltos a mobile-work/mobilework.
+    const d = tmp();
+    cpSync(join(config.templatesDir, 'app-skeleton-expo'), d, { recursive: true });
+    for (const f of ['package.json', 'app/index.tsx']) {
+      const p = join(d, f);
+      writeFileSync(p, readFileSync(p, 'utf8').replaceAll('__APP_NAME__', 'mobile-work'));
+    }
+    writeFileSync(
+      join(d, 'app.json'),
+      readFileSync(join(d, 'app.json'), 'utf8')
+        .replaceAll('__APP_NAME__', 'mobile-work')
+        .replaceAll('__APP_PKG__', 'mobilework'),
+    );
+    personalize(d, 'mi-app-movil');
+    const appJson = JSON.parse(readFileSync(join(d, 'app.json'), 'utf8'));
+    expect(appJson.expo.name).toBe('mi-app-movil');
+    expect(appJson.expo.slug).toBe('mi-app-movil');
+    expect(appJson.expo.scheme).toBe('mi-app-movil');
+    // Bundle id: solo alnum, sin guiones ni prefijo duplicado
+    expect(appJson.expo.android.package).toBe('com.example.miappmovil');
+    expect(appJson.expo.ios.bundleIdentifier).toBe('com.example.miappmovil');
+    const pkg = JSON.parse(readFileSync(join(d, 'package.json'), 'utf8'));
+    expect(pkg.name).toBe('mi-app-movil');
+    // Sin restos del nombre de sesión ni placeholders
+    expect(readFileSync(join(d, 'app/index.tsx'), 'utf8')).not.toContain('mobile-work');
+    expect(readFileSync(join(d, 'app/index.tsx'), 'utf8')).not.toContain('__APP_NAME__');
   });
 
   it('mobileIdleSweep frena el dev run solo cuando la actividad venció', () => {

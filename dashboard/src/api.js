@@ -77,6 +77,10 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ text }),
     });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? `HTTP ${res.status}`);
+    }
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buf = '';
@@ -92,7 +96,12 @@ export const api = {
         const ev = raw.match(/^event: (\w+)/m)?.[1];
         const data = raw.match(/^data: (.*)$/m)?.[1];
         if (!ev || !data) continue;
-        const obj = JSON.parse(data);
+        let obj = {};
+        try {
+          obj = JSON.parse(data);
+        } catch {
+          /* data malformado → {} */
+        }
         if (ev === 'chunk') onChunk(obj.text ?? '');
         else if (ev === 'activity') onActivity(obj.text ?? '');
         else last = obj;

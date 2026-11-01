@@ -107,17 +107,24 @@ export function createMobile() {
     frontendStack: stack,
     backendStack: null,
   });
-  // Placeholders del scaffolding Expo (misma sustitución que preflight).
-  for (const f of ['package.json', 'app.json']) {
+  // Placeholders del scaffolding Expo (misma sustitución que
+  // preflight): __APP_NAME__ en package.json/app.json/app/index.tsx
+  // y __APP_PKG__ SOLO el alnum — app.json ya trae el prefijo
+  // "com.example.__APP_PKG__", un FQDN acá lo duplicaría.
+  for (const f of ['package.json', 'app/index.tsx']) {
     const p = join(MOBILE_DIR, f);
     if (existsSync(p)) {
-      writeFileSync(
-        p,
-        readFileSync(p, 'utf8')
-          .replaceAll('__APP_NAME__', 'mobile-work')
-          .replaceAll('__APP_PKG__', 'com.metabuilder.mobilework'),
-      );
+      writeFileSync(p, readFileSync(p, 'utf8').replaceAll('__APP_NAME__', 'mobile-work'));
     }
+  }
+  const appJson = join(MOBILE_DIR, 'app.json');
+  if (existsSync(appJson)) {
+    writeFileSync(
+      appJson,
+      readFileSync(appJson, 'utf8')
+        .replaceAll('__APP_NAME__', 'mobile-work')
+        .replaceAll('__APP_PKG__', 'mobilework'),
+    );
   }
   writeState({ messages: [], created: new Date().toISOString(), frontendStackId: MOBILE_STACK_ID });
   startInstall(MOBILE_DIR);
@@ -178,7 +185,29 @@ export const mobileStopDev = () => stopDevRun(MOBILE_DIR);
 // Guardar como app real: mueve el workspace a generated-apps/<slug>
 // con un plan.json sintético mobile — el dashboard lo trata como
 // cualquier app generada (dev-run :8081, MobilePreview, publish).
-const SAVE_EXCLUDE = new Set(['node_modules', 'mobile-state.json', 'dev-run.json', 'dev-run.log']);
+const SAVE_EXCLUDE = new Set(['node_modules', 'mobile-state.json', 'dev-run.json', 'dev-run.log', '.env']);
+
+// Re-personaliza con el slug real de la app: el workspace quedó con
+// 'mobile-work'/'mobilework' (nombre de sesión, no de la app) — sin
+// esto toda app guardada compartía el mismo bundle id / scheme.
+export const personalize = (dir, slug) => {
+  const pkgId = slug.toLowerCase().replace(/[^a-z0-9]/g, '') || 'app';
+  for (const f of ['package.json', 'app/index.tsx']) {
+    const p = join(dir, f);
+    if (existsSync(p)) {
+      writeFileSync(p, readFileSync(p, 'utf8').replaceAll('mobile-work', slug));
+    }
+  }
+  const appJson = join(dir, 'app.json');
+  if (existsSync(appJson)) {
+    writeFileSync(
+      appJson,
+      readFileSync(appJson, 'utf8')
+        .replaceAll('mobile-work', slug)
+        .replaceAll('mobilework', pkgId),
+    );
+  }
+};
 
 export async function saveMobile(slug) {
   if (!existsSync(join(MOBILE_DIR, 'package.json'))) return { ok: false, error: 'no hay diseño mobile para guardar' };
@@ -199,6 +228,7 @@ export async function saveMobile(slug) {
   }
   const state = readState();
   rmSync(statePath, { force: true });
+  personalize(dest, slug);
   // Steps sintéticos done — las keywords (expo/animac/tsc/playwright)
   // mantienen el plan legible por validatePlan en un resume futuro.
   writeFileSync(
