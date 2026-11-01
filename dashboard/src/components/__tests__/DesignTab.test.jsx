@@ -21,8 +21,15 @@ vi.mock('../../api.js', () => ({
     designStopDev: vi.fn(() => Promise.resolve({ stopped: true })),
     designSave: vi.fn((slug) => Promise.resolve({ ok: true, slug })),
     designChat: vi.fn(() => Promise.resolve({ ok: true, text: 'listo, quedó el hero' })),
+    archiveDesign: vi.fn(() => Promise.resolve({ ok: true, slug: 'mi-diseno' })),
     projects: vi.fn(() => Promise.resolve([{ slug: 'mi-api', scope: 'backend' }])),
     action: vi.fn(() => Promise.resolve({ ok: true })),
+    // Biblioteca (v15): LibraryPanel hace poll de api.library al montar.
+    library: vi.fn(() => Promise.resolve([])),
+    restoreLibrary: vi.fn(() => Promise.resolve({ ok: true })),
+    deleteLibrary: vi.fn(() => Promise.resolve({ ok: true })),
+    libraryShot: vi.fn((slug) => `/api/design-library/${slug}/screenshot`),
+    libraryPrompt: vi.fn(() => Promise.resolve({ ok: true, text: '# spec', source: 'spec' })),
   },
 }));
 
@@ -199,7 +206,7 @@ describe('DesignTab', () => {
     await act(async () => {
       fireEvent.click(screen.getByText('Nuevo diseño'));
     });
-    expect(api.createDesign).toHaveBeenCalledWith('mi-api', 'vite-react');
+    expect(api.createDesign).toHaveBeenCalledWith('mi-api', 'vite-react', undefined);
   });
 
   it('descartar pide confirmación y recién ahí llama api.discardDesign', async () => {
