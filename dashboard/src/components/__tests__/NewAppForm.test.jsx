@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { api } from '../../api.js';
 import NewAppForm from '../NewAppForm.jsx';
@@ -10,7 +10,7 @@ vi.mock('../../api.js', () => ({
         scopes: ['fullstack', 'frontend', 'backend'],
         appTypes: ['landing', 'orders'],
         archs: [{ id: 'flat', label: 'flat (routes auto-montadas)' }, { id: 'mvc', label: 'MVC clásico' }],
-        stacks: { frontend: ['vite-react'], backend: ['express-sqlite'] },
+        stacks: { frontend: ['vite-react'], backend: ['express-sqlite'], mobile: ['expo-mobile'] },
         engines: ['devin'],
         engine: 'devin',
         compliance: ['cookies', 'auth', 'menores'],
@@ -68,5 +68,30 @@ describe('NewAppForm (v10: backend | fullstack)', () => {
     await waitFor(() => expect(api.options).toHaveBeenCalled());
     expect(screen.getByLabelText('Stack front').disabled).toBe(true);
     expect(screen.getByLabelText('Arquitectura').disabled).toBe(false);
+  });
+
+  it('fixedScope="mobile": stack desde stacks.mobile, vertical locked custom, sin compliance', async () => {
+    render(<NewAppForm fixedScope="mobile" />);
+    await waitFor(() => expect(api.options).toHaveBeenCalled());
+    const select = screen.getByLabelText('Stack front');
+    const values = [...select.querySelectorAll('option')].map((o) => o.value);
+    expect(values).toEqual(['expo-mobile']);
+    expect(select.value).toBe('expo-mobile');
+    const vert = screen.getByLabelText('Vertical');
+    expect(vert.value).toBe('custom');
+    expect(vert.disabled).toBe(true);
+    expect(screen.queryByText('Cumplimiento')).toBeNull();
+  });
+
+  it('mobile: submit postea scope frontend + stack mobile, sin appType', async () => {
+    render(<NewAppForm fixedScope="mobile" />);
+    await waitFor(() => expect(api.options).toHaveBeenCalled());
+    fireEvent.change(screen.getByLabelText('Idea'), { target: { value: 'app de gym' } });
+    fireEvent.click(screen.getByTestId('newapp-submit'));
+    await waitFor(() => expect(api.enqueueRun).toHaveBeenCalled());
+    const body = api.enqueueRun.mock.calls[0][0];
+    expect(body.scope).toBe('frontend');
+    expect(body.stackFrontend).toBe('expo-mobile');
+    expect(body.appType).toBeUndefined();
   });
 });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, BellOff, Boxes, Cpu, DraftingCompass, LayoutList, Palette, ServerCog } from 'lucide-react';
+import { Bell, BellOff, Boxes, Cpu, DraftingCompass, LayoutList, Palette, ServerCog, Smartphone } from 'lucide-react';
 import { api } from './api.js';
 import { diffFinished, notifyFinished, snapshotStatuses } from './notifications.js';
 import NewAppForm from './components/NewAppForm.jsx';
@@ -18,6 +18,7 @@ const parseHash = () => {
   // con el backend destino ya seleccionado (attach front).
   const a = window.location.hash.match(/[?&]attach=([a-z0-9-]+)/)?.[1] ?? null;
   if (window.location.hash.startsWith('#/backend')) return { view: 'list', clone: c };
+  if (window.location.hash.startsWith('#/mobile')) return { view: 'mobile', clone: c };
   if (window.location.hash.startsWith('#/fullstack')) return { view: 'fullstack', clone: c };
   if (window.location.hash.startsWith('#/proyectos')) return { view: 'projects', clone: c };
   return { view: 'design', attach: a }; // landing = Diseñar app (#/ y #/design)
@@ -51,7 +52,14 @@ export default function App() {
     api
       .project(route.clone)
       .then((p) => {
-        const want = p?.scope === 'fullstack' ? '#/fullstack' : '#/backend';
+        // Mobile es scope frontend pero vive en su propio tab — un
+        // stack frontend que no es web (expo-mobile hoy) enruta ahí.
+        const want =
+          p?.stacks?.frontend === 'expo-mobile'
+            ? '#/mobile'
+            : p?.scope === 'fullstack'
+              ? '#/fullstack'
+              : '#/backend';
         if (!window.location.hash.startsWith(want)) {
           window.location.hash = `${want}?clone=${route.clone}`;
         }
@@ -96,6 +104,7 @@ export default function App() {
     design: 'theme-design motif-canvas',
     list: 'theme-backend motif-terminal',
     fullstack: 'theme-fullstack motif-blueprint',
+    mobile: 'theme-mobile motif-crt',
     detail: 'theme-neutral',
     projects: 'theme-neutral',
   }[route.view];
@@ -169,6 +178,7 @@ export default function App() {
               ['design', 'Diseñar app', '#/', Palette],
               ['list', 'Backend', '#/backend', ServerCog],
               ['fullstack', 'Fullstack', '#/fullstack', DraftingCompass],
+              ['mobile', 'Mobile', '#/mobile', Smartphone],
             ].map(([v, label, href, Icon]) => (
               <a
                 key={v}
@@ -214,6 +224,10 @@ export default function App() {
             // Tab "Fullstack": el formulario existente, scope fijo —
             // genera front+back en un solo run (la vía rápida).
             <NewAppForm fixedScope="fullstack" onEnqueued={refresh} cloneSlug={route.clone} />
+          ) : route.view === 'mobile' ? (
+            // Tab "Mobile": mismo form pero scope frontend + stack
+            // mobile (postea scope:'frontend' + stackFrontend expo-*).
+            <NewAppForm fixedScope="mobile" onEnqueued={refresh} cloneSlug={route.clone} />
           ) : route.view === 'projects' ? (
             <>
               <QueuePanel jobs={jobs} worker={worker} onChanged={refresh} />

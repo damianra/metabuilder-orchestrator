@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { DraftingCompass, Plus, Send } from 'lucide-react';
+import { DraftingCompass, Plus, Send, Smartphone } from 'lucide-react';
 import { api } from '../api.js';
 
 const EMPTY = {
@@ -46,14 +46,32 @@ const dimsOfStack = (matrix, stackId, fallback = { framework: 'express', db: 'sq
 // app; el CLI sigue aceptando --scope frontend por retrocompat.
 export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
   const [options, setOptions] = useState(null);
-  const fresh = () => ({ ...EMPTY, scope: fixedScope ?? EMPTY.scope });
+  // fixedScope='mobile': corre scope frontend con stack mobile — el
+  // server lo acepta en stackFrontend y fuerza appType custom.
+  const isMobile = fixedScope === 'mobile';
+  const fresh = () => ({
+    ...EMPTY,
+    scope: isMobile ? 'frontend' : (fixedScope ?? EMPTY.scope),
+    stackFrontend: isMobile ? 'expo-mobile' : EMPTY.stackFrontend,
+  });
   const [form, setForm] = useState(fresh);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [clonedFrom, setClonedFrom] = useState(null);
 
   useEffect(() => {
-    api.options().then(setOptions).catch(() => setOptions({ scopes: [], appTypes: [], archs: [] }));
+    api
+      .options()
+      .then((o) => {
+        setOptions(o);
+        // Mobile: el default es el primer stack del kind — si el
+        // registry creciera hay que no quedar en un id inválido.
+        if (isMobile && o.stacks?.mobile?.length && !o.stacks.mobile.includes(form.stackFrontend)) {
+          setForm((f) => ({ ...f, stackFrontend: o.stacks.mobile[0] }));
+        }
+      })
+      .catch(() => setOptions({ scopes: [], appTypes: [], archs: [] }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -131,7 +149,8 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
   return (
     <form onSubmit={submit} className="rounded-lg bg-slate-900 p-6 ring-1 ring-accent-500/40 glow-card">
       <h2 className="flex items-center gap-2 text-lg font-bold tracking-tight text-slate-100">
-        <DraftingCompass size={18} className="text-accent-600" /> Nueva app
+        {isMobile ? <Smartphone size={18} className="text-accent-600" /> : <DraftingCompass size={18} className="text-accent-600" />}
+        {isMobile ? 'Nueva app móvil' : 'Nueva app'}
         {clonedFrom && (
           <span className="rounded-lg bg-accent-500/15 px-2 py-0.5 text-xs font-semibold text-accent-300 ring-1 ring-accent-200">
             config de {clonedFrom}
@@ -171,20 +190,31 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
           <select
             id="appType"
             className={input}
-            value={form.appType}
-            disabled={hasBackend && !(form.backendFramework === 'express' && form.backendDb === 'sqlite')}
+            value={isMobile ? 'custom' : form.appType}
+            disabled={
+              isMobile ||
+              (hasBackend && !(form.backendFramework === 'express' && form.backendDb === 'sqlite'))
+            }
             title={
-              !(form.backendFramework === 'express' && form.backendDb === 'sqlite')
-                ? 'Los verticales solo aplican a stack express-sqlite — con otra base el vertical es custom'
-                : undefined
+              isMobile
+                ? 'Los verticales son overlays web — mobile siempre genera custom'
+                : !(form.backendFramework === 'express' && form.backendDb === 'sqlite')
+                  ? 'Los verticales solo aplican a stack express-sqlite — con otra base el vertical es custom'
+                  : undefined
             }
             onChange={(e) => set('appType', e.target.value)}
           >
-            <option value="">auto (inferir)</option>
-            <option value="custom">custom</option>
-            {(options?.appTypes ?? [])
-              .filter((t) => t !== 'custom')
-              .map((t) => <option key={t} value={t}>{t}</option>)}
+            {isMobile ? (
+              <option value="custom">custom</option>
+            ) : (
+              <>
+                <option value="">auto (inferir)</option>
+                <option value="custom">custom</option>
+                {(options?.appTypes ?? [])
+                  .filter((t) => t !== 'custom')
+                  .map((t) => <option key={t} value={t}>{t}</option>)}
+              </>
+            )}
           </select>
         </div>
         <div>
@@ -208,7 +238,9 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
             disabled={!hasFrontend}
             onChange={(e) => set('stackFrontend', e.target.value)}
           >
-            {(options?.stacks?.frontend ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
+            {((isMobile ? options?.stacks?.mobile : options?.stacks?.frontend) ?? []).map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -267,7 +299,9 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
         </div>
       </div>
 
-      {(options?.compliance ?? []).length > 0 && (
+      {/* Compliance: perfiles web (banner cookies, checkbox DOM) —
+          mobile los ignora igual que el validator/planner */}
+      {!isMobile && (options?.compliance ?? []).length > 0 && (
         <div className="mt-3">
           <span className={label}>Cumplimiento</span>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
