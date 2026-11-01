@@ -5,23 +5,43 @@
 /*
  * Temas retro-gamer por área — paleta `accent-*` por CSS vars con
  * fondo oscuro tintado por área + CRT scanline global:
- *   design    → violet  (canvas neón — dot-grid)
- *   backend   → red     (terminal — scanline reforzada)
- *   mobile    → emerald (terminal — mismo estilo que tenía backend)
- *   fullstack → amber   (taller — blueprint grid)
+ *   design    → blue    (estudio — dot-grid + herramientas flotantes)
+ *   backend   → gold    (ciudad nocturna — skyline + haz + luna)
+ *   mobile    → emerald (dev mobile — phones, app-grid, señal)
+ *   fullstack → amber   (stack — blueprint + db/api/capas)
  *   neutral   → sky     (detalle de proyecto)
  */
+/* Design studio: navy profundo + acento blue-500 + tipografía de
+   estudio (body Manrope, display Jersey 10 ≥36px — la voz pixel del
+   tab). El motif `motif-studio` agrega dot-grid tipo canvas y los
+   sprites de herramientas. */
 .theme-design {
-  background-color: #0d0a1a;
-  --a50: 245 243 255; --a100: 237 233 254; --a200: 221 214 254;
-  --a300: 196 181 253; --a400: 167 139 250; --a500: 139 92 246;
-  --a600: 124 58 237; --a700: 109 40 217; --a800: 91 33 182; --a900: 76 29 149;
+  background-color: #0a1120;
+  color: #e2e8f0;
+  font-family: 'Manrope Variable', Manrope, ui-sans-serif, system-ui,
+    -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --a50: 239 246 255; --a100: 219 234 254; --a200: 191 219 254;
+  --a300: 147 197 253; --a400: 96 165 250; --a500: 59 130 246;
+  --a600: 37 99 235; --a700: 29 78 216; --a800: 30 64 175; --a900: 30 58 138;
 }
+.theme-design h1,
+.theme-design h2 {
+  font-family: 'Jersey 10', 'Press Start 2P', ui-monospace, monospace;
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 1.11;
+  letter-spacing: -0.025em;
+  text-transform: none;
+  color: #dbeafe;
+}
+/* Gotham: charcoal casi-negro + gold — ciudad nocturna, acero y
+   neón dorado. motif-gotham aporta skyline con ventanas encendidas,
+   haz de luz que barre, luna y arcos góticos. */
 .theme-backend {
-  background-color: #170808;
-  --a50: 254 242 242; --a100: 254 226 226; --a200: 254 202 202;
-  --a300: 252 165 165; --a400: 248 113 113; --a500: 239 68 68;
-  --a600: 220 38 38; --a700: 185 28 28; --a800: 153 27 27; --a900: 127 29 29;
+  background-color: #09090d;
+  --a50: 250 250 249; --a100: 245 245 244; --a200: 231 229 228;
+  --a300: 214 211 209; --a400: 250 204 21; --a500: 234 179 8;
+  --a600: 202 138 4; --a700: 161 98 7; --a800: 133 77 14; --a900: 113 63 18;
 }
 .theme-fullstack {
   background-color: #150f06;
@@ -50,24 +70,380 @@
     transparent 2px 5px
   );
 }
-/* Motif de área — se suma al CRT. */
-.motif-canvas {
+/* Motif de área. */
+/* Design studio: dot-grid tipo canvas Figma + sprites line-art de
+   herramientas de diseño (cursor, pluma, curva bezier, swatch,
+   regla, crosshair) dispersados sin solaparse + un cursor "de
+   diseñador" que deambula y un swatch flotante — pointer-events:none
+   + contenido a z-1 → nunca bloquean clics. */
+.motif-studio {
   background-image:
-    repeating-linear-gradient(0deg, rgb(var(--a500) / .05) 0 2px, transparent 2px 5px),
-    radial-gradient(circle, rgb(var(--a400) / .4) 1px, transparent 1.5px);
-  background-size: auto, 24px 24px;
+    /* cursor arrow */        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 2 L20 12 L12 14 L9 22 Z' fill='none' stroke='%2360a5fa' stroke-opacity='.55' stroke-width='1.5'/%3E%3C/svg%3E"),
+    /* pluma / pen nib */     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 21 L7 13 L19 2 L22 5 L11 17 Z' fill='none' stroke='%2393c5fd' stroke-opacity='.5' stroke-width='1.5'/%3E%3Ccircle cx='10' cy='14' r='1.5' fill='%2393c5fd' fill-opacity='.5'/%3E%3C/svg%3E"),
+    /* curva bezier */        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 16'%3E%3Cpath d='M2 14 C2 4 30 4 30 14' fill='none' stroke='%2360a5fa' stroke-opacity='.55' stroke-width='1.5'/%3E%3Crect x='.5' y='12.5' width='3' height='3' fill='none' stroke='%2360a5fa' stroke-opacity='.55'/%3E%3Crect x='28.5' y='12.5' width='3' height='3' fill='none' stroke='%2360a5fa' stroke-opacity='.55'/%3E%3C/svg%3E"),
+    /* swatch */              url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 20'%3E%3Crect x='1' y='1' width='14' height='18' rx='2' fill='none' stroke='%23bfdbfe' stroke-opacity='.5' stroke-width='1.5'/%3E%3Crect x='1' y='12' width='14' height='7' rx='2' fill='%233b82f6' fill-opacity='.35'/%3E%3C/svg%3E"),
+    /* regla */               url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 10'%3E%3Crect x='.5' y='.5' width='31' height='9' rx='1.5' fill='none' stroke='%2393c5fd' stroke-opacity='.5' stroke-width='1.5'/%3E%3Cpath d='M6 1v4 M12 1v4 M18 1v4 M24 1v4' stroke='%2393c5fd' stroke-opacity='.5' stroke-width='1'/%3E%3C/svg%3E"),
+    /* crosshair */           url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 2v16 M2 10h16' stroke='%2360a5fa' stroke-opacity='.45' stroke-width='1.2'/%3E%3Ccircle cx='10' cy='10' r='5' fill='none' stroke='%2360a5fa' stroke-opacity='.45' stroke-width='1.2'/%3E%3C/svg%3E"),
+    /* cursor 2 */            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 2 L20 12 L12 14 L9 22 Z' fill='none' stroke='%23bfdbfe' stroke-opacity='.45' stroke-width='1.5'/%3E%3C/svg%3E"),
+    /* swatch 2 */            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 20'%3E%3Crect x='1' y='1' width='14' height='18' rx='2' fill='none' stroke='%2360a5fa' stroke-opacity='.45' stroke-width='1.5'/%3E%3Crect x='1' y='12' width='14' height='7' rx='2' fill='%2393c5fd' fill-opacity='.3'/%3E%3C/svg%3E"),
+    /* bezier 2 */            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 16'%3E%3Cpath d='M2 14 C2 4 30 4 30 14' fill='none' stroke='%23bfdbfe' stroke-opacity='.4' stroke-width='1.5'/%3E%3Crect x='.5' y='12.5' width='3' height='3' fill='none' stroke='%23bfdbfe' stroke-opacity='.4'/%3E%3Crect x='28.5' y='12.5' width='3' height='3' fill='none' stroke='%23bfdbfe' stroke-opacity='.4'/%3E%3C/svg%3E"),
+    /* dot-grid — última capa, tile repetido */
+    radial-gradient(circle, rgb(96 165 250 / .28) 1px, transparent 1.4px);
+  background-repeat:
+    no-repeat, no-repeat, no-repeat, no-repeat, no-repeat,
+    no-repeat, no-repeat, no-repeat, no-repeat, repeat;
+  background-position:
+    8% 11%, 88% 9%, 30% 15%, 62% 10%,
+    15% 45%, 52% 38%, 84% 34%, 5% 66%,
+    38% 58%,
+    0 0;
+  background-size:
+    22px 22px, 26px 26px, 56px 28px, 28px 35px,
+    58px 18px, 24px 24px, 20px 20px, 30px 38px,
+    64px 32px,
+    26px 26px;
+  animation: studio-drift 48s ease-in-out infinite;
 }
-.motif-terminal {
-  background-image:
-    repeating-linear-gradient(0deg, rgb(var(--a500) / .05) 0 2px, transparent 2px 5px),
-    repeating-linear-gradient(0deg, rgb(var(--a400) / .12) 0 1px, transparent 1px 30px);
+.motif-studio > * {
+  position: relative;
+  z-index: 1; /* el contenido flota sobre los sprites */
 }
-.motif-blueprint {
+/* Cursor errante — deambula por el cuadrante superior como si
+   estuviera seleccionando capas del layout. */
+.motif-studio::before {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  top: 18%;
+  left: 12%;
+  width: 30px;
+  height: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 2 L20 12 L12 14 L9 22 Z' fill='%2360a5fa' fill-opacity='.5' stroke='%23bfdbfe' stroke-opacity='.7' stroke-width='1'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  animation: cursor-wander 26s ease-in-out infinite;
+}
+/* Swatch flotante — bob suave en el borde inferior derecho. */
+.motif-studio::after {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  top: 68%;
+  right: 6%;
+  width: 26px;
+  height: 32px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 20'%3E%3Crect x='1' y='1' width='14' height='18' rx='2' fill='none' stroke='%2360a5fa' stroke-opacity='.6' stroke-width='1.5'/%3E%3Crect x='1' y='12' width='14' height='7' rx='2' fill='%233b82f6' fill-opacity='.45'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  animation: swatch-bob 14s ease-in-out infinite;
+}
+/* Deriva suave por capa — los sprites respiran ~1-1.5% sin
+   abandonar su zona. El dot-grid (última capa) queda fijo. */
+@keyframes studio-drift {
+  0%, 100% {
+    background-position:
+      8% 11%, 88% 9%, 30% 15%, 62% 10%,
+      15% 45%, 52% 38%, 84% 34%, 5% 66%,
+      38% 58%,
+      0 0;
+  }
+  50% {
+    background-position:
+      9.3% 10%, 86.8% 10%, 31.2% 14%, 60.8% 11.2%,
+      16.2% 46%, 50.8% 37%, 85.2% 33%, 6% 65%,
+      39.2% 59%,
+      0 0;
+  }
+}
+/* El cursor simula puntos de "selección": pausa en cada parada
+   (tramos al 0% entre keyframes) y se desliza entre ellos. */
+@keyframes cursor-wander {
+  0%, 12%   { transform: translate(0, 0) rotate(0deg); }
+  28%, 40%  { transform: translate(9vw, 12vh) rotate(-4deg); }
+  55%, 66%  { transform: translate(26vw, 5vh) rotate(3deg); }
+  80%, 90%  { transform: translate(14vw, 20vh) rotate(-2deg); }
+  100%      { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes swatch-bob {
+  0%, 100% { transform: translate(0, 0) rotate(-4deg); }
+  50%      { transform: translate(-12px, -14px) rotate(5deg); }
+}
+
+/* ===== Gotham — Backend =====
+   Ciudad nocturna: tile de skyline con ventanas gold encendidas
+   (repeat-x al pie), luna con halo, arcos góticos y estrellas
+   dispersos + un haz de luz fixed que barre el cielo. */
+.motif-gotham {
   background-image:
-    repeating-linear-gradient(0deg, rgb(var(--a500) / .05) 0 2px, transparent 2px 5px),
-    linear-gradient(rgb(var(--a400) / .15) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(var(--a400) / .15) 1px, transparent 1px);
-  background-size: auto, 28px 28px, 28px 28px;
+    /* luna + halo */        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='9' fill='%23facc15' fill-opacity='.45'/%3E%3Ccircle cx='20' cy='20' r='14' fill='none' stroke='%23facc15' stroke-opacity='.3' stroke-width='1.5'/%3E%3C/svg%3E"),
+    /* arco gótico 1 */      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 30'%3E%3Cpath d='M4 30 V14 Q12 2 20 14 V30' fill='none' stroke='%23a8a29e' stroke-opacity='.4' stroke-width='1.5'/%3E%3C/svg%3E"),
+    /* arco gótico 2 */      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 30'%3E%3Cpath d='M4 30 V14 Q12 2 20 14 V30' fill='none' stroke='%2378725f' stroke-opacity='.45' stroke-width='1.5'/%3E%3C/svg%3E"),
+    /* estrella 4pt */       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1 L10 6 L15 8 L10 10 L8 15 L6 10 L1 8 L6 6 Z' fill='%23facc15' fill-opacity='.45'/%3E%3C/svg%3E"),
+    /* estrella 2 */         url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1 L10 6 L15 8 L10 10 L8 15 L6 10 L1 8 L6 6 Z' fill='%23fde68a' fill-opacity='.4'/%3E%3C/svg%3E"),
+    /* antena señal */       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 20'%3E%3Cpath d='M4 16 A12 12 0 0 1 20 8 M4 20 A16 16 0 0 1 22 6' fill='none' stroke='%23facc15' stroke-opacity='.4' stroke-width='1.5'/%3E%3Ccircle cx='4' cy='16' r='1.5' fill='%23facc15' fill-opacity='.45'/%3E%3C/svg%3E"),
+    /* skyline tile — última capa, repeat-x al pie */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 80'%3E%3Cpath d='M0 80V46h16v-12h10v12h14V28h12v-10h10v10h12V46h16V18h14v8h10v-8h14v28h12v-20h14v20h14V34h10v-8h10v8h12v46z' fill='%230d0d13'/%3E%3Cg fill='%23facc15' fill-opacity='.5'%3E%3Crect x='42' y='34' width='3' height='3'/%3E%3Crect x='50' y='42' width='3' height='3'/%3E%3Crect x='94' y='26' width='3' height='3'/%3E%3Crect x='102' y='38' width='3' height='3'/%3E%3Crect x='150' y='52' width='3' height='3'/%3E%3Crect x='196' y='42' width='3' height='3'/%3E%3Crect x='206' y='54' width='3' height='3'/%3E%3Crect x='18' y='50' width='3' height='3'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat:
+    no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat,
+    repeat-x;
+  background-position:
+    88% 7%, 12% 18%, 74% 24%, 30% 10%, 55% 15%, 42% 28%,
+    50% 100%;
+  background-size:
+    56px 56px, 26px 32px, 22px 28px, 16px 16px, 13px 13px, 28px 24px,
+    480px 160px;
+  animation: gotham-drift 52s ease-in-out infinite;
+}
+/* Haz de luz — cono dorado que pivotea desde lo alto, como un
+   reflector de azotea buscando en la noche. */
+.motif-gotham::before {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  top: -6%;
+  right: 8%;
+  width: 380px;
+  height: 480px;
+  background: linear-gradient(rgb(250 204 21 / .14), transparent 78%);
+  clip-path: polygon(46% 0, 54% 0, 84% 100%, 16% 100%);
+  transform-origin: 50% 0;
+  animation: beam-sweep 24s ease-in-out infinite alternate;
+}
+/* Bruma de ciudad — resplandor cálido pegado al skyline. */
+.motif-gotham::after {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42vh;
+  background: radial-gradient(70% 45% at 50% 100%, rgb(250 204 21 / .08), transparent 72%);
+  animation: city-haze 18s ease-in-out infinite alternate;
+}
+@keyframes gotham-drift {
+  0%, 100% {
+    background-position:
+      88% 7%, 12% 18%, 74% 24%, 30% 10%, 55% 15%, 42% 28%,
+      50% 100%;
+  }
+  50% {
+    background-position:
+      86.8% 8%, 13.2% 17%, 72.8% 25%, 31.3% 9%, 53.8% 16%, 43.2% 27%,
+      50% 100%;
+  }
+}
+@keyframes beam-sweep {
+  0%   { transform: rotate(-13deg); opacity: .85; }
+  100% { transform: rotate(13deg); opacity: 1; }
+}
+@keyframes city-haze {
+  0%   { opacity: .6; }
+  100% { opacity: 1; }
+}
+
+/* ===== Dev mobile — Mobile =====
+   Taller de apps: teléfonos, grillas de iconos, señal wifi, ripple
+   táctil, batería, burbuja de chat y barra de gestos en emerald
+   line-art + scanline sutil (herencia del tema terminal). */
+.motif-mobile {
+  background-image:
+    /* phone */              url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 34'%3E%3Crect x='1' y='1' width='18' height='32' rx='3' fill='none' stroke='%2334d399' stroke-opacity='.5' stroke-width='1.5'/%3E%3Crect x='8' y='4' width='4' height='2' rx='1' fill='%2334d399' fill-opacity='.5'/%3E%3C/svg%3E"),
+    /* app grid */           url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cg fill='none' stroke='%236ee7b7' stroke-opacity='.5' stroke-width='1.5'%3E%3Crect x='2' y='2' width='11' height='11' rx='3'/%3E%3Crect x='17' y='2' width='11' height='11' rx='3'/%3E%3Crect x='2' y='17' width='11' height='11' rx='3'/%3E%3Crect x='17' y='17' width='11' height='11' rx='3'/%3E%3C/g%3E%3C/svg%3E"),
+    /* wifi */               url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 18'%3E%3Cpath d='M2 6a15 15 0 0 1 20 0 M6 10a10 10 0 0 1 12 0 M10 14a5 5 0 0 1 4 0' fill='none' stroke='%2334d399' stroke-opacity='.5' stroke-width='1.5'/%3E%3Ccircle cx='12' cy='16' r='1.5' fill='%2334d399' fill-opacity='.5'/%3E%3C/svg%3E"),
+    /* ripple táctil */      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cg fill='none' stroke='%236ee7b7' stroke-opacity='.45' stroke-width='1.3'%3E%3Ccircle cx='13' cy='13' r='3'/%3E%3Ccircle cx='13' cy='13' r='7'/%3E%3Ccircle cx='13' cy='13' r='11'/%3E%3C/g%3E%3C/svg%3E"),
+    /* batería */            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 16'%3E%3Crect x='1' y='3' width='21' height='10' rx='2' fill='none' stroke='%2334d399' stroke-opacity='.5' stroke-width='1.5'/%3E%3Crect x='24' y='6' width='3' height='4' rx='1' fill='%2334d399' fill-opacity='.5'/%3E%3Crect x='3.5' y='5.5' width='12' height='5' rx='1' fill='%2334d399' fill-opacity='.35'/%3E%3C/svg%3E"),
+    /* burbuja chat */       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Crect x='2' y='2' width='20' height='13' rx='4' fill='none' stroke='%23a7f3d0' stroke-opacity='.45' stroke-width='1.5'/%3E%3Cpath d='M7 15 L5 20 L11 15' fill='none' stroke='%23a7f3d0' stroke-opacity='.45' stroke-width='1.5'/%3E%3C/svg%3E"),
+    /* barra gestos */       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 10'%3E%3Crect x='3' y='3' width='28' height='4' rx='2' fill='%236ee7b7' fill-opacity='.4'/%3E%3C/svg%3E"),
+    /* phone chico */        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 34'%3E%3Crect x='1' y='1' width='18' height='32' rx='3' fill='none' stroke='%236ee7b7' stroke-opacity='.4' stroke-width='1.5'/%3E%3Crect x='8' y='4' width='4' height='2' rx='1' fill='%236ee7b7' fill-opacity='.4'/%3E%3C/svg%3E"),
+    /* play */               url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Ccircle cx='11' cy='11' r='9' fill='none' stroke='%2334d399' stroke-opacity='.45' stroke-width='1.5'/%3E%3Cpath d='M9 7 L16 11 L9 15 Z' fill='%2334d399' fill-opacity='.45'/%3E%3C/svg%3E"),
+    /* plus */               url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 2v12 M2 8h12' stroke='%23a7f3d0' stroke-opacity='.45' stroke-width='1.8'/%3E%3C/svg%3E"),
+    /* scanline heredado — última capa, tile */
+    repeating-linear-gradient(0deg, rgb(var(--a400) / .10) 0 1px, transparent 1px 30px);
+  background-repeat:
+    no-repeat, no-repeat, no-repeat, no-repeat, no-repeat,
+    no-repeat, no-repeat, no-repeat, no-repeat, no-repeat,
+    repeat;
+  background-position:
+    8% 11%, 86% 12%, 32% 9%, 60% 16%, 90% 42%,
+    12% 46%, 42% 52%, 68% 60%, 22% 74%, 55% 80%,
+    0 0;
+  background-size:
+    22px 37px, 30px 30px, 32px 24px, 28px 28px, 34px 19px,
+    28px 26px, 40px 12px, 17px 29px, 22px 22px, 15px 15px,
+    auto;
+  animation: mobile-drift 50s ease-in-out infinite;
+}
+/* Toque fantasma — ripple que pulsa como un tap en pantalla. */
+.motif-mobile::before {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  top: 30%;
+  right: 18%;
+  width: 46px;
+  height: 46px;
+  border: 1.5px solid rgb(52 211 153 / .5);
+  border-radius: 50%;
+  animation: tap-ripple 7s ease-out infinite;
+}
+/* Segundo teléfono flotante — bob suave en el borde izquierdo. */
+.motif-mobile::after {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  top: 64%;
+  left: 4%;
+  width: 34px;
+  height: 56px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 34'%3E%3Crect x='1' y='1' width='18' height='32' rx='3' fill='none' stroke='%2334d399' stroke-opacity='.55' stroke-width='1.5'/%3E%3Crect x='8' y='4' width='4' height='2' rx='1' fill='%2334d399' fill-opacity='.55'/%3E%3Crect x='5' y='12' width='10' height='10' rx='2' fill='%2334d399' fill-opacity='.18'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  animation: phone-bob 16s ease-in-out infinite;
+}
+@keyframes mobile-drift {
+  0%, 100% {
+    background-position:
+      8% 11%, 86% 12%, 32% 9%, 60% 16%, 90% 42%,
+      12% 46%, 42% 52%, 68% 60%, 22% 74%, 55% 80%,
+      0 0;
+  }
+  50% {
+    background-position:
+      9.2% 10%, 84.8% 13%, 33.2% 8%, 58.8% 17%, 91% 41%,
+      13.2% 47%, 43.2% 51%, 66.8% 61%, 23% 73%, 56.3% 79%,
+      0 0;
+  }
+}
+@keyframes tap-ripple {
+  0%   { transform: scale(.45); opacity: 0; }
+  12%  { opacity: .8; }
+  55%  { transform: scale(1.3); opacity: 0; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+@keyframes phone-bob {
+  0%, 100% { transform: translate(0, 0) rotate(-3deg); }
+  50%      { transform: translate(10px, -16px) rotate(3deg); }
+}
+
+/* ===== Stack — Fullstack =====
+   La arquitectura completa: grid blueprint + iconografía de la
+   pila (db, </>, capas, api {}, server, git, flujo, prompt, plug,
+   hexágono) en amber line-art. */
+.motif-stack {
+  background-image:
+    /* code </> */           url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 5 L2 12 L8 19 M16 5 L22 12 L16 19' fill='none' stroke='%23fbbf24' stroke-opacity='.5' stroke-width='1.6'/%3E%3C/svg%3E"),
+    /* db */                 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Cellipse cx='12' cy='5' rx='8' ry='3' fill='none' stroke='%23fcd34d' stroke-opacity='.5' stroke-width='1.4'/%3E%3Cpath d='M4 5v11c0 1.7 3.6 3 8 3s8-1.3 8-3V5' fill='none' stroke='%23fcd34d' stroke-opacity='.5' stroke-width='1.4'/%3E%3Cpath d='M4 10.5c0 1.7 3.6 3 8 3s8-1.3 8-3' fill='none' stroke='%23fcd34d' stroke-opacity='.5' stroke-width='1.4'/%3E%3C/svg%3E"),
+    /* layers */             url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 20'%3E%3Cpath d='M12 2 L22 7 L12 12 L2 7 Z' fill='none' stroke='%23fbbf24' stroke-opacity='.5' stroke-width='1.4'/%3E%3Cpath d='M2 12 L12 17 L22 12' fill='none' stroke='%23fbbf24' stroke-opacity='.5' stroke-width='1.4'/%3E%3C/svg%3E"),
+    /* api {} */             url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 26'%3E%3Cpath d='M8 3 C6 8 6 12 4 13 C6 14 6 18 8 23 M16 3 C18 8 18 12 20 13 C18 14 18 18 16 23' fill='none' stroke='%23fde68a' stroke-opacity='.5' stroke-width='1.5'/%3E%3C/svg%3E"),
+    /* git nodes */          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='6' cy='6' r='3' fill='none' stroke='%23fbbf24' stroke-opacity='.5' stroke-width='1.5'/%3E%3Ccircle cx='18' cy='18' r='3' fill='none' stroke='%23fbbf24' stroke-opacity='.5' stroke-width='1.5'/%3E%3Cpath d='M6 9 V14 Q6 15 8 15 H15' fill='none' stroke='%23fbbf24' stroke-opacity='.5' stroke-width='1.5'/%3E%3C/svg%3E"),
+    /* server */             url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Crect x='4' y='2' width='16' height='8' rx='2' fill='none' stroke='%23fcd34d' stroke-opacity='.45' stroke-width='1.4'/%3E%3Crect x='4' y='12' width='16' height='8' rx='2' fill='none' stroke='%23fcd34d' stroke-opacity='.45' stroke-width='1.4'/%3E%3Ccircle cx='8' cy='6' r='1.2' fill='%23fcd34d' fill-opacity='.5'/%3E%3Ccircle cx='8' cy='16' r='1.2' fill='%23fcd34d' fill-opacity='.5'/%3E%3C/svg%3E"),
+    /* flujo → */            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 16'%3E%3Cpath d='M2 8 H22 M17 3 L24 8 L17 13' fill='none' stroke='%23fde68a' stroke-opacity='.45' stroke-width='1.5'/%3E%3C/svg%3E"),
+    /* prompt >_ */          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 20'%3E%3Cpath d='M4 4 L10 9 L4 14' fill='none' stroke='%23fbbf24' stroke-opacity='.5' stroke-width='1.6'/%3E%3Cpath d='M12 15 H20' stroke='%23fbbf24' stroke-opacity='.5' stroke-width='1.6'/%3E%3C/svg%3E"),
+    /* plug */               url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='6' y='7' width='12' height='10' rx='2' fill='none' stroke='%23fcd34d' stroke-opacity='.45' stroke-width='1.5'/%3E%3Cpath d='M9 7 V3 M15 7 V3 M12 17 V21' stroke='%23fcd34d' stroke-opacity='.45' stroke-width='1.5'/%3E%3C/svg%3E"),
+    /* hexágono */           url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Cpath d='M12 2 L21 6.5 V15.5 L12 20 L3 15.5 V6.5 Z' fill='none' stroke='%23fbbf24' stroke-opacity='.4' stroke-width='1.4'/%3E%3C/svg%3E"),
+    /* blueprint grid — última capa, tile */
+    linear-gradient(rgb(var(--a400) / .12) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--a400) / .12) 1px, transparent 1px);
+  background-repeat:
+    no-repeat, no-repeat, no-repeat, no-repeat, no-repeat,
+    no-repeat, no-repeat, no-repeat, no-repeat, no-repeat,
+    repeat, repeat;
+  background-position:
+    9% 12%, 87% 10%, 33% 15%, 60% 8%, 14% 44%,
+    52% 40%, 86% 36%, 6% 68%, 45% 62%, 72% 70%,
+    0 0, 0 0;
+  background-size:
+    24px 24px, 30px 27px, 34px 28px, 22px 24px, 26px 26px,
+    30px 27px, 38px 20px, 26px 22px, 24px 24px, 26px 24px,
+    28px 28px, 28px 28px;
+  animation: stack-drift 54s ease-in-out infinite;
+}
+/* Request viajando — punto ámbar cruza la vista como un request
+   que baja por el stack (fade al final del recorrido). */
+.motif-stack::before {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  top: 24%;
+  left: 20%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgb(251 191 36 / .75);
+  box-shadow: 0 0 12px 2px rgb(251 191 36 / .4);
+  animation: request-travel 12s ease-in-out infinite;
+}
+/* Bloque de capas que se ensambla — bob con rotación mínima. */
+.motif-stack::after {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  top: 66%;
+  right: 10%;
+  width: 40px;
+  height: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 20'%3E%3Cpath d='M12 2 L22 7 L12 12 L2 7 Z' fill='none' stroke='%23fbbf24' stroke-opacity='.6' stroke-width='1.4'/%3E%3Cpath d='M2 12 L12 17 L22 12' fill='none' stroke='%23fbbf24' stroke-opacity='.45' stroke-width='1.4'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  animation: layers-assemble 19s ease-in-out infinite;
+}
+@keyframes stack-drift {
+  0%, 100% {
+    background-position:
+      9% 12%, 87% 10%, 33% 15%, 60% 8%, 14% 44%,
+      52% 40%, 86% 36%, 6% 68%, 45% 62%, 72% 70%,
+      0 0, 0 0;
+  }
+  50% {
+    background-position:
+      10.2% 11%, 85.8% 11%, 34.2% 14%, 58.8% 9%, 15.2% 45%,
+      50.8% 39%, 87.2% 35%, 7% 67%, 46.2% 63%, 70.8% 71%,
+      0 0, 0 0;
+  }
+}
+@keyframes request-travel {
+  0%   { transform: translateX(0); opacity: 0; }
+  10%  { opacity: 1; }
+  75%  { transform: translateX(38vw); opacity: 1; }
+  90%, 100% { transform: translateX(46vw); opacity: 0; }
+}
+@keyframes layers-assemble {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50%      { transform: translateY(-14px) rotate(2deg); }
+}
+
+/* Contenido por encima de los sprites en todos los motifs. */
+.motif-studio > *,
+.motif-gotham > *,
+.motif-mobile > *,
+.motif-stack > * {
+  position: relative;
+  z-index: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .motif-studio,
+  .motif-studio::before,
+  .motif-studio::after,
+  .motif-gotham,
+  .motif-gotham::before,
+  .motif-gotham::after,
+  .motif-mobile,
+  .motif-mobile::before,
+  .motif-mobile::after,
+  .motif-stack,
+  .motif-stack::before,
+  .motif-stack::after {
+    animation: none;
+  }
 }
 
 /* Retro gamer: frames neón + glow por tema en las cards. */
@@ -96,3 +472,5 @@ a, button, select, [role='button'] {
   transition-duration: 160ms;
   transition-timing-function: ease-out;
 }
+
+/* La selección y los glow usan las vars --a* de cada tema. */
