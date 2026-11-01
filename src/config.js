@@ -48,6 +48,11 @@ export const config = {
   // Reintentos
   maxStepRetries: int('MAX_STEP_RETRIES', 3),
   maxPlanRetries: int('MAX_PLAN_RETRIES', 2),
+  // Límite de super-steps del grafo por invocación (LangGraph default
+  // 25 — un plan de 8 pasos × build+verify + repair + review↔fix ya
+  // supera ese piso y el run moría con "loop review/fix agotó el
+  // límite" aunque todo iba verde).
+  graphRecursionLimit: int('GRAPH_RECURSION_LIMIT', 150),
 
   // Git de la app generada
   githubRepoUrl: process.env.GITHUB_REPO_URL || '',

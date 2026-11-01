@@ -201,6 +201,10 @@ van **scoped**: el prompt incluye los issues de la ronda anterior y pide verific
 solo esos (+ bloqueantes nuevos), no un review fresco. Los issues no corregidos
 quedan en `status.json.pendingIssues` — la app shippea documentada, no colgada.
 `GraphRecursionError` además se atrapa en el runner → `status: failed` limpio.
+El límite de super-steps es configurable: `GRAPH_RECURSION_LIMIT` (default 150) —
+el default de LangGraph (25) se agota con planes de ~8 pasos (16 super-steps
+build↔verify + nodos fijos + rondas review↔fix) y el run moría con
+"loop review/fix agotó el límite" aunque todo iba verde.
 
 ### Seed y DB levantable en E2E (v13)
 

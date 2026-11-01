@@ -234,6 +234,7 @@ cp .env.example .env
 | `DEVIN_MODEL` | Default `swe-2-high`. |
 | `DEVIN_TIMEOUT_MS` | Timeout por sesión Devin (default 15 min). |
 | `MAX_STEP_RETRIES` / `MAX_PLAN_RETRIES` | Reintentos de fix por paso / de reparación de plan (3 / 2). |
+| `GRAPH_RECURSION_LIMIT` | Tope de super-steps del grafo por invocación (default 150 — el piso 25 de LangGraph se agota con planes de ~8 pasos). |
 | `VERIFY_TIMEOUT_MS` | Timeout por comando `verify` (default 5 min). |
 | `DESIGN_IDLE_MS` | Idle-parking del preview de "Diseñar app" (default 15 min, 0 = off). |
 | `MAX_CONCURRENT_DEVIN_SESSIONS` | Semáforo global de sesiones Devin entre procesos (`~/.metabuilder/devin-slots/`). Default `1` — aunque haya varios `npm start`, nunca más de una sesión `devin acp` a la vez. |
