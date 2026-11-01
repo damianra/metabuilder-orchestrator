@@ -23,6 +23,7 @@ import {
   LIBRARY_DIR,
   listLibrary,
   makeSpec,
+  nextDesignName,
   readPrompt,
   referenceBlock,
   restoreWorkspace,
@@ -87,7 +88,9 @@ describe('design library', () => {
     const dir = join(libDir, r.slug);
     const meta = JSON.parse(readFileSync(join(dir, 'meta.json'), 'utf8'));
     expect(meta.kind).toBe('web');
-    expect(meta.name).toBe('Quiero una landing oscura azul');
+    // Sin nombre → genérico Diseño NNN (v15.1 — ya no usa el primer
+    // mensaje del chat, que dejaba nombres ilegibles).
+    expect(meta.name).toBe('Diseño 001');
     expect(existsSync(join(dir, 'state.json'))).toBe(true);
     expect(existsSync(join(dir, 'spec.md'))).toBe(true);
     expect(existsSync(join(dir, 'workspace', 'src', 'App.jsx'))).toBe(true);
@@ -95,17 +98,26 @@ describe('design library', () => {
     expect(readFileSync(join(dir, 'spec.md'), 'utf8')).toContain('#1a2b3c');
   });
 
-  it('archive deriva slug del primer mensaje y deduplica', async () => {
+  it('archive sin nombre asigna Diseño NNN y el nombre propio manda', async () => {
     const libDir = tmp();
     const work = tmp();
     const work2 = tmp();
-    tmps.push(libDir, work, work2);
+    const work3 = tmp();
+    tmps.push(libDir, work, work2, work3);
     makeWork(work);
     makeWork(work2);
+    makeWork(work3);
+    expect(nextDesignName(libDir)).toBe('Diseño 001');
     const r1 = await archiveWorkspace({ kind: 'web', workDir: work, statePath: join(work, 'design-state.json'), libDir });
+    expect(r1.slug).toBe('diseno-001');
+    expect(nextDesignName(libDir)).toBe('Diseño 002');
     const r2 = await archiveWorkspace({ kind: 'web', workDir: work2, statePath: join(work2, 'design-state.json'), libDir });
-    expect(r1.slug).toBe('quiero-una-landing-oscura-azul');
-    expect(r2.slug).toBe('quiero-una-landing-oscura-azul-2');
+    expect(r2.slug).toBe('diseno-002');
+    // Nombre propio → slug del nombre, la secuencia genérica no avanza
+    const r3 = await archiveWorkspace({ kind: 'web', workDir: work3, statePath: join(work3, 'design-state.json'), name: 'Mi Landing', libDir });
+    expect(r3.slug).toBe('mi-landing');
+    expect(getEntry(r3.slug, libDir).name).toBe('Mi Landing');
+    expect(nextDesignName(libDir)).toBe('Diseño 003');
   });
 
   it('archive falla sin workspace', async () => {

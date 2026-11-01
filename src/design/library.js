@@ -87,6 +87,18 @@ export function listLibrary(libDir = LIBRARY_DIR) {
     .sort((a, b) => String(b.created ?? '').localeCompare(String(a.created ?? '')));
 }
 
+// Nombre genérico al archivar sin nombre: "Diseño NNN" — secuencia
+// global web+mobile (nunca dos entradas con el mismo nombre; el chip
+// kind ya las distingue en la UI). Reemplaza el viejo fallback al
+// primer mensaje del chat, que dejaba nombres ilegibles.
+export function nextDesignName(libDir = LIBRARY_DIR) {
+  const max = listLibrary(libDir).reduce((n, m) => {
+    const match = String(m.name ?? '').match(/^diseño\s+(\d+)$/i);
+    return match ? Math.max(n, Number(match[1])) : n;
+  }, 0);
+  return `Diseño ${String(max + 1).padStart(3, '0')}`;
+}
+
 // Dedup: el sufijo -N debe seguir dentro de LIB_SLUG_RE (61 chars
 // max) — sin el truncate un base largo quedaría ilegible para
 // getEntry y la entrada archivada sería invisible.
@@ -256,10 +268,10 @@ export async function archiveWorkspace({
   try {
     state = JSON.parse(readFileSync(statePath, 'utf8'));
   } catch { /* sesión sin state — igual archiva */ }
-  const firstUser = (state.messages ?? []).find((m) => m.role === 'user')?.text ?? '';
+  const finalName = name || nextDesignName(libDir);
   const finalSlug = slug && LIB_SLUG_RE.test(slug)
     ? uniqueSlug(slug, libDir)
-    : uniqueSlug(slugify(name || firstUser || `${kind}-design`), libDir);
+    : uniqueSlug(slugify(finalName), libDir);
   const dir = entryDir(finalSlug, libDir);
   mkdirSync(join(dir, 'workspace'), { recursive: true });
   cpSync(workDir, join(dir, 'workspace'), {
@@ -270,7 +282,7 @@ export async function archiveWorkspace({
   const meta = {
     slug: finalSlug,
     kind,
-    name: name || firstUser.slice(0, 80) || finalSlug,
+    name: finalName,
     description: description || '',
     created: new Date().toISOString(),
   };

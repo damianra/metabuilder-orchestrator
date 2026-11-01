@@ -83,6 +83,7 @@ export const api = {
   // Biblioteca de diseños archivados (v15) — compartida entre los
   // tabs Diseñar/Mobile; restore decide el tab destino por kind.
   library: () => req('/api/design-library'),
+  libraryEntry: (slug) => req(`/api/design-library/${slug}`),
   restoreLibrary: (slug) =>
     req(`/api/design-library/${slug}/restore`, { method: 'POST' }),
   deleteLibrary: (slug) =>

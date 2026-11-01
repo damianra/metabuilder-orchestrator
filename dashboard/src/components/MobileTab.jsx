@@ -57,6 +57,9 @@ export default function MobileTab({ onSaved }) {
   const [slug, setSlug] = useState('');
   const [frameKey, setFrameKey] = useState(0);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  // Form inline de archivar: nombre (vacío → "Diseño NNN" del backend)
+  // + descripción opcional que quedan en meta.json de la entrada.
+  const [archiveForm, setArchiveForm] = useState(null);
   const chatEnd = useRef(null);
   const slugRef = useRef(null);
 
@@ -102,14 +105,20 @@ export default function MobileTab({ onSaved }) {
     }
   };
 
-  // Archivar en la biblioteca — conserva workspace+historial+spec
-  // (y screenshot del preview Expo Web si está corriendo).
+  // Archivar en la biblioteca — conserva workspace+historial+spec +
+  // screenshot (el archivar prende el preview Expo Web solo para
+  // capturar y siempre lo frena) + prompt.md del agente. Pide nombre:
+  // vacío → el backend asigna "Diseño NNN".
   const archive = async () => {
     setBusy('archive');
     setError(null);
     try {
-      const r = await api.archiveMobile({});
+      const r = await api.archiveMobile({
+        name: archiveForm?.name?.trim() ?? '',
+        description: archiveForm?.description?.trim() ?? '',
+      });
       if (!r.ok) setError(r.error);
+      else setArchiveForm(null);
       await refresh();
     } catch (e) {
       setError(e.message);
@@ -306,7 +315,7 @@ export default function MobileTab({ onSaved }) {
           <button
             title="Archiva el diseño en la biblioteca — conserva el código, el historial y un spec para reutilizar"
             data-testid="mobile-archive"
-            onClick={archive}
+            onClick={() => setArchiveForm({ name: '', description: '' })}
             disabled={Boolean(busy)}
             className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-accent-300 ring-1 ring-accent-400/50 hover:bg-accent-500/10 disabled:opacity-40"
           >
@@ -331,6 +340,42 @@ export default function MobileTab({ onSaved }) {
         <p className="mt-2 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300 ring-1 ring-red-500/40">
           {error}
         </p>
+      )}
+      {archiveForm && (
+        <div className="mt-3 space-y-2 rounded-lg bg-slate-900 p-3 ring-1 ring-accent-500/40">
+          <p className="text-xs font-semibold text-slate-400">Archivar en la biblioteca</p>
+          <input
+            data-testid="mobile-archive-name"
+            autoFocus
+            value={archiveForm.name}
+            onChange={(e) => setArchiveForm({ ...archiveForm, name: e.target.value })}
+            placeholder="Diseño 001 (se asigna si queda vacío)"
+            className="w-full rounded-lg border border-accent-500/40 bg-slate-950 px-2 py-1 text-xs text-slate-200 placeholder:text-slate-500 outline-none focus:border-accent-500"
+          />
+          <input
+            data-testid="mobile-archive-desc"
+            value={archiveForm.description}
+            onChange={(e) => setArchiveForm({ ...archiveForm, description: e.target.value })}
+            placeholder="descripción (opcional)"
+            className="w-full rounded-lg border border-accent-500/40 bg-slate-950 px-2 py-1 text-xs text-slate-200 placeholder:text-slate-500 outline-none focus:border-accent-500"
+          />
+          <div className="flex gap-1.5">
+            <button
+              onClick={archive}
+              disabled={Boolean(busy)}
+              className="inline-flex items-center gap-1 rounded bg-accent-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-accent-700 disabled:opacity-40"
+            >
+              {busy === 'archive' ? spin : <Archive size={12} />} archivar
+            </button>
+            <button
+              onClick={() => setArchiveForm(null)}
+              disabled={Boolean(busy)}
+              className="rounded px-2.5 py-1 text-xs font-semibold text-slate-400 ring-1 ring-slate-500/50 hover:bg-slate-800 disabled:opacity-40"
+            >
+              cancelar
+            </button>
+          </div>
+        </div>
       )}
       <div className="mt-3 grid gap-4 lg:grid-cols-2">
         <div className="flex min-h-[420px] max-h-[75vh] flex-col rounded-lg ring-1 ring-accent-500/40">

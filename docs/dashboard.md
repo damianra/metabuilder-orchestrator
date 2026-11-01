@@ -224,10 +224,18 @@ como referencia** (crea el diseño con el código archivado en
 `.reference/<slug>/` — cross-kind — y el `referenceBlock` inyecta el
 spec al prompt del agente, mismo patrón que `apiContextBlock`) y
 **copiar prompt** (el spec copiable al portapapeles, para pegarlo en
-cualquier agente sin restaurar).
+cualquier agente sin restaurar). El tab **Archivados** (`#/archivados`,
+junto a Proyectos — `LibraryTab`) es la biblioteca como vista propia:
+las mismas cards (`LibraryCard`, compartida con `LibraryPanel`) que al
+click abren el detalle `#/lib/<slug>` (`LibraryDetail` — captura a
+tamaño completo, prompt de diseño legible con badge agente/spec y las
+4 acciones; restaurar/referencia navegan al tab por kind). Al
+**archivar** el tab pide nombre + descripción (form inline — vacío →
+`nextDesignName` asigna `Diseño NNN`, secuencia global web+mobile, ya
+no el primer mensaje del chat).
 Endpoints: `POST /api/design/archive`, `POST /api/mobile/archive`,
-`GET /api/design-library`, `POST .../restore`, `DELETE .../:slug`,
-`GET .../:slug/screenshot`, `GET .../:slug/prompt`.
+`GET /api/design-library`, `GET .../:slug`, `POST .../restore`,
+`DELETE .../:slug`, `GET .../:slug/screenshot`, `GET .../:slug/prompt`.
 
 La vista principal son cinco tabs — **"Proyectos"** (`#/proyectos`,
 separado a la derecha del nav: es el inventario — `QueuePanel` +

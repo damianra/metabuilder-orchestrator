@@ -105,3 +105,13 @@ recibe spec + código web y lo traduce a RN/NativeWind, y viceversa.
 Esfuerzo estimado: MVP (archive/restore/referencia + spec manual, sin
 screenshot) ~400 líneas, riesgo bajo; completo (spec auto-generado +
 screenshot con Playwright opcional) ~600-700 líneas, riesgo medio.
+
+**Extensión v15.1 — pestaña Archivados + nombre propio**: vista propia
+`#/archivados` (junto a Proyectos) con la grilla completa de entradas y
+detalle por card `#/lib/<slug>` — captura a tamaño completo + prompt de
+diseño legible/copiable + las mismas acciones (restaurar / referencia /
+eliminar). Al archivar el tab pide **nombre** (+ descripción opcional);
+si queda vacío el backend asigna `Diseño NNN` (`nextDesignName` —
+secuencia global web+mobile, nunca el primer mensaje del chat como
+nombre). `GET /api/design-library/:slug` sirve la meta de una entrada
+para el deep-link del detalle.
