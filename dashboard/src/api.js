@@ -60,6 +60,47 @@ export const api = {
       body: JSON.stringify(slug ? { slug } : {}),
     }),
 
+  mobileStatus: () => req('/api/mobile'),
+  createMobile: () => req('/api/mobile', { method: 'POST' }),
+  discardMobile: () => req('/api/mobile', { method: 'DELETE' }),
+  mobileDev: () => req('/api/mobile/dev', { method: 'POST' }),
+  mobileStopDev: () => req('/api/mobile/stop-dev', { method: 'POST' }),
+  mobileSave: (slug) =>
+    req('/api/mobile/save', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ slug }),
+    }),
+  mobileChat: async (text, { onChunk = () => {}, onActivity = () => {} } = {}) => {
+    const res = await fetch('/api/mobile/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let last = null;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) !== -1) {
+        const raw = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        const ev = raw.match(/^event: (\w+)/m)?.[1];
+        const data = raw.match(/^data: (.*)$/m)?.[1];
+        if (!ev || !data) continue;
+        const obj = JSON.parse(data);
+        if (ev === 'chunk') onChunk(obj.text ?? '');
+        else if (ev === 'activity') onActivity(obj.text ?? '');
+        else last = obj;
+      }
+    }
+    return last ?? { ok: false, error: 'stream vacío' };
+  },
+
   backendStatus: () => req('/api/backend'),
   createBackend: ({ framework, db, arch } = {}) =>
     req('/api/backend', {

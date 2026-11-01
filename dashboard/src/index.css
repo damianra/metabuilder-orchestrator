@@ -6,7 +6,8 @@
  * Temas retro-gamer por área — paleta `accent-*` por CSS vars con
  * fondo oscuro tintado por área + CRT scanline global:
  *   design    → violet  (canvas neón — dot-grid)
- *   backend   → emerald (terminal — scanline reforzada)
+ *   backend   → red     (terminal — scanline reforzada)
+ *   mobile    → emerald (terminal — mismo estilo que tenía backend)
  *   fullstack → amber   (taller — blueprint grid)
  *   neutral   → sky     (detalle de proyecto)
  */
@@ -17,10 +18,10 @@
   --a600: 124 58 237; --a700: 109 40 217; --a800: 91 33 182; --a900: 76 29 149;
 }
 .theme-backend {
-  background-color: #07130e;
-  --a50: 236 253 245; --a100: 209 250 229; --a200: 167 243 208;
-  --a300: 110 231 183; --a400: 52 211 153; --a500: 16 185 129;
-  --a600: 5 150 105; --a700: 4 120 87; --a800: 6 95 70; --a900: 6 78 59;
+  background-color: #170808;
+  --a50: 254 242 242; --a100: 254 226 226; --a200: 254 202 202;
+  --a300: 252 165 165; --a400: 248 113 113; --a500: 239 68 68;
+  --a600: 220 38 38; --a700: 185 28 28; --a800: 153 27 27; --a900: 127 29 29;
 }
 .theme-fullstack {
   background-color: #150f06;
@@ -35,10 +36,10 @@
   --a600: 2 132 199; --a700: 3 105 161; --a800: 7 89 133; --a900: 12 74 110;
 }
 .theme-mobile {
-  background-color: #160616;
-  --a50: 253 244 255; --a100: 250 232 255; --a200: 245 208 254;
-  --a300: 240 171 252; --a400: 232 121 249; --a500: 217 70 239;
-  --a600: 192 38 211; --a700: 162 28 175; --a800: 134 25 143; --a900: 112 26 117;
+  background-color: #07130e;
+  --a50: 236 253 245; --a100: 209 250 229; --a200: 167 243 208;
+  --a300: 110 231 183; --a400: 52 211 153; --a500: 16 185 129;
+  --a600: 5 150 105; --a700: 4 120 87; --a800: 6 95 70; --a900: 6 78 59;
 }
 
 /* CRT scanline — va sobre todas las áreas (retro gamer signature). */
