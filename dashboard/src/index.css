@@ -68,15 +68,70 @@
   );
 }
 /* Motif de área. */
-/* Obscura: nubes pixel 8-bit flotando en los bordes — nunca centradas,
-   máx ~120px. Sprite SVG plano (outline slate + relleno blanco/mist). */
+/* Obscura: nubes pixel 8-bit flotando — 3 sprites independientes con
+   animación propia. Las dos principales son pseudo-elementos `fixed`
+   (ancladas al viewport: no scrollean con el contenido) que derivan
+   detrás de las cards; la tercera es una capa de background cuya
+   posición se anima más despacio. pointer-events:none + contenido
+   elevado a z-1 para que nunca bloqueen clics ni tapen el chat. */
 .motif-obscura {
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32'%3E%3Cpath fill='%235c6066' d='M16 0h24v8H16zM8 8h48v8H8zM0 16h64v16H0z'/%3E%3Cpath fill='%23ffffff' d='M16 8h32v8H16zM8 16h48v8H8z'/%3E%3Cpath fill='%23e3f1fe' d='M8 24h48v8H8z'/%3E%3C/svg%3E"),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32'%3E%3Cpath fill='%235c6066' d='M16 0h24v8H16zM8 8h48v8H8zM0 16h64v16H0z'/%3E%3Cpath fill='%23ffffff' d='M16 8h32v8H16zM8 16h48v8H8z'/%3E%3Cpath fill='%23e3f1fe' d='M8 24h48v8H8z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: 24px 96px, calc(100% - 32px) 38%;
-  background-size: 96px 48px, 72px 36px;
+  background-position: calc(100% - 40px) 12%;
+  background-size: 64px 32px;
+  animation: cloud-bg-drift 36s ease-in-out infinite;
+}
+.motif-obscura > * {
+  position: relative;
+  z-index: 1; /* el contenido flota sobre las nubes */
+}
+.motif-obscura::before,
+.motif-obscura::after {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32'%3E%3Cpath fill='%235c6066' d='M16 0h24v8H16zM8 8h48v8H8zM0 16h64v16H0z'/%3E%3Cpath fill='%23ffffff' d='M16 8h32v8H16zM8 16h48v8H8z'/%3E%3Cpath fill='%23e3f1fe' d='M8 24h48v8H8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+.motif-obscura::before {
+  width: 96px;
+  height: 48px;
+  top: 16%;
+  left: 3%;
+  animation: cloud-float-a 17s ease-in-out infinite;
+}
+.motif-obscura::after {
+  width: 72px;
+  height: 36px;
+  top: 62%;
+  right: 4%;
+  animation: cloud-float-b 23s ease-in-out -9s infinite;
+}
+/* Bob + deriva horizontal suave — el sprite no sale de su esquina. */
+@keyframes cloud-float-a {
+  0%, 100% { transform: translate(0, 0); }
+  30%      { transform: translate(16px, -10px); }
+  65%      { transform: translate(28px, 4px); }
+}
+@keyframes cloud-float-b {
+  0%, 100% { transform: translate(0, 0); }
+  40%      { transform: translate(-20px, 10px); }
+  75%      { transform: translate(-8px, -8px); }
+}
+@keyframes cloud-bg-drift {
+  0%, 100% { background-position: calc(100% - 40px) 12%; }
+  50%      { background-position: calc(100% - 72px) 15%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .motif-obscura,
+  .motif-obscura::before,
+  .motif-obscura::after {
+    animation: none;
+  }
 }
 .motif-terminal {
   background-image:
