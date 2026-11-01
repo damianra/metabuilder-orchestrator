@@ -22,7 +22,7 @@ vi.mock('../../api.js', () => ({
     mobileSave: vi.fn((slug) => Promise.resolve({ ok: true, slug })),
     mobileChat: vi.fn(() => Promise.resolve({ ok: true, text: 'listo, pantalla nueva' })),
     archiveMobile: vi.fn(() => Promise.resolve({ ok: true, slug: 'mi-diseno' })),
-    // Biblioteca (v15): LibraryPanel hace poll de api.library al montar.
+    // Biblioteca (v15): la consume el tab Archivados — mocks sin uso aquí.
     library: vi.fn(() => Promise.resolve([])),
     restoreLibrary: vi.fn(() => Promise.resolve({ ok: true })),
     deleteLibrary: vi.fn(() => Promise.resolve({ ok: true })),

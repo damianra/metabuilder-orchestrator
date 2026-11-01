@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { api } from '../api.js';
 import { parseProposal } from '../util.js';
-import LibraryPanel from './LibraryPanel.jsx';
 
 const spin = <LoaderCircle size={15} className="animate-spin" />;
 
@@ -327,10 +326,6 @@ export default function DesignTab({ onSaved, attachSlug }) {
           </button>
           {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
         </div>
-        <LibraryPanel
-          onRestore={() => refresh()}
-          onReference={(it) => create(it.slug)}
-        />
       </section>
     );
   }
