@@ -1,0 +1,17 @@
+node_modules/
+.expo/
+android/
+ios/
+.expo-shared/
+dist/
+builds/
+keys/
+*.keystore
+*.jks
+*.p12
+google-services.json
+credentials.json
+.env
+*.local
+test-results/
+playwright-report/

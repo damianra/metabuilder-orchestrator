@@ -36,12 +36,17 @@ del `src/templates/AGENTS.md` y la sección legal del README generado.
 ## Registry de stacks
 
 `src/stacks/` declara cada stack como datos (un archivo por stack +
-`index.js` con el registro): `id`, `kind` (frontend|backend), `label`,
+`index.js` con el registro): `id`, `kind` (frontend|backend|mobile), `label`,
 `skeletonDir`, `buildDir` (dir de salida del build: `dist`/`out`),
 `skeletonDesc`/`agentsStack`/`agentsDb` (texto para planes y AGENTS.md de la app),
-`pagesBaseEnv` (env var para re-build con basePath en Pages; solo
-stacks que lo necesitan), `requirements` (reglas declarativas de
-validatePlan con `error` + `prompt` equivalente) y fragmentos `readme`.
+`alwaysSkeleton` (copiar skeleton aun sin vertical — p.ej. expo-mobile,
+cuyo scaffolding babel/metro/nativewind es demasiado frágil para
+improvisarlo por prompt), `uiDoc` (fragmento AGENTS propio en
+`templates/` que reemplaza `AGENTS.ui.md` — expo-mobile usa
+`AGENTS.mobile.md` con reglas React Native), `pagesBaseEnv` (env var
+para re-build con basePath en Pages; solo stacks que lo necesitan),
+`requirements` (reglas declarativas de validatePlan con `error` +
+`prompt` equivalente) y fragmentos `readme`.
 `resolveStacks(scope, overrides)` devuelve `{ frontend, backend }`;
 `planRequirements` los mergea deduplicando; `finalCheckCommands` arma
 la batería de verify; `stackRuleBullets(scope)` genera las reglas que
@@ -75,12 +80,14 @@ los nodos y el dashboard ejecutan, para que nada quede acoplado a npm:
 de stack en un dir existente, usada por `detectStackId`/
 `detectBackendStackId`/`detectOutDir`/`detectFrontend`
 (`tools/docker.js`) para resume, apps sin `plan.stacks` y workspaces.
-Menor `detectPriority` se evalúa primero: nest (10) antes que
-express-mongo (30) porque su skeleton trae `mongodb` como dep;
+Menor `detectPriority` se evalúa primero: expo-mobile (5) antes que
+todos (app.json + dep `expo` es marcador inequívoco), nest (10) antes
+que express-mongo (30) porque su skeleton trae `mongodb` como dep;
 nextjs (10) antes que vite-react (20) si hay ambos configs; mysql (40)
 antes que postgres (50) — se desempatan por `DB_DRIVER` en `.env`.
-Helpers compartidos en `src/stacks/helpers.js` (`pkgDeps`, `envValue`,
-`hasMarker`).
+`detectFrontendStack` evalúa kinds `frontend`+`mobile` (una app mobile
+ES el frontend del proyecto). Helpers compartidos en
+`src/stacks/helpers.js` (`pkgDeps`, `envValue`, `hasMarker`).
 
 **Framework × DB**: cada def backend declara `framework` (`express`|
 `nest`|`fastapi`) y `dbs` cubiertas — `resolveBackendStackId(fw, db)
@@ -90,6 +97,18 @@ y el Backend tab muestran **2 selects** (framework + db filtrada por
 compat) y la API resuelve el stackId (`backendFramework`/`backendDb`
 en POST /api/runs y POST /api/backend — `stackBackend`/`stackId`
 directos siguen aceptándose por back-compat).
+
+**Mobile (kind `mobile`)**: `expo-mobile` ocupa el slot *frontend* del
+plan — `--stack-frontend expo-mobile`, `plan.stacks.frontend`,
+`scope:'frontend'` en POST /api/runs y `detectFrontendStack` lo tratan
+como frontend (preview web vía `react-native-web` en :8081 + Playwright
+headless sobre ese render; `buildCmd` es solo un smoke de bundle web,
+el APK nativo es fase opt-in fuera del toolchain). Tres cortes
+determinísticos: los **verticales web no aplican** (appType queda
+`custom` — vertical explícito = error 400/exit 2), los **perfiles de
+compliance web se ignoran** (validator + planner los filtran) y su
+skeleton se copia siempre (`alwaysSkeleton`) con `AGENTS.mobile.md`
+como fragmento UI.
 
 **Selección**: flags `--stack-frontend <id>` / `--stack-backend <id>`
 (o pregunta interactiva) → `state.stackFrontend/stackBackend` →

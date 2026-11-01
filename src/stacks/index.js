@@ -7,9 +7,10 @@ import nestTypeorm from './nest-typeorm.js';
 import fastapi from './fastapi.js';
 import fastapiMongo from './fastapi-mongo.js';
 import nextjs from './nextjs.js';
+import expoMobile from './expo-mobile.js';
 
 const STACKS = new Map(
-  [viteReact, expressSqlite, expressPostgres, expressMysql, expressMongo, nestTypeorm, fastapi, fastapiMongo, nextjs].map(
+  [viteReact, expressSqlite, expressPostgres, expressMysql, expressMongo, nestTypeorm, fastapi, fastapiMongo, nextjs, expoMobile].map(
     (s) => [s.id, s],
   ),
 );

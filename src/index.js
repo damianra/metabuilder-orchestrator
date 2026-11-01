@@ -104,7 +104,7 @@ async function collectArgs(args) {
       args.arch = listArchs().includes(a) ? a : 'flat';
     }
     if (!args.stackFrontend && args.scope !== 'backend' && interactive) {
-      const ids = listStacks('frontend').map((s) => s.id);
+      const ids = [...listStacks('frontend'), ...listStacks('mobile')].map((s) => s.id);
       const s = await asker.ask(`Stack frontend [${ids.join('/')}] (${ids[0]}): `);
       args.stackFrontend = ids.includes(s) ? s : ids[0];
     }
@@ -129,7 +129,11 @@ async function collectArgs(args) {
   return args;
 }
 
-const args = await collectArgs(parseArgs(process.argv.slice(2)));
+const rawArgs = parseArgs(process.argv.slice(2));
+// --app-type EXPLÍCITO (flag) — el gating mobile distingue flag
+// explícito (error) de appType inferido/preguntado (→ custom).
+const explicitAppType = rawArgs.appType;
+const args = await collectArgs(rawArgs);
 
 // --resume <dir|slug>: reanuda un run desde su plan.json. Acepta una
 // ruta o el nombre dentro de generated-apps/. No requiere --idea.
@@ -196,17 +200,27 @@ if (args.arch && !listArchs().includes(args.arch)) {
   console.error(`--arch desconocida "${args.arch}" (usá ${listArchs().join('|')})`);
   process.exit(2);
 }
-for (const [flag, kind] of [
-  ['--stack-frontend', 'frontend'],
-  ['--stack-backend', 'backend'],
+for (const [flag, kinds] of [
+  ['--stack-frontend', ['frontend', 'mobile']],
+  ['--stack-backend', ['backend']],
 ]) {
   const key = flag.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-  if (args[key] && getStack(args[key])?.kind !== kind) {
+  if (args[key] && !kinds.includes(getStack(args[key])?.kind)) {
+    const ids = kinds.flatMap((k) => listStacks(k).map((s) => s.id));
     console.error(
-      `${flag} desconocido "${args[key]}" (usá ${listStacks(kind).map((s) => s.id).join('|')})`,
+      `${flag} desconocido "${args[key]}" (usá ${ids.join('|')})`,
     );
     process.exit(2);
   }
+}
+// Los verticales (landing/orders/blog) son overlays WEB (DOM/Tailwind):
+// con stack mobile no aplican — explícito es error, inferido → custom.
+if (getStack(args.stackFrontend)?.kind === 'mobile') {
+  if (getVertical(explicitAppType)) {
+    console.error(`--app-type ${explicitAppType} es un vertical web — con stack mobile usá --app-type custom`);
+    process.exit(2);
+  }
+  args.appType = 'custom';
 }
 // Los verticales son overlays express+sqlite — con otro stack backend
 // el vertical explícito es error y la inferencia queda en custom.
