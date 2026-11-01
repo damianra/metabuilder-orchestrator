@@ -44,13 +44,19 @@ export const api = {
       body: JSON.stringify(body),
     }),
   designStatus: () => req('/api/design'),
-  createDesign: (forSlug, stackFrontend) =>
+  createDesign: (forSlug, stackFrontend, reference) =>
     req('/api/design', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...(forSlug ? { for: forSlug } : {}), ...(stackFrontend ? { stackFrontend } : {}) }),
+      body: JSON.stringify({ ...(forSlug ? { for: forSlug } : {}), ...(stackFrontend ? { stackFrontend } : {}), ...(reference ? { reference } : {}) }),
     }),
   discardDesign: () => req('/api/design', { method: 'DELETE' }),
+  archiveDesign: ({ slug, name, description } = {}) =>
+    req('/api/design/archive', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ slug, name, description }),
+    }),
   designDev: () => req('/api/design/dev', { method: 'POST' }),
   designStopDev: () => req('/api/design/stop-dev', { method: 'POST' }),
   designSave: (slug) =>
@@ -61,8 +67,27 @@ export const api = {
     }),
 
   mobileStatus: () => req('/api/mobile'),
-  createMobile: () => req('/api/mobile', { method: 'POST' }),
+  createMobile: (reference) =>
+    req('/api/mobile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(reference ? { reference } : {}),
+    }),
   discardMobile: () => req('/api/mobile', { method: 'DELETE' }),
+  archiveMobile: ({ slug, name, description } = {}) =>
+    req('/api/mobile/archive', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ slug, name, description }),
+    }),
+  // Biblioteca de diseños archivados (v15) — compartida entre los
+  // tabs Diseñar/Mobile; restore decide el tab destino por kind.
+  library: () => req('/api/design-library'),
+  restoreLibrary: (slug) =>
+    req(`/api/design-library/${slug}/restore`, { method: 'POST' }),
+  deleteLibrary: (slug) =>
+    req(`/api/design-library/${slug}`, { method: 'DELETE' }),
+  libraryShot: (slug) => `/api/design-library/${slug}/screenshot`,
   mobileDev: () => req('/api/mobile/dev', { method: 'POST' }),
   mobileStopDev: () => req('/api/mobile/stop-dev', { method: 'POST' }),
   mobileSave: (slug) =>

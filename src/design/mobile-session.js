@@ -16,6 +16,13 @@ import { writeReadme } from '../agents/finalizer.js';
 import { initGitRepo } from '../agents/common.js';
 import { writeDockerFiles, detectOutDir } from '../tools/docker.js';
 import { getStack } from '../stacks/index.js';
+import {
+  archiveWorkspace,
+  copyReference,
+  getEntry,
+  referenceBlock,
+  restoreWorkspace,
+} from './library.js';
 
 export const MOBILE_DIR = join(config.rootDir, 'mobile-work');
 const statePath = join(MOBILE_DIR, 'mobile-state.json');
@@ -93,12 +100,16 @@ export function mobileStatus(dir = MOBILE_DIR) {
 // Crea el workspace copiando el skeleton Expo — writeAgentsMd con el
 // stack mobile emite AGENTS.mobile.md (reglas RN: no DOM, NativeWind,
 // fallbacks web) que es la guía que el diseñador sigue.
-export function createMobile() {
+export function createMobile(reference = null) {
   const stack = getStack(MOBILE_STACK_ID);
   touchActivity();
   if (existsSync(join(MOBILE_DIR, 'package.json'))) {
     return { ok: false, error: 'ya existe un diseño mobile en curso — descartalo o guardalo' };
   }
+  // Referencia inválida → error ANTES de crear el workspace
+  // (puede ser web — cross-kind se traduce a RN/NativeWind).
+  const ref = reference && getEntry(reference) ? reference : null;
+  if (reference && !ref) return { ok: false, error: `la referencia ${reference} no existe en la biblioteca` };
   mkdirSync(MOBILE_DIR, { recursive: true });
   cpSync(join(config.templatesDir, stack.skeletonDir), MOBILE_DIR, { recursive: true });
   writeAgentsMd(MOBILE_DIR, {
@@ -126,7 +137,8 @@ export function createMobile() {
         .replaceAll('__APP_PKG__', 'mobilework'),
     );
   }
-  writeState({ messages: [], created: new Date().toISOString(), frontendStackId: MOBILE_STACK_ID });
+  if (ref) copyReference(ref, MOBILE_DIR);
+  writeState({ messages: [], created: new Date().toISOString(), frontendStackId: MOBILE_STACK_ID, reference: ref });
   startInstall(MOBILE_DIR);
   return { ok: true };
 }
@@ -142,8 +154,12 @@ export async function mobileChat(text, { agent = '', onChunk = () => {}, onActiv
   const history = state.messages
     .map((m) => `${m.role === 'user' ? 'Usuario' : 'Diseñador'}: ${m.text}`)
     .join('\n');
+  // Referencia archivada (v15): spec + puntero a .reference/<slug>/
+  // — si es web, el agente traduce los estilos a RN/NativeWind.
+  const refContext = referenceBlock(state.reference);
   const prompt =
     loadPrompt('mobile-designer', {}) +
+    refContext +
     (history ? `\n\n## Conversación hasta ahora\n\n${history}\n\n` : '\n\n') +
     `Usuario: ${text}`;
 
@@ -185,7 +201,7 @@ export const mobileStopDev = () => stopDevRun(MOBILE_DIR);
 // Guardar como app real: mueve el workspace a generated-apps/<slug>
 // con un plan.json sintético mobile — el dashboard lo trata como
 // cualquier app generada (dev-run :8081, MobilePreview, publish).
-const SAVE_EXCLUDE = new Set(['node_modules', 'mobile-state.json', 'dev-run.json', 'dev-run.log', '.env']);
+const SAVE_EXCLUDE = new Set(['node_modules', 'mobile-state.json', 'dev-run.json', 'dev-run.log', '.env', '.reference']);
 
 // Re-personaliza con el slug real de la app: el workspace quedó con
 // 'mobile-work'/'mobilework' (nombre de sesión, no de la app) — sin
@@ -318,4 +334,39 @@ export function discardMobile() {
   clearInstall(MOBILE_DIR);
   rmSync(MOBILE_DIR, { recursive: true, force: true });
   return { ok: true };
+}
+
+// Archivar en la biblioteca (v15) — espejo de archiveDesign: copia
+// workspace+state+spec a design-library/<slug>/ y recién ahí borra
+// mobile-work. El screenshot sale del preview Expo Web si corre.
+export async function archiveMobile({ slug = '', name = '', description = '' } = {}) {
+  touchActivity();
+  const previewUrl = mobileStatus().devRunning ? (mobileStatus().urls[0] ?? null) : null;
+  const r = await archiveWorkspace({
+    kind: 'mobile',
+    workDir: MOBILE_DIR,
+    statePath,
+    slug,
+    name,
+    description,
+    previewUrl,
+  });
+  if (!r.ok) return r;
+  stopDevRun(MOBILE_DIR);
+  clearInstall(MOBILE_DIR);
+  rmSync(MOBILE_DIR, { recursive: true, force: true });
+  return r;
+}
+
+// Restaurar desde la biblioteca — solo same-kind (un diseño web no
+// corre en el workspace Expo). El chat sigue con su historial.
+export function restoreMobile(slug) {
+  touchActivity();
+  if (existsSync(join(MOBILE_DIR, 'package.json'))) {
+    return { ok: false, error: 'ya existe un diseño mobile en curso — descartalo, guardalo o archivado' };
+  }
+  const r = restoreWorkspace({ slug, kind: 'mobile', workDir: MOBILE_DIR, statePath });
+  if (!r.ok) return r;
+  startInstall(MOBILE_DIR);
+  return r;
 }

@@ -205,6 +205,23 @@ gestos + scanline sutil heredado del tema terminal), detalle → sky neutro. El 
 de tab corre `.animate-view-enter` (wrapper keyed) y los elementos
 interactivos llevan transición suave.
 
+**Biblioteca de diseños (v15)** — `src/design/library.js` +
+`design-library/<slug>/` (gitignored): el botón **archivar** de los
+tabs Diseñar/Mobile copia workspace + `state.json` (el historial del
+chat = prompt de reconstrucción) + `spec.md` heurístico (paleta,
+animaciones, iconos, estructura extraída del código) + `screenshot.png`
+del preview si corría y Playwright está instalado (dep opcional —
+`import('playwright')` dinámico, sin screenshot si falta). En la
+pantalla de "nuevo diseño" un `LibraryPanel` lista las entradas (chip
+web/mobile, thumbnail) con **restaurar** (same-kind — devuelve la
+sesión a `design-work/` o `mobile-work/` con su historial) y **usar
+como referencia** (crea el diseño con el código archivado en
+`.reference/<slug>/` — cross-kind — y el `referenceBlock` inyecta el
+spec al prompt del agente, mismo patrón que `apiContextBlock`).
+Endpoints: `POST /api/design/archive`, `POST /api/mobile/archive`,
+`GET /api/design-library`, `POST .../restore`, `DELETE .../:slug`,
+`GET .../:slug/screenshot`.
+
 La vista principal son cinco tabs — **"Proyectos"** (`#/proyectos`,
 separado a la derecha del nav: es el inventario — `QueuePanel` +
 `ProjectList`, antes vivían dentro del tab Backend), "Backend"

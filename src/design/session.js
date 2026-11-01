@@ -16,6 +16,13 @@ import { writeReadme } from '../agents/finalizer.js';
 import { initGitRepo } from '../agents/common.js';
 import { resolveArchSafe } from '../arch/index.js';
 import { getStack } from '../stacks/index.js';
+import {
+  archiveWorkspace,
+  copyReference,
+  getEntry,
+  referenceBlock,
+  restoreWorkspace,
+} from './library.js';
 
 export const DESIGN_DIR = join(config.rootDir, 'design-work');
 const statePath = join(DESIGN_DIR, 'design-state.json');
@@ -101,10 +108,14 @@ export function designStatus(dir = DESIGN_DIR) {
 // (v10) ata el diseño a un proyecto backend existente: el chat diseña
 // contra su API real y `saveDesign` copia el front dentro del mismo
 // proyecto en vez de crear uno nuevo.
-export function createDesign({ attachTo = null, frontendStackId = 'vite-react' } = {}) {
+export function createDesign({ attachTo = null, frontendStackId = 'vite-react', reference = null } = {}) {
   const fst = getStack(frontendStackId)?.kind === 'frontend' ? getStack(frontendStackId) : getStack('vite-react');
   touchActivity();
   if (existsSync(join(DESIGN_DIR, 'package.json'))) return { ok: false, error: 'ya existe un diseño en curso — descartalo o guardalo' };
+  // Referencia inválida → error ANTES de crear el workspace
+  // (sino queda un design-work a medio armar bloqueando el próximo create).
+  const ref = reference && getEntry(reference) ? reference : null;
+  if (reference && !ref) return { ok: false, error: `la referencia ${reference} no existe en la biblioteca` };
   mkdirSync(DESIGN_DIR, { recursive: true });
   cpSync(join(config.templatesDir, fst.skeletonDir ?? 'app-skeleton'), DESIGN_DIR, { recursive: true });
   // El design-work no tiene backend — usa writeAgentsMd directo (asi
@@ -119,9 +130,14 @@ export function createDesign({ attachTo = null, frontendStackId = 'vite-react' }
     const p = join(DESIGN_DIR, f);
     if (existsSync(p)) writeFileSync(p, readFileSync(p, 'utf8').replaceAll('__APP_NAME__', 'design-work'));
   }
-  writeState({ messages: [], created: new Date().toISOString(), attachTo, frontendStackId: fst.id });
+  // Referencia de la biblioteca (v15): copia el workspace archivado
+  // a .reference/<slug>/ para que el agente lea estilos/animaciones
+  // exactos; el state lo recuerda para inyectar el bloque de
+  // contexto en cada turno del chat.
+  if (ref) copyReference(ref, DESIGN_DIR);
+  writeState({ messages: [], created: new Date().toISOString(), attachTo, frontendStackId: fst.id, reference: ref });
   startInstall(DESIGN_DIR);
-  return { ok: true };
+  return { ok: true, reference: ref };
 }
 
 // Chat: onChunk(texto) llega por cada agent_message_chunk — el endpoint
@@ -140,9 +156,13 @@ export async function designChat(text, { agent = '', onChunk = () => {}, onActiv
   // diseñador construye la UI contra esos endpoints (nada de mocks)
   // y el proxy de vite del workspace (:4000) la hace funcional.
   const apiContext = apiContextBlock(state.attachTo);
+  // Referencia archivada (v15): spec + puntero a .reference/<slug>/
+  // — el agente ve "los estilos de X" / "la animación de Y".
+  const refContext = referenceBlock(state.reference);
   const prompt =
     loadPrompt('designer', {}) +
     apiContext +
+    refContext +
     (history ? `\n\n## Conversación hasta ahora\n\n${history}\n\n` : '\n\n') +
     `Usuario: ${text}`;
 
@@ -207,7 +227,7 @@ export const designStopDev = () => stopDevRun(DESIGN_DIR);
 // Guardar como app real: mueve el workspace a generated-apps/<slug>
 // con un plan.json sintético — el resto del dashboard lo trata como
 // cualquier app generada (dockerize, publish, resume).
-const SAVE_EXCLUDE = new Set(['node_modules', 'design-state.json', 'dev-run.json', 'dev-run.log']);
+const SAVE_EXCLUDE = new Set(['node_modules', 'design-state.json', 'dev-run.json', 'dev-run.log', '.reference']);
 
 // Attach (v10): el front del workspace se copia DENTRO del proyecto
 // backend — nunca se pisan package.json/AGENTS.md/.gitignore/server/.
@@ -465,4 +485,40 @@ export function discardDesign() {
   clearInstall(DESIGN_DIR);
   rmSync(DESIGN_DIR, { recursive: true, force: true });
   return { ok: true };
+}
+
+// Archivar en la biblioteca (v15): copia workspace+state+spec a
+// design-library/<slug>/ con screenshot del preview si corre, y
+// recién ahí borra el workspace (distinto de discard, que pierde todo).
+export async function archiveDesign({ slug = '', name = '', description = '' } = {}) {
+  touchActivity();
+  const previewUrl = designStatus().devRunning ? (designStatus().urls[0] ?? null) : null;
+  const r = await archiveWorkspace({
+    kind: 'web',
+    workDir: DESIGN_DIR,
+    statePath,
+    slug,
+    name,
+    description,
+    previewUrl,
+  });
+  if (!r.ok) return r;
+  stopDevRun(DESIGN_DIR);
+  clearInstall(DESIGN_DIR);
+  rmSync(DESIGN_DIR, { recursive: true, force: true });
+  return r;
+}
+
+// Restaurar desde la biblioteca — solo same-kind (un diseño Expo no
+// corre en el workspace Vite). Deja la sesión como si nunca se fue:
+// el chat sigue con su historial y saveDesign funciona igual.
+export function restoreDesign(slug) {
+  touchActivity();
+  if (existsSync(join(DESIGN_DIR, 'package.json'))) {
+    return { ok: false, error: 'ya existe un diseño en curso — descartalo, guardalo o archivado' };
+  }
+  const r = restoreWorkspace({ slug, kind: 'web', workDir: DESIGN_DIR, statePath });
+  if (!r.ok) return r;
+  startInstall(DESIGN_DIR);
+  return r;
 }
