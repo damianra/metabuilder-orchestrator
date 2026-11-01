@@ -346,7 +346,13 @@ function reportUpdate(node, update) {
 }
 
 const app = buildGraph();
-const runConfig = { configurable: { thread_id: `run-${Date.now()}` } };
+// recursionLimit: el default de LangGraph (25) se agota con planes de
+// ~8 pasos (16 super-steps build↔verify + fixed + review↔fix) —
+// GRAPH_RECURSION_LIMIT lo escala a un piso seguro.
+const runConfig = {
+  configurable: { thread_id: `run-${Date.now()}` },
+  recursionLimit: config.graphRecursionLimit,
+};
 
 if (!args.quiet) {
   const deploy = args.github ? (args.ghpages ? 'GitHub + Pages' : 'GitHub') : 'local';
