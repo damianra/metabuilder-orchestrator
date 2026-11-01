@@ -62,6 +62,7 @@ import {
   getEntry,
   LIB_SLUG_RE,
   listLibrary,
+  readPrompt,
 } from '../design/library.js';
 import { getVertical, listVerticals } from '../verticals/index.js';
 import { getStack, listStacks, resolveBackendStackId, backendMatrix, resolveStacksSafe } from '../stacks/index.js';
@@ -1133,6 +1134,7 @@ export function createDashboardApp({
       slug: String(req.body?.slug ?? '').trim() || undefined,
       name: String(req.body?.name ?? '').trim(),
       description: String(req.body?.description ?? '').trim(),
+      agent: req.body?.agent ?? '',
     });
     res.status(r.ok ? 201 : 409).json(r);
   });
@@ -1142,6 +1144,7 @@ export function createDashboardApp({
       slug: String(req.body?.slug ?? '').trim() || undefined,
       name: String(req.body?.name ?? '').trim(),
       description: String(req.body?.description ?? '').trim(),
+      agent: req.body?.agent ?? '',
     });
     res.status(r.ok ? 201 : 409).json(r);
   });
@@ -1162,8 +1165,17 @@ export function createDashboardApp({
     res.status(r.ok ? 200 : 404).json(r);
   });
 
-  // Screenshot opcional — solo existe si al archivar había preview
-  // corriendo Y Playwright instalado (dep opcional).
+  // Prompt copiable del sistema de diseño (v15): prompt.md generado
+  // por el agente al archivar, con fallback a spec.md heurístico.
+  app.get('/api/design-library/:slug/prompt', (req, res) => {
+    const r = readPrompt(req.params.slug);
+    if (!r) return res.status(404).json({ ok: false, error: 'sin prompt disponible' });
+    res.json({ ok: true, ...r });
+  });
+
+  // Screenshot opcional — el archivar auto-prende el preview si no
+  // corría y lo frena al terminar; Playwright se resuelve del
+  // workspace (los skeletons traen @playwright/test para e2e).
   app.get('/api/design-library/:slug/screenshot', (req, res) => {
     if (!LIB_SLUG_RE.test(req.params.slug ?? '')) {
       return res.status(400).json({ error: 'slug inválido' });

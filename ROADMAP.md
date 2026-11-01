@@ -93,9 +93,10 @@ se convirtió en app y reutilizarlo después:
 | Archivar | Botón junto a *descartar*: mueve workspace → biblioteca; `descartar` sigue borrando de verdad |
 | Restaurar | `cpSync` de vuelta a `design-work/` o `mobile-work/` + `writeState` → el chat continúa y *guardar como app* funciona igual |
 | Referencia | Picker al crear diseño nuevo → inyecta `spec.md` al prompt del agente (mismo patrón que `apiContextBlock`) + copia el workspace archivado a `.reference/<slug>/` para que el agente lea estilos/animaciones exactos |
-| `spec.md` | Resumen de estilos/animaciones — implementado con extracción heurística del código (paleta hex, clases animate/transition, keyframes, Moti, fuentes, iconos lucide, estructura). Generación por agente ACP queda como mejora futura |
-| Screenshot | `screenshot.png` del preview al archivar — Playwright como dep opcional vía `import()` dinámico (el iframe es cross-origin); fallback "sin captura" si falta |
-| UI | Sección biblioteca (cards + thumbnail + chip web/mobile) con acciones restaurar / usar como referencia / eliminar |
+| `spec.md` | Resumen de estilos/animaciones por extracción heurística del código (paleta hex, clases animate/transition, keyframes, Moti, fuentes, iconos lucide, estructura) — fallback siempre presente |
+| `prompt.md` | Spec de sistema de diseño **generado por el agente** al archivar (paleta con roles, tipografía, componentes, animaciones) — copiable vía `GET .../:slug/prompt` + botón "copiar prompt" para pegarlo en cualquier agente sin restaurar |
+| Screenshot | `screenshot.png` del preview al archivar — si el preview no corría se levanta solo para la captura y **siempre se frena al terminar**; Playwright se resuelve del `node_modules` del workspace (`@playwright/test` de e2e — sin dep nueva en el orquestador) |
+| UI | Sección biblioteca (cards + thumbnail + chip web/mobile) con acciones restaurar / usar como referencia / copiar prompt / eliminar |
 
 **Cross-kind**: restaurar solo aplica same-kind (un diseño Expo no va
 a `design-work` Vite), pero la referencia sí cruza — el agente mobile

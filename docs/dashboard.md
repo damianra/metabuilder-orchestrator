@@ -210,17 +210,24 @@ interactivos llevan transición suave.
 tabs Diseñar/Mobile copia workspace + `state.json` (el historial del
 chat = prompt de reconstrucción) + `spec.md` heurístico (paleta,
 animaciones, iconos, estructura extraída del código) + `screenshot.png`
-del preview si corría y Playwright está instalado (dep opcional —
-`import('playwright')` dinámico, sin screenshot si falta). En la
+del preview — si no corría, el archivar lo levanta solo para la
+captura y **siempre lo frena al terminar** (regla: apagar lo que se
+prendió; Playwright se resuelve del `node_modules` del workspace, que
+trae `@playwright/test` para e2e — el orquestador no necesita la dep)
+— + `prompt.md` con un spec de sistema de diseño **generado por el
+agente** al archivar (paleta con roles, tipografía, componentes,
+animaciones; si el engine falla queda `spec.md` de fallback). En la
 pantalla de "nuevo diseño" un `LibraryPanel` lista las entradas (chip
 web/mobile, thumbnail) con **restaurar** (same-kind — devuelve la
-sesión a `design-work/` o `mobile-work/` con su historial) y **usar
+sesión a `design-work/` o `mobile-work/` con su historial), **usar
 como referencia** (crea el diseño con el código archivado en
 `.reference/<slug>/` — cross-kind — y el `referenceBlock` inyecta el
-spec al prompt del agente, mismo patrón que `apiContextBlock`).
+spec al prompt del agente, mismo patrón que `apiContextBlock`) y
+**copiar prompt** (el spec copiable al portapapeles, para pegarlo en
+cualquier agente sin restaurar).
 Endpoints: `POST /api/design/archive`, `POST /api/mobile/archive`,
 `GET /api/design-library`, `POST .../restore`, `DELETE .../:slug`,
-`GET .../:slug/screenshot`.
+`GET .../:slug/screenshot`, `GET .../:slug/prompt`.
 
 La vista principal son cinco tabs — **"Proyectos"** (`#/proyectos`,
 separado a la derecha del nav: es el inventario — `QueuePanel` +

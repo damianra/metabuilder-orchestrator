@@ -16,15 +16,18 @@ import { afterEach, describe, expect, it } from 'vitest';
 // reales de sesión.
 import {
   archiveWorkspace,
+  captureScreenshot,
   copyReference,
   deleteEntry,
   getEntry,
   LIBRARY_DIR,
   listLibrary,
   makeSpec,
+  readPrompt,
   referenceBlock,
   restoreWorkspace,
   slugify,
+  waitForUrl,
 } from '../src/design/library.js';
 
 const tmp = () => mkdtempSync(join(tmpdir(), 'mb-lib-'));
@@ -221,5 +224,56 @@ describe('design library', () => {
     tmps.push(libDir);
     expect(getEntry('../escape', libDir)).toBeNull();
     expect(getEntry('nope', libDir)).toBeNull();
+  });
+
+  it('readPrompt sirve prompt.md del agente, fallback a spec.md, null si no hay nada', async () => {
+    const libDir = tmp();
+    const work = tmp();
+    tmps.push(libDir, work);
+    makeWork(work);
+    const r = await archiveWorkspace({ kind: 'web', workDir: work, statePath: join(work, 'design-state.json'), libDir });
+
+    // Sin prompt.md → fallback a spec.md
+    const fallback = readPrompt(r.slug, libDir);
+    expect(fallback.source).toBe('spec');
+    expect(fallback.text).toContain('Spec de diseño');
+
+    // Con prompt.md → source 'agent' (así lo escribe writeDesignPrompt)
+    writeFileSync(join(libDir, r.slug, 'prompt.md'), '# Sistema de diseño — reglas');
+    const agent = readPrompt(r.slug, libDir);
+    expect(agent.source).toBe('agent');
+    expect(agent.text).toContain('Sistema de diseño');
+
+    expect(readPrompt('no-existe', libDir)).toBeNull();
+    expect(readPrompt('../etc', libDir)).toBeNull();
+  });
+
+  it('waitForUrl devuelve la URL cuando el status está listo y null en timeout', async () => {
+    const ready = await waitForUrl(() => ({ devRunning: true, urls: ['http://127.0.0.1:5173'] }), 2000);
+    expect(ready).toBe('http://127.0.0.1:5173');
+    const none = await waitForUrl(() => ({ devRunning: false, urls: [] }), 50);
+    expect(none).toBeNull();
+  });
+
+  it('captureScreenshot resuelve playwright del workspace (skipped vs error)', async () => {
+    const work = tmp();
+    tmps.push(work);
+    // Fake playwright module en el node_modules del workspace
+    const modDir = join(work, 'node_modules', 'playwright');
+    mkdirSync(modDir, { recursive: true });
+    writeFileSync(join(modDir, 'package.json'), '{"name":"playwright","main":"index.js"}');
+    writeFileSync(join(modDir, 'index.js'), 'module.exports = { chromium: "fake" };');
+    // Resuelve el módulo → intenta chromium.launch() (es un string) →
+    // error de launch, NO skipped — prueba que la resolución funciona.
+    const r = await captureScreenshot('http://127.0.0.1:1', join(work, 's.png'), { workDir: work });
+    expect(r.ok).toBe(false);
+    expect(r.skipped).toBeUndefined();
+    expect(r.error).toBeTruthy();
+    // Sin módulo en el workspace y sin playwright en el root → skipped
+    const empty = tmp();
+    tmps.push(empty);
+    const r2 = await captureScreenshot('http://127.0.0.1:1', join(empty, 's.png'), { workDir: empty });
+    expect(r2.ok).toBe(false);
+    expect(r2.skipped).toBe('playwright no instalado');
   });
 });
