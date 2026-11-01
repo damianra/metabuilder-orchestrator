@@ -120,7 +120,11 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
   **no exige plan.json** — cubre dirs huérfanos de runs muertos en
   preflight, única acción con `requirePlan:false`; 409 si hay job
   pending/running del slug — el worker escribe dentro del dir, con
-  re-check justo antes del rmSync por TOCTOU).
+  re-check justo antes del rmSync por TOCTOU). Al boot la API corre
+  `reapStaleDevRuns` — barre los `dev-run.json` con `status:'running'`
+  sin dueño (la API anterior murió a lo bruto) y mata el process group
+  de cada proc cuyo líder siga vivo **con cwd en el dir del run**: un
+  pid reciclado por el SO para un proceso ajeno no se toca.
 - `GET /api/projects/:slug/repo` — `{repoUrl, pagesUrl}` del remoto
   git: `toWebUrl(remote)` + `pagesUrl` (`<owner>.github.io/<repo>/`)
   derivada solo si existe el branch `gh-pages` en `git ls-remote`.
