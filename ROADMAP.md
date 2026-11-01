@@ -57,9 +57,11 @@ producción (Expo SDK 54 / RN 0.81, Prebuild CNG, NativeWind v4, Moti).
 
 - **`kind:'mobile'` separado de `'frontend'`** — permite pestaña propia
   en el dashboard y filtrado por `listStacks('mobile')`; `resolveStacks`
-  resuelve por id sin chequear kind, así que `--stack-frontend
-  expo-mobile` y `plan.stacks.frontend='expo-mobile'` funcionan sin
-  tocar el grafo.
+  resuelve por id sin chequear kind, así que `plan.stacks.frontend=
+  'expo-mobile'` funciona sin tocar el grafo. Ojo: el flag CLI
+  `--stack-frontend expo-mobile` **hoy falla** — la validación de flags
+  (`index.js:199-210`) exige `kind==='frontend'`; lo habilita la tarea
+  #8 del backlog.
 - **Preview web como gate determinístico** — `react-native-web` +
   wrapper de proporción móvil + Playwright headless reusando
   `~/.cache/ms-playwright` del host: el 90% del ciclo de validación no
