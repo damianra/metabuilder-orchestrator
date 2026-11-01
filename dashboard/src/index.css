@@ -68,19 +68,32 @@
   );
 }
 /* Motif de área. */
-/* Obscura: nubes pixel 8-bit flotando — 3 sprites independientes con
-   animación propia. Las dos principales son pseudo-elementos `fixed`
-   (ancladas al viewport: no scrollean con el contenido) que derivan
-   detrás de las cards; la tercera es una capa de background cuya
-   posición se anima más despacio. pointer-events:none + contenido
-   elevado a z-1 para que nunca bloqueen clics ni tapen el chat. */
+/* Obscura: 15 nubes pixel 8-bit dispersadas en una grilla jittered
+   (~18-22% de separación entre centros — nunca pegadas). 13 son
+   capas de background del contenedor: comparten un keyframe de 55s
+   pero cada capa lleva su propio delta (deriva individual); las 2
+   restantes son pseudo-elementos `fixed` con bob independiente.
+   pointer-events:none + contenido a z-1 → nunca bloquean clics. */
+:root {
+  --obscura-cloud: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32'%3E%3Cpath fill='%235c6066' d='M16 0h24v8H16zM8 8h48v8H8zM0 16h64v16H0z'/%3E%3Cpath fill='%23ffffff' d='M16 8h32v8H16zM8 16h48v8H8z'/%3E%3Cpath fill='%23e3f1fe' d='M8 24h48v8H8z'/%3E%3C/svg%3E");
+}
 .motif-obscura {
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32'%3E%3Cpath fill='%235c6066' d='M16 0h24v8H16zM8 8h48v8H8zM0 16h64v16H0z'/%3E%3Cpath fill='%23ffffff' d='M16 8h32v8H16zM8 16h48v8H8z'/%3E%3Cpath fill='%23e3f1fe' d='M8 24h48v8H8z'/%3E%3C/svg%3E");
+    var(--obscura-cloud), var(--obscura-cloud), var(--obscura-cloud),
+    var(--obscura-cloud), var(--obscura-cloud), var(--obscura-cloud),
+    var(--obscura-cloud), var(--obscura-cloud), var(--obscura-cloud),
+    var(--obscura-cloud), var(--obscura-cloud), var(--obscura-cloud),
+    var(--obscura-cloud);
   background-repeat: no-repeat;
-  background-position: calc(100% - 40px) 12%;
-  background-size: 64px 32px;
-  animation: cloud-bg-drift 36s ease-in-out infinite;
+  background-position:
+    18% 9%, 38% 13%, 58% 8%, 78% 12%,
+    8% 42%, 26% 47%, 48% 44%, 68% 49%, 88% 40%,
+    14% 74%, 34% 80%, 55% 76%, 76% 84%;
+  background-size:
+    80px 40px, 56px 28px, 88px 44px, 64px 32px,
+    72px 36px, 48px 24px, 84px 42px, 60px 30px, 76px 38px,
+    68px 34px, 52px 26px, 80px 40px, 58px 29px;
+  animation: cloud-sky-drift 55s ease-in-out infinite;
 }
 .motif-obscura > * {
   position: relative;
@@ -92,8 +105,7 @@
   position: fixed;
   z-index: 0;
   pointer-events: none;
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32'%3E%3Cpath fill='%235c6066' d='M16 0h24v8H16zM8 8h48v8H8zM0 16h64v16H0z'/%3E%3Cpath fill='%23ffffff' d='M16 8h32v8H16zM8 16h48v8H8z'/%3E%3Cpath fill='%23e3f1fe' d='M8 24h48v8H8z'/%3E%3C/svg%3E");
+  background-image: var(--obscura-cloud);
   background-repeat: no-repeat;
   background-size: contain;
 }
@@ -111,7 +123,23 @@
   right: 4%;
   animation: cloud-float-b 23s ease-in-out -9s infinite;
 }
-/* Bob + deriva horizontal suave — el sprite no sale de su esquina. */
+/* Deriva individual por capa: cada nube se mueve ~1-2% en su propia
+   dirección dentro del ciclo compartido — lectura de "viento" sin
+   que ninguna abandone su zona ni se acerque a una vecina. */
+@keyframes cloud-sky-drift {
+  0%, 100% {
+    background-position:
+      18% 9%, 38% 13%, 58% 8%, 78% 12%,
+      8% 42%, 26% 47%, 48% 44%, 68% 49%, 88% 40%,
+      14% 74%, 34% 80%, 55% 76%, 76% 84%;
+  }
+  50% {
+    background-position:
+      19.5% 8%, 36.8% 13.8%, 59% 6.8%, 76.5% 13%,
+      9.2% 43%, 25% 46%, 49.5% 43.2%, 66.8% 50.2%, 89% 39%,
+      15.3% 74.9%, 32.6% 79%, 56% 74.9%, 74.8% 84.8%;
+  }
+}
 @keyframes cloud-float-a {
   0%, 100% { transform: translate(0, 0); }
   30%      { transform: translate(16px, -10px); }
@@ -121,10 +149,6 @@
   0%, 100% { transform: translate(0, 0); }
   40%      { transform: translate(-20px, 10px); }
   75%      { transform: translate(-8px, -8px); }
-}
-@keyframes cloud-bg-drift {
-  0%, 100% { background-position: calc(100% - 40px) 12%; }
-  50%      { background-position: calc(100% - 72px) 15%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .motif-obscura,
