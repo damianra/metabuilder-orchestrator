@@ -245,6 +245,7 @@ cp .env.example .env
 - Node.js >= 22, npm, git.
 - **Devin CLI u OpenCode CLI** autenticado (ver "Motores de agente"). Devin:: `~/.local/share/devin/credentials.toml` con `windsurf_api_key` (lo escribe Devin Desktop). El orquestador usa `devin acp` (mismo canal que Devin Desktop) — **`devin -p`/`auth status` reportan "Not logged in" con estas credenciales y NO son la vía**.
 - Playwright Chromium: se instala una vez en `~/.cache/ms-playwright` (compartido entre apps).
+- **Solo para `--build-apk`/emulador** (opt-in): JDK 17–21 + Android SDK en el host — instalación y emulador por CLI en `docs/generation.md` § "Entorno Android del host".
 
 ## Estructura
 

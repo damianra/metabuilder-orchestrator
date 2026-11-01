@@ -118,6 +118,44 @@ traducción web→mobile cuando el frontend es `kind:'mobile'`
 cuelgan — `npx tsc`/`test -f`, nunca `npm run web`): sin esas reglas
 el planner genera patrones DOM en un plan de React Native.
 
+### Entorno Android del host (`--build-apk` / emulador)
+
+Todo vive en `$HOME` (sin sudo). Estado instalado en el host de
+referencia:
+
+- **JDK 17** (Temurin) en `~/tools/jdk-17` — AGP/Gradle exigen Java
+  17–21 y el preflight de `--build-apk` **rechaza 25** (la del
+  sistema). Instalación: tarball de
+  `api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jdk/hotspot/normal/eclipse`
+  descomprimido ahí. `JAVA_HOME` apunta a este JDK; el `java` del
+  PATH puede seguir siendo el del sistema — Gradle usa `JAVA_HOME`.
+- **Android SDK** en `~/Android/Sdk`: cmdline-tools
+  (`dl.google.com/android/repository/commandlinetools-linux-*_latest.zip`
+  → `cmdline-tools/latest/`), más `sdkmanager "platform-tools"
+  "platforms;android-35" "build-tools;35.0.0"` (API 35 matchea Expo
+  SDK 54) y `yes | sdkmanager --licenses`.
+- Env en `~/.bashrc` + `~/.profile`:
+  `ANDROID_HOME=~/Android/Sdk` (+ `ANDROID_SDK_ROOT`),
+  `JAVA_HOME=~/tools/jdk-17`, `PATH` +=
+  `platform-tools`:`cmdline-tools/latest/bin`. Los shells/procesos
+  que lanzan builds heredan `JAVA_HOME` → Gradle compila con 17 aun
+  con un `java` 25 en PATH.
+
+**Emulador** (opcional — el gate del pipeline es preview web, no lo
+usa): sin Android Studio no hay AVD Manager gráfico; se maneja por
+CLI. Requiere `/dev/kvm` accesible (aceleración hardware).
+
+```bash
+sdkmanager --list | grep system-images   # imágenes descargables
+# variantes: default (AOSP), google_apis (Play Services),
+# google_apis_playstore (Play Store) — la más útil para probar apps
+sdkmanager "emulator" "system-images;android-35;google_apis_playstore;x86_64"
+avdmanager create avd -n pixel7 \
+  -k "system-images;android-35;google_apis_playstore;x86_64" -d "pixel_7"
+emulator -list-avds          # AVDs creados (`avdmanager list avd` = detalle)
+emulator -avd pixel7         # lanzar
+```
+
 **Selección**: flags `--stack-frontend <id>` / `--stack-backend <id>`
 (o pregunta interactiva) → `state.stackFrontend/stackBackend` →
 `plan.stacks` (persistido por planner; resume lo restaura igual que
