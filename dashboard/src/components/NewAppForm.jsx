@@ -84,7 +84,9 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
           // clonar un proyecto frontend → backend (el front se diseña
           // en la otra pestaña, no desde este form); con fixedScope el
           // tab decide.
-          scope: fixedScope ?? (p.scope === 'frontend' ? 'backend' : (p.scope ?? f.scope)),
+          scope: isMobile
+            ? 'frontend' // mobile corre scope frontend — nunca 'mobile'
+            : (fixedScope ?? (p.scope === 'frontend' ? 'backend' : (p.scope ?? f.scope))),
           appType: p.appType ?? f.appType,
           arch: p.arch ?? f.arch,
           stackFrontend: p.stacks?.frontend ?? f.stackFrontend,
@@ -131,7 +133,7 @@ export default function NewAppForm({ onEnqueued, cloneSlug, fixedScope }) {
       if (form.ghpages) body.ghpages = true;
       if (form.verifyDocker) body.verifyDocker = true;
       if (form.agent) body.agent = form.agent;
-      if (form.compliance.length) body.compliance = form.compliance.join(',');
+      if (!isMobile && form.compliance.length) body.compliance = form.compliance.join(',');
       const { job } = await api.enqueueRun(body);
       setFeedback({ ok: true, text: `job #${job.id} encolado — corre \`npm run worker\` si no está corriendo` });
       setForm(fresh());

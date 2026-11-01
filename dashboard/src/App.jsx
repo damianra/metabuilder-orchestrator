@@ -28,6 +28,9 @@ export default function App() {
   const [route, setRoute] = useState(parseHash);
   const [projects, setProjects] = useState([]);
   const [jobs, setJobs] = useState([]);
+  // Ids de stacks kind mobile — el clone de una app mobile enruta
+  // al tab Mobile (membership, no id hardcodeado).
+  const [mobileIds, setMobileIds] = useState([]);
   const [worker, setWorker] = useState(null);
   const [apiDown, setApiDown] = useState(false);
   // undefined = cargando, null = sin motor configurado → setup gate
@@ -53,19 +56,21 @@ export default function App() {
       .project(route.clone)
       .then((p) => {
         // Mobile es scope frontend pero vive en su propio tab — un
-        // stack frontend que no es web (expo-mobile hoy) enruta ahí.
-        const want =
-          p?.stacks?.frontend === 'expo-mobile'
-            ? '#/mobile'
-            : p?.scope === 'fullstack'
-              ? '#/fullstack'
-              : '#/backend';
+        // stack frontend de kind mobile enruta ahí.
+        const want = mobileIds.includes(p?.stacks?.frontend)
+          ? '#/mobile'
+          : p?.scope === 'fullstack'
+            ? '#/fullstack'
+            : '#/backend';
         if (!window.location.hash.startsWith(want)) {
           window.location.hash = `${want}?clone=${route.clone}`;
         }
       })
       .catch(() => {});
-  }, [route.clone]);
+    // mobileIds entra a deps: si options resolvió después del
+    // redirect por scope (mobileIds aún vacío), el segundo intento
+    // con la lista cargada enruta al tab correcto.
+  }, [route.clone, mobileIds]);
 
   const refresh = useCallback(async () => {
     try {
@@ -74,6 +79,7 @@ export default function App() {
       setJobs(j.jobs ?? []);
       setWorker(j.worker ?? null);
       setEngine(o.engine ?? null);
+      setMobileIds(o.stacks?.mobile ?? []);
       setApiDown(false);
     } catch {
       setApiDown(true);
