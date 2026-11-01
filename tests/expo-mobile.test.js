@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { getStack, listStacks, resolveStacks } from '../src/stacks/index.js';
+import { getStack, listStacks, resolveStacks, stackRuleBullets } from '../src/stacks/index.js';
 import { detectStackId } from '../src/tools/docker.js';
 import { validatePlan } from '../src/agents/validator.js';
 
@@ -68,6 +68,19 @@ describe('stack expo-mobile — registro y contrato', () => {
       expect(typeof r.error).toBe('string');
       expect(typeof r.prompt).toBe('string');
     }
+  });
+
+  it('stackRuleBullets traduce conceptos web→mobile (backlog #7)', () => {
+    const bullets = stackRuleBullets('frontend', { frontend: 'expo-mobile' });
+    expect(bullets).toContain('React Native (Expo Router)');
+    expect(bullets).toContain('TextInput');
+    expect(bullets).toContain('`appType` siempre `custom`');
+    expect(bullets).toContain('FlatList');
+    // Regla de verify que no cuelga (npm run web es un servidor)
+    expect(bullets).toContain('npx tsc --noEmit');
+    // Con stack web no aparece el bloque mobile
+    const webBullets = stackRuleBullets('frontend');
+    expect(webBullets).not.toContain('React Native (Expo Router)');
   });
 
   it('readme es objeto con el shape que consume finalizer', () => {

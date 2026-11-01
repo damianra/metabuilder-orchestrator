@@ -108,7 +108,11 @@ determinísticos: los **verticales web no aplican** (appType queda
 `custom` — vertical explícito = error 400/exit 2), los **perfiles de
 compliance web se ignoran** (validator + planner los filtran) y su
 skeleton se copia siempre (`alwaysSkeleton`) con `AGENTS.mobile.md`
-como fragmento UI.
+como fragmento UI. Además `stackRuleBullets` emite un bloque de
+traducción web→mobile cuando el frontend es `kind:'mobile'`
+(componentes RN vs DOM, `appType` siempre custom, verifies que no
+cuelgan — `npx tsc`/`test -f`, nunca `npm run web`): sin esas reglas
+el planner genera patrones DOM en un plan de React Native.
 
 **Selección**: flags `--stack-frontend <id>` / `--stack-backend <id>`
 (o pregunta interactiva) → `state.stackFrontend/stackBackend` →
