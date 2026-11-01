@@ -8,7 +8,7 @@
 // docker-build.json dentro de la app. Bindea a 127.0.0.1 por default —
 // es una herramienta local, no un servicio expuesto.
 
-import { appendFileSync, existsSync, openSync, readSync, closeSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync, createWriteStream } from 'node:fs';
+import { appendFileSync, existsSync, openSync, readSync, closeSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync, writeFileSync, createWriteStream } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,6 +25,7 @@ import { getCompliance, listCompliance } from '../compliance/index.js';
 import {
   archiveDesign,
   createDesign,
+  DESIGN_DIR,
   designChat,
   designDev,
   designIdleSweep,
@@ -48,6 +49,7 @@ import {
 import {
   archiveMobile,
   createMobile,
+  MOBILE_DIR,
   discardMobile,
   mobileChat,
   mobileDev,
@@ -349,6 +351,38 @@ export function stopDevRun(dir, { killGroup = (pid) => process.kill(-pid, 'SIGTE
   return { stopped: true };
 }
 
+// Barrido al boot: si la API anterior murió a lo bruto (SIGKILL,
+// crash, reboot), los dev runs quedaron 'running' con sus grupos
+// vivos pero sin dueño. Los frenamos acá — SOLO grupos cuyo líder
+// siga vivo y con cwd en el dir del run: un pid reciclado por el SO
+// para un proceso ajeno no se toca (mismo cuidado que stopDevRun,
+// que nunca señala pids de runs no-vigentes).
+export function reapStaleDevRuns(
+  dirs,
+  {
+    killGroup = (pid) => process.kill(-pid, 'SIGTERM'),
+    aliveFn = pidAlive,
+    cwdOf = (pid) => {
+      try { return readlinkSync(`/proc/${pid}/cwd`); } catch { return null; }
+    },
+  } = {},
+) {
+  const reaped = [];
+  for (const dir of dirs) {
+    const s = readDevState(dir);
+    if (s?.status !== 'running' || !Array.isArray(s.procs)) continue;
+    for (const p of s.procs) {
+      if (!p.pid || p.alive === false || !aliveFn(p.pid) || cwdOf(p.pid) !== dir) continue;
+      try {
+        killGroup(p.pid);
+        reaped.push({ dir, pid: p.pid, cmd: p.cmd });
+      } catch { /* ya muerto */ }
+    }
+    writeDevState(dir, { ...s, status: 'stopped', finishedAt: new Date().toISOString() });
+  }
+  return reaped;
+}
+
 // devRun enriquecido: refresca alive por pid real (el JSON pudo quedar
 // 'running' si el dashboard murió a mitad — mismas reglas que testRun).
 const readDevRun = (dir) => {
@@ -460,6 +494,20 @@ export function createDashboardApp({
   // parte git va por runCmd). Mismas funciones que usa finalize.
   githubApi = { getUser: getGitHubUser, createRepo, enablePages: enablePagesWithRetry, getPages },
 } = {}) {
+  // Cosecha de dev runs huérfanos del proceso anterior (API caída a
+  // lo bruto). Barre los workspaces de sesión + generated-apps; un
+  // fallo acá nunca debe impedir el boot.
+  try {
+    const dirs = [DESIGN_DIR, MOBILE_DIR, BACKEND_DIR];
+    try {
+      for (const d of readdirSync(appsDir)) dirs.push(join(appsDir, d));
+    } catch { /* appsDir todavía no existe */ }
+    const reaped = reapStaleDevRuns(dirs);
+    if (reaped.length) console.warn(`reapStaleDevRuns: ${reaped.length} dev run(s) huérfano(s) frenados`);
+  } catch (e) {
+    console.warn(`reapStaleDevRuns: ${e.message}`);
+  }
+
   let engineCache = null;
   let engineProbedAt = -Infinity;
   const getEngine = async () => {

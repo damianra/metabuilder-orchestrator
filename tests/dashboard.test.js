@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createDashboardApp } from '../src/dashboard/server.js';
+import { createDashboardApp, reapStaleDevRuns } from '../src/dashboard/server.js';
 import { config } from '../src/config.js';
 
 let base, appsDir, runsDir, server, url, startTestCalls, startBuildCalls, startDevCalls, stopDevCalls, fakeEngine, runCmdCalls, runCmdHandler, settingsPath, agentStatus;
@@ -1260,5 +1260,62 @@ describe('eliminar proyecto', () => {
     expect((await post('/api/projects/app-huerfana/actions', { action: 'resume' })).status).toBe(404);
     // slug inexistente → 404
     expect((await post('/api/projects/nope-nope/actions', { action: 'delete' })).status).toBe(404);
+  });
+});
+
+describe('reapStaleDevRuns (barrido de huérfanos al boot)', () => {
+  const seed = (st, name = `reap-${Math.random().toString(36).slice(2, 8)}`) => {
+    const dir = join(appsDir, name);
+    mkdirSync(dir, { recursive: true });
+    writeJson(join(dir, 'dev-run.json'), st);
+    return dir;
+  };
+  const state = (dir) => JSON.parse(readFileSync(join(dir, 'dev-run.json'), 'utf8'));
+
+  it('mata el group de un run running cuyo líder sigue vivo en el dir', () => {
+    const dir = seed({ status: 'running', procs: [{ pid: 111, alive: true, cmd: 'npm run dev' }] });
+    const kills = [];
+    const reaped = reapStaleDevRuns([dir], {
+      killGroup: (p) => kills.push(p),
+      aliveFn: () => true,
+      cwdOf: () => dir,
+    });
+    expect(kills).toEqual([111]);
+    expect(reaped).toHaveLength(1);
+    expect(state(dir).status).toBe('stopped');
+  });
+
+  it('no toca pids con cwd ajeno (reciclados por el SO) ni procs muertos', () => {
+    const dir = seed({
+      status: 'running',
+      procs: [
+        { pid: 111, alive: true, cmd: 'npm run dev' },   // vivo pero cwd ajeno
+        { pid: 222, alive: true, cmd: 'npm run api' },   // vivo y del dir → sí muere
+        { pid: 333, alive: true, cmd: 'x' },             // pid ya muerto
+      ],
+    });
+    const kills = [];
+    reapStaleDevRuns([dir], {
+      killGroup: (p) => kills.push(p),
+      aliveFn: (p) => p !== 333,
+      cwdOf: (p) => (p === 222 ? dir : '/otro'),
+    });
+    expect(kills).toEqual([222]);
+    expect(state(dir).status).toBe('stopped');
+  });
+
+  it('ignora runs no-running y dirs sin dev-run.json', () => {
+    const exited = seed({ status: 'exited', procs: [{ pid: 111, alive: true }] });
+    const empty = join(appsDir, 'reap-empty');
+    mkdirSync(empty, { recursive: true });
+    const kills = [];
+    const reaped = reapStaleDevRuns([exited, empty], {
+      killGroup: (p) => kills.push(p),
+      aliveFn: () => true,
+      cwdOf: () => exited,
+    });
+    expect(kills).toEqual([]);
+    expect(reaped).toEqual([]);
+    expect(state(exited).status).toBe('exited'); // sin reescribir
   });
 });

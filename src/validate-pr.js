@@ -70,8 +70,12 @@ async function validateOnePR({ prNumber, owner, repo }) {
     }
     console.log(`   worktree: ${worktree}`);
 
-    activity('npm install en el worktree…');
-    const install = await run('npm install', { cwd: worktree, timeoutMs: 300_000 });
+    activity('npm ci en el worktree…');
+    // ci --prefer-offline usa la caché local de npm — bastante más
+    // rápido que install sobre un worktree sin node_modules. Fallback
+    // a install por si el lockfile está viejo respecto a package.json.
+    let install = await run('npm ci --prefer-offline --no-audit --no-fund', { cwd: worktree, timeoutMs: 300_000 });
+    if (!install.ok) install = await run('npm install', { cwd: worktree, timeoutMs: 300_000 });
     if (!install.ok) console.warn(`   ⚠ npm install falló (el agente lo verá): ${install.stderr.slice(-200)}`);
 
     const diffStat = (await run(`git diff --stat origin/${base}...HEAD`, { cwd: worktree })).stdout;
@@ -104,6 +108,10 @@ async function validateOnePR({ prNumber, owner, repo }) {
     console.log(`\n✔ veredicto comentado en PR #${prNumber} — ${pr.html_url}`);
     return true;
   } finally {
+    // Si el sub-agente dejó servicios corriendo dentro del worktree
+    // (preview, api, e2e webServer), matarlos ANTES de borrar el dir
+    // — sino quedan huérfanos con cwd muerto.
+    await run(`pkill -f '${worktree}' || true`, { cwd: config.rootDir, timeoutMs: 10_000 });
     await run(`git worktree remove --force ${worktree}`, { cwd: config.rootDir });
   }
 }

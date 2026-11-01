@@ -95,6 +95,13 @@ Aplica a cualquier agente/persona que modifique el orquestador.
    { head, title, body })` de `src/tools/github.js` con `GITHUB_TOKEN`.
 4. **CI corre `npm test` en cada PR** (`.github/workflows/test.yml`,
    Node 22, sin secrets) — compuerta determinística automática.
+   **La validación funcional del sub-agente es acotada al diff**:
+   `vitest related` sobre los archivos tocados (suite completa solo
+   para archivos hub: config/shell/acp/github/server/grafo/package),
+   tests del dashboard solo si tocó `dashboard/`, nunca e2e (manual,
+   `npm run test:e2e` en la app). El worktree se instala con
+   `npm ci --prefer-offline` y al cerrar se pkill-ea lo que el agente
+   haya dejado corriendo dentro de él.
 
 5. **Validación funcional antes de merge — la hace un sub-agente**:
    `npm run validate:pr -- <N>` valida un PR puntual; `npm run
@@ -102,8 +109,9 @@ Aplica a cualquier agente/persona que modifique el orquestador.
    (auto-descubrimiento); `--watch [min]` hace polling continuo; `--engine <id>` fija el engine del sub-agente sin tocar `settings.json`
    (default 5 min). En todos los casos crea un worktree temporal del
    head, corre una sesión Devin (`prompts/pr-validator.md`) que revisa
-   el diff + ejecuta la validación (`npm test`, `node --check`, smokes
-   dirigidos) y comenta el veredicto en el PR — embebido con
+   el diff + ejecuta la validación acotada (`vitest related`,
+   `node --check`, smokes dirigidos — suite completa solo para
+   archivos hub) y comenta el veredicto en el PR — embebido con
    `<!-- validate-pr head:<sha7> -->`, así un push nuevo vuelve a
    marcar el PR como pendiente. El `GITHUB_TOKEN` nunca llega al
    agente — solo lo usa el script para leer el PR y comentar.
