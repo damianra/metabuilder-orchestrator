@@ -12,6 +12,13 @@ import { frontApiScan } from '../tools/front-api-scan.js';
 import { getVertical } from '../verticals/index.js';
 import { activity, log, loadPrompt, readPlan, runLogPath, textFeed, writePlan } from './common.js';
 
+// Los perfiles de compliance describen patrones web (forms HTML,
+// páginas legales DOM) — nunca aplican a una app mobile (validator
+// los ignora igual). `frontendId` = stack resuelto/persistido según
+// el path (plan.stacks manda sobre flags).
+const complianceIdsFor = (args, frontendId) =>
+  getStack(frontendId)?.kind === 'mobile' ? [] : complianceFor(args);
+
 /**
  * Genera plan.json. Tres caminos en orden:
  * 1. Si ya existe plan.json (resume) → reutilizar.
@@ -90,12 +97,15 @@ export async function plannerNode(state) {
             backend: state.stackBackend ?? undefined,
           }),
           ...complianceRuleBullets(
-            complianceFor({
-              idea: state.idea || existing.idea,
-              scope: 'fullstack',
-              flag: state.compliance,
-              plan: existing,
-            }),
+            complianceIdsFor(
+              {
+                idea: state.idea || existing.idea,
+                scope: 'fullstack',
+                flag: state.compliance,
+                plan: existing,
+              },
+              existing.stacks?.frontend ?? state.stackFrontend,
+            ),
           ).map((b) => `- ${b}`),
         ].join('\n'),
         archRules: archRuleBullet(extArch),
@@ -187,12 +197,15 @@ ${state.idea}`;
     // parchean con la inferencia actual (idea+scope) + --compliance.
     applyCompliance(
       existing,
-      complianceFor({
-        idea: existing.idea,
-        scope: existing.scope ?? state.scope,
-        flag: state.compliance,
-        plan: existing,
-      }),
+      complianceIdsFor(
+        {
+          idea: existing.idea,
+          scope: existing.scope ?? state.scope,
+          flag: state.compliance,
+          plan: existing,
+        },
+        existing.stacks?.frontend ?? state.stackFrontend,
+      ),
     );
     // Engine: se sella el efectivo de este run (state.agent ya viene
     // resuelto por preflight — flag/--agent incluido, si lo hubo).
@@ -248,11 +261,14 @@ ${state.idea}`;
     applyArch(plan, resolveArch(state.arch));
     applyCompliance(
       plan,
-      complianceFor({
-        idea: plan.idea,
-        scope: plan.scope,
-        flag: state.compliance,
-      }),
+      complianceIdsFor(
+        {
+          idea: plan.idea,
+          scope: plan.scope,
+          flag: state.compliance,
+        },
+        stacks.frontend?.id,
+      ),
     );
     writePlan(state.projectDir, plan);
     return {
@@ -274,7 +290,10 @@ ${state.idea}`;
     stackRules: [
       stackRuleBullets(state.scope, stackOv),
       ...complianceRuleBullets(
-        complianceFor({ idea: state.idea, scope: state.scope, flag: state.compliance }),
+        complianceIdsFor(
+          { idea: state.idea, scope: state.scope, flag: state.compliance },
+          stacks.frontend?.id,
+        ),
       ).map((b) => `- ${b}`),
     ].join('\n'),
     archRules: archRuleBullet(arch),
@@ -325,7 +344,10 @@ ${state.idea}`;
   applyArch(plan, arch);
   applyCompliance(
     plan,
-    complianceFor({ idea: plan.idea, scope: plan.scope, flag: state.compliance }),
+    complianceIdsFor(
+      { idea: plan.idea, scope: plan.scope, flag: state.compliance },
+      stacks.frontend?.id,
+    ),
   );
   writePlan(state.projectDir, plan);
 
@@ -369,12 +391,15 @@ export async function repairPlanNode(state) {
         backend: state.plan?.stacks?.backend ?? state.stackBackend ?? undefined,
       }),
       ...complianceRuleBullets(
-        complianceFor({
-          idea: state.idea,
-          scope: state.scope,
-          flag: state.compliance,
-          plan: state.plan,
-        }),
+        complianceIdsFor(
+          {
+            idea: state.idea,
+            scope: state.scope,
+            flag: state.compliance,
+            plan: state.plan,
+          },
+          state.plan?.stacks?.frontend ?? state.stackFrontend,
+        ),
       ).map((b) => `- ${b}`),
     ].join('\n'),
   });
@@ -404,12 +429,15 @@ export async function repairPlanNode(state) {
     applyArch(plan, resolveArch(state.arch));
     applyCompliance(
       plan,
-      complianceFor({
-        idea: plan.idea ?? state.idea,
-        scope: plan.scope ?? state.scope,
-        flag: state.compliance,
-        plan,
-      }),
+      complianceIdsFor(
+        {
+          idea: plan.idea ?? state.idea,
+          scope: plan.scope ?? state.scope,
+          flag: state.compliance,
+          plan,
+        },
+        plan?.stacks?.frontend ?? state.plan?.stacks?.frontend ?? state.stackFrontend,
+      ),
     );
     plan.stacks ??= state.plan?.stacks;
     plan.agent ??= state.plan?.agent ?? state.agent;

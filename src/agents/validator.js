@@ -59,8 +59,13 @@ export function validatePlan(plan, scope, { stacks, arch } = {}) {
   // Requisitos declarativos de los stacks activos (src/stacks/) + los
   // perfiles de cumplimiento (plan.compliance o inferidos) — dedup por
   // error porque privacidad convive en ambas fuentes.
+  // Los perfiles de compliance describen patrones web (checkbox de
+  // consentimiento en forms HTML, páginas legales DOM) — no aplican a
+  // una app mobile; imponerlos haría el plan imposible de validar.
   const complianceIds =
-    plan.compliance ?? resolveCompliance({ idea: plan.idea ?? '', scope });
+    stacks.frontend?.kind === 'mobile'
+      ? []
+      : (plan.compliance ?? resolveCompliance({ idea: plan.idea ?? '', scope }));
   const reqs = [
     ...new Map(
       [...planRequirements(stacks), ...complianceRequirements(complianceIds)].map((r) => [

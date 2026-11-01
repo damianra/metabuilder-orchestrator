@@ -129,9 +129,17 @@ export function writeAgentsMd(dir, { withBackend, arch, frontendStack, backendSt
     .replaceAll('{{backendDb}}', backendStack?.agentsDb ?? 'SQLite (archivo local, sin servidores externos)')
     .replaceAll('{{testing}}', testLabels.join(' + '))
     .replaceAll('{{devScripts}}', devScripts)
+    // `uiDoc` del stack permite un fragmento AGENTS propio — el mobile
+    // (AGENTS.mobile.md) reemplaza las reglas web (DOM, <img>, forms
+    // HTML) por las de React Native.
     .replaceAll(
       '{{uiSections}}',
-      withFrontend ? fragment('AGENTS.ui.md').replaceAll('{{imageSources}}', imageSourcesText()) : '',
+      withFrontend
+        ? fragment(frontendStack?.uiDoc ?? 'AGENTS.ui.md').replaceAll(
+            '{{imageSources}}',
+            imageSourcesText(),
+          )
+        : '',
     )
     .replaceAll('{{whatsappSection}}', whatsapp ? fragment('AGENTS.whatsapp.md') : '')
     .replaceAll('{{backendNotes}}', backendStack?.agentsNotes ?? '');
@@ -321,9 +329,12 @@ export async function preflightNode(state) {
   const fresh = !anyManifest(dir, stacks);
 
   if (fresh) {
-    if (vertical && withFrontend) {
+    // Skeleton con vertical; stacks con `alwaysSkeleton` (expo-mobile)
+    // lo necesitan siempre — su scaffolding de configs (babel/metro/
+    // nativewind) es demasiado frágil para improvisarlo por prompt.
+    if (withFrontend && (vertical || stacks.frontend?.alwaysSkeleton)) {
       cpSync(join(config.templatesDir, stacks.frontend.skeletonDir), dir, { recursive: true });
-      history.push(log('preflight', `skeleton frontend copiado (${vertical.name})`));
+      history.push(log('preflight', `skeleton frontend copiado (${vertical?.name ?? stacks.frontend.id})`));
       activity('skeleton frontend copiado');
     }
 
@@ -346,7 +357,9 @@ export async function preflightNode(state) {
     // Overlays de compliance: componentes listos por perfil activo
     // (p.ej. CookieBanner.jsx) — la resolución repite la de planner
     // (idea+scope+flag) para que los archivos estén antes del builder.
-    if (withFrontend) {
+    // Los overlays de compliance son componentes web (CookieBanner.jsx,
+    // forms HTML) — una app mobile no los puede consumir.
+    if (withFrontend && stacks.frontend?.kind !== 'mobile') {
       const ids = complianceFor({
         idea: state.idea,
         scope: state.scope,
@@ -361,12 +374,24 @@ export async function preflightNode(state) {
       }
     }
 
-    // Personalizar placeholders del skeleton (los de Next: app/).
-    for (const f of ['package.json', 'index.html', 'src/App.jsx', 'src/app/page.jsx', 'src/app/layout.jsx']) {
+    // Personalizar placeholders del skeleton (los de Next: src/app/;
+    // los de Expo: app.json + app/).
+    for (const f of ['package.json', 'index.html', 'src/App.jsx', 'src/app/page.jsx', 'src/app/layout.jsx', 'app/index.tsx']) {
       const p = join(dir, f);
       if (existsSync(p)) {
         writeFileSync(p, readFileSync(p, 'utf8').replaceAll('__APP_NAME__', slug));
       }
+    }
+    // app.json: name/slug/scheme con el slug; package y bundleId con
+    // __APP_PKG__ (los ids Android/iOS no admiten guiones ni mayúsculas).
+    const appJsonPath = join(dir, 'app.json');
+    if (existsSync(appJsonPath)) {
+      writeFileSync(
+        appJsonPath,
+        readFileSync(appJsonPath, 'utf8')
+          .replaceAll('__APP_NAME__', slug)
+          .replaceAll('__APP_PKG__', slug.toLowerCase().replace(/[^a-z0-9]/g, '') || 'app'),
+      );
     }
 
     // Install lazy: corre en background mientras el pipeline avanza
@@ -378,7 +403,7 @@ export async function preflightNode(state) {
       for (const cmd of installCmds) startInstall(dir, cmd);
       history.push(log('preflight', `${installCmds.join(' + ')} corriendo en background`));
       activity('install de dependencias en background…');
-      if (vertical && withFrontend) {
+      if (withFrontend && (vertical || stacks.frontend?.alwaysSkeleton)) {
         prewarmPlaywright(dir, stacks.frontend?.toolchain?.installCmd);
         history.push(log('preflight', 'playwright chromium pre-warm en background'));
       }

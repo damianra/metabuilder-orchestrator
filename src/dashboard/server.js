@@ -520,6 +520,7 @@ export function createDashboardApp({
       stacks: {
         frontend: listStacks('frontend').map((s) => s.id),
         backend: listStacks('backend').map((s) => s.id),
+        mobile: listStacks('mobile').map((s) => s.id),
       },
       backendMatrix: backendMatrix(),
       backendStacks: listStacks('backend').map((s) => ({ id: s.id, label: s.label })),
@@ -857,8 +858,23 @@ export function createDashboardApp({
     if (b.arch && !listArchs().includes(b.arch)) {
       return res.status(400).json({ error: `arch inválido (${listArchs().join('|')})` });
     }
-    if (b.stackFrontend && getStack(b.stackFrontend)?.kind !== 'frontend') {
-      return res.status(400).json({ error: `stackFrontend inválido (${listStacks('frontend').map((s) => s.id).join('|')})` });
+    // kind 'mobile' también es válido como stackFrontend (una app
+    // mobile ocupa el slot frontend del plan).
+    if (
+      b.stackFrontend &&
+      !['frontend', 'mobile'].includes(getStack(b.stackFrontend)?.kind)
+    ) {
+      return res.status(400).json({ error: `stackFrontend inválido (${[...listStacks('frontend'), ...listStacks('mobile')].map((s) => s.id).join('|')})` });
+    }
+    // Los verticales son overlays web — con stack mobile no aplican:
+    // vertical explícito → 400; inferido/vacío → fuerza custom.
+    if (getStack(b.stackFrontend)?.kind === 'mobile') {
+      if (b.appType && b.appType !== 'custom' && getVertical(b.appType)) {
+        return res.status(400).json({
+          error: `appType "${b.appType}" es un vertical web — con stack mobile usá custom`,
+        });
+      }
+      b.appType = 'custom';
     }
     // Selector framework × db: si vienen las dimensiones sueltas se
     // resuelven a stackId (stackBackend explícito gana — back-compat).

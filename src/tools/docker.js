@@ -87,9 +87,12 @@ export function writeDockerFiles(dir, { frontend, backend, outDir, backendStackI
 }
 
 // Primer stack frontend cuyo `detect` matchea (por detectPriority —
-// next.config.* le gana a vite.config si hay ambos).
+// next.config.* le gana a vite.config si hay ambos). Incluye kind
+// 'mobile' (expo-mobile): una app mobile ES el frontend del proyecto.
 const detectFrontendStack = (dir) =>
-  [...listStacks('frontend')].sort(byPriority).find((s) => s.detect?.(dir)) ?? null;
+  [...listStacks('frontend'), ...listStacks('mobile')]
+    .sort(byPriority)
+    .find((s) => s.detect?.(dir)) ?? null;
 
 // ¿El proyecto tiene frontend? Lo decide el `detect` de los stacks
 // frontend (vite.config.* / next.config.* hoy).
