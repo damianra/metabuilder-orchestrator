@@ -156,6 +156,15 @@ export function stackRuleBullets(scope, overrides = {}) {
     lines.push('- **scope `frontend`**: NO incluir pasos backend (nada de express/sqlite).');
   if (!stacks.frontend)
     lines.push('- **scope `backend`**: NO incluir pasos frontend (nada de framework UI/tailwind/playwright).');
+  // Mobile: sin estas reglas el planner genera patrones DOM en un
+  // plan de React Native (div/onClick/form) — traducción explícita.
+  if (stacks.frontend?.kind === 'mobile') {
+    lines.push(
+      '- **La app es React Native (Expo Router)**: pantallas file-based en `app/` (`app/index.tsx` = `/`, `app/privacy.tsx` = `/privacy`); componentes `View`/`Text`/`TextInput`/`FlatList`/`Modal`/`Pressable`/`ScrollView`/`KeyboardAvoidingView` — NUNCA elementos HTML ni patrones DOM (`<div>`, `onClick`, `<form>`, `<input>`, `dangerouslySetInnerHTML`). Estilos con `className` de NativeWind.',
+      '- **`appType` siempre `custom`**: los verticales son overlays web — traducí el concepto del dominio: landing → pantallas con CTA fijo (`Pressable` + `router.push`), formulario → `TextInput` + `KeyboardAvoidingView`, grid de cards → `FlatList`, modal DOM → `Modal` de RN, página → pantalla `app/<ruta>.tsx`, footer/links → tab bar o botones.',
+      '- `verify` de pasos mobile: `npx tsc --noEmit` o `test -f <archivo>` — `npm run web`/`expo start` son servidores y cuelgan el verify.',
+    );
+  }
   for (const r of planRequirements(stacks)) {
     if (r.prompt) lines.push(`- ${r.prompt}`);
   }
