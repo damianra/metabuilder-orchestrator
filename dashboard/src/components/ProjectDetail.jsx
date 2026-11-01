@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, CircleCheckBig, CloudUpload, Container, Copy, ExternalLink, FileText, FlaskConical, GitBranch, Globe, LoaderCircle, Play, Plus, RotateCcw, Square, Trash2 } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
+import MobilePreview from './MobilePreview.jsx';
 import { api } from '../api.js';
 import { timeAgo } from '../util.js';
 
@@ -43,6 +44,9 @@ export default function ProjectDetail({ slug, onChanged }) {
   const [stackOptions, setStackOptions] = useState([]);
   const [archOptions, setArchOptions] = useState([]);
   const [githubOk, setGithubOk] = useState(true); // true=fail-open hasta que options() resuelva
+  // Ids de stacks kind mobile (p.ej. 'expo-mobile') — el detalle de
+  // una app mobile muestra MobilePreview en vez del link suelto.
+  const [mobileStackIds, setMobileStackIds] = useState([]);
   // Superficie de API: endpoints escaneados de server/routes/ + probe.
   const [apiSurface, setApiSurface] = useState(null);
   const [probe, setProbe] = useState(null); // {path, status, body}
@@ -51,7 +55,13 @@ export default function ProjectDetail({ slug, onChanged }) {
   // (ese botón no existe en proyectos fullstack/backend y el flag
   // quedaba fail-open: el disable del publish nunca se activaba).
   useEffect(() => {
-    api.options().then((o) => setGithubOk(Boolean(o.github))).catch(() => {});
+    api
+      .options()
+      .then((o) => {
+        setGithubOk(Boolean(o.github));
+        setMobileStackIds(o.stacks?.mobile ?? []);
+      })
+      .catch(() => {});
   }, []);
 
   const load = () =>
@@ -251,6 +261,14 @@ export default function ProjectDetail({ slug, onChanged }) {
   const devTargets = project.devTargets ?? [];
   const devRun = project.devRun;
   const devRunning = devRun?.status === 'running' && !devRun.stale;
+  // App mobile: el dev run es `npm run web` de Expo (preview RNW en
+  // :8081) — se embebe en un marco de teléfono en vez de solo linkear.
+  const isMobile = mobileStackIds.includes(project?.stacks?.frontend);
+  const devUrl = devRunning
+    ? (devLog?.urls?.length
+        ? devLog.urls[0]
+        : `http://localhost:${devRun.procs.find((p) => p.alive)?.port ?? 8081}`)
+    : null;
   // repoInfo llega async (ls-remote) — hasta entonces el repoUrl del
   // detalle alcanza para renderizar el botón sin flash.
   const repoUrl = repoInfo?.repoUrl ?? project.repoUrl;
@@ -682,6 +700,11 @@ export default function ProjectDetail({ slug, onChanged }) {
                   {busy === 'stop-dev' ? spin : <Square size={15} />} Detener
                 </button>
               </div>
+              {isMobile && devUrl && (
+                <div className="mt-4">
+                  <MobilePreview url={devUrl} />
+                </div>
+              )}
             </div>
           ) : (
             <div className="mt-3 flex items-center gap-2">

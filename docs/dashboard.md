@@ -177,7 +177,7 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
 Subpackage propio con su package.json —
 Vite+React+Tailwind+Vitest, mismo stack que el app-skeleton. Hash
 routing (`#/` Diseñar app, `#/backend` tab Backend, `#/fullstack` tab
-Fullstack, `#/p/<slug>` detalle), polling 4-5s. `dev.js`
+Fullstack, `#/mobile` tab Mobile, `#/p/<slug>` detalle), polling 4-5s. `dev.js`
 lanza API+Vite+worker (`queue.js watch`) en un proceso — los jobs
 encolados desde la UI se procesan solos; la UI es un consumidor más de
 la API — no conoce paths del FS ni los registries directamente.
@@ -187,11 +187,12 @@ acento) + labels de sección en monospace uppercase; la paleta
 `accent-*` resuelve por CSS vars (`tailwind.config.js` +
 `index.css`): Diseñar app → violeta con dot-grid de canvas,
 Backend → emerald con scanline reforzada de terminal, Fullstack →
-ámbar con blueprint grid (taller), detalle → sky neutro. El cambio
+ámbar con blueprint grid (taller), Mobile → fuchsia con scanline,
+detalle → sky neutro. El cambio
 de tab corre `.animate-view-enter` (wrapper keyed) y los elementos
 interactivos llevan transición suave.
 
-La vista principal son cuatro tabs — **"Proyectos"** (`#/proyectos`,
+La vista principal son cinco tabs — **"Proyectos"** (`#/proyectos`,
 separado a la derecha del nav: es el inventario — `QueuePanel` +
 `ProjectList`, antes vivían dentro del tab Backend), "Backend"
 (`BackendTab.jsx`: chat
@@ -210,8 +211,15 @@ pickers de stack backend y de arquitectura en la pantalla de crear
 prompt del experto como convención, con variante python para fastapi,
 y al `plan.arch` del saveBackend);
 compliance la infiere el agente), "Diseñar app"
-(`DesignTab.jsx`) y "Fullstack" (`NewAppForm` con
-`fixedScope="fullstack"` — front+back en un solo run, la vía rápida).
+(`DesignTab.jsx`), "Fullstack" (`NewAppForm` con
+`fixedScope="fullstack"` — front+back en un solo run, la vía rápida)
+y "Mobile" (`NewAppForm` con `fixedScope="mobile"` — postea
+`scope:'frontend'` + `stackFrontend` de `stacks.mobile` (expo-mobile);
+vertical locked a custom y sin sección de compliance — ambos son
+web-only). En el detalle de una app mobile (`project.stacks.frontend`
+∈ `stacks.mobile`), el bloque "Dev local" embebe `MobilePreview.jsx`:
+iframe con marco de teléfono (390×844, notch) sobre la URL del dev-run
+(`npm run web` de Expo, :8081) — el iframe ES el viewport mobile.
 Los endpoints `/api/backend*` son espejo de `/api/design*`
 (status/create/delete/chat-SSE/dev/stop-dev/probe/save) sobre
 `src/design/backend-session.js`; el idle-parking usa el mismo
