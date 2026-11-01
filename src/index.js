@@ -129,7 +129,11 @@ async function collectArgs(args) {
   return args;
 }
 
-const args = await collectArgs(parseArgs(process.argv.slice(2)));
+const rawArgs = parseArgs(process.argv.slice(2));
+// --app-type EXPLÍCITO (flag) — el gating mobile distingue flag
+// explícito (error) de appType inferido/preguntado (→ custom).
+const explicitAppType = rawArgs.appType;
+const args = await collectArgs(rawArgs);
 
 // --resume <dir|slug>: reanuda un run desde su plan.json. Acepta una
 // ruta o el nombre dentro de generated-apps/. No requiere --idea.
@@ -212,8 +216,8 @@ for (const [flag, kinds] of [
 // Los verticales (landing/orders/blog) son overlays WEB (DOM/Tailwind):
 // con stack mobile no aplican — explícito es error, inferido → custom.
 if (getStack(args.stackFrontend)?.kind === 'mobile') {
-  if (getVertical(args.appType)) {
-    console.error(`--app-type ${args.appType} es un vertical web — con stack mobile usá --app-type custom`);
+  if (getVertical(explicitAppType)) {
+    console.error(`--app-type ${explicitAppType} es un vertical web — con stack mobile usá --app-type custom`);
     process.exit(2);
   }
   args.appType = 'custom';

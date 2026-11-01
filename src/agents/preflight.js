@@ -269,7 +269,12 @@ export async function preflightNode(state) {
     // Overlays de compliance en resume también: apps pre-v7 o resume
     // con --compliance nuevo reciben los componentes que falten (nunca
     // se pisa un archivo existente — el builder pudo personalizarlo).
-    if (anyManifest(dir, resumeStacks) && (savedPlan?.scope ?? state.scope) !== 'backend') {
+    // Los overlays son componentes web — nunca en una app mobile.
+    if (
+      anyManifest(dir, resumeStacks) &&
+      (savedPlan?.scope ?? state.scope) !== 'backend' &&
+      resumeStacks.frontend?.kind !== 'mobile'
+    ) {
       const ids = complianceFor({
         idea: savedPlan?.idea ?? state.idea,
         scope: savedPlan?.scope ?? state.scope,
