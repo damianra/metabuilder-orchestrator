@@ -1151,6 +1151,21 @@ export function createDashboardApp({
 
   app.get('/api/design-library', (req, res) => res.json(listLibrary()));
 
+  // Meta de una entrada — la vista detalle #/lib/<slug> del tab
+  // Archivados la usa para el deep-link (no filtra de la lista).
+  app.get('/api/design-library/:slug', (req, res) => {
+    const meta = getEntry(req.params.slug);
+    if (!meta) return res.status(404).json({ ok: false, error: `no existe el diseño ${req.params.slug}` });
+    const dir = join(config.rootDir, 'design-library', req.params.slug);
+    res.json({
+      ok: true,
+      ...meta,
+      hasSpec: existsSync(join(dir, 'spec.md')),
+      hasShot: existsSync(join(dir, 'screenshot.png')),
+      hasPrompt: existsSync(join(dir, 'prompt.md')),
+    });
+  });
+
   // Restore same-kind: meta.kind decide si vuelve a design-work o
   // a mobile-work — un Expo restaurado como Vite no correría.
   app.post('/api/design-library/:slug/restore', (req, res) => {

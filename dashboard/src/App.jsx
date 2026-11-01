@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, BellOff, Boxes, Cpu, DraftingCompass, LayoutList, Palette, ServerCog, Smartphone } from 'lucide-react';
+import { Archive, Bell, BellOff, Boxes, Cpu, DraftingCompass, LayoutList, Palette, ServerCog, Smartphone } from 'lucide-react';
 import { api } from './api.js';
 import { diffFinished, notifyFinished, snapshotStatuses } from './notifications.js';
 import NewAppForm from './components/NewAppForm.jsx';
@@ -10,10 +10,14 @@ import SetupGate from './components/SetupGate.jsx';
 import DesignTab from './components/DesignTab.jsx';
 import BackendTab from './components/BackendTab.jsx';
 import MobileTab from './components/MobileTab.jsx';
+import LibraryTab from './components/LibraryTab.jsx';
+import LibraryDetail from './components/LibraryDetail.jsx';
 
 const parseHash = () => {
   const m = window.location.hash.match(/^#\/p\/([a-z0-9-]+)/);
   if (m) return { view: 'detail', slug: m[1] };
+  const l = window.location.hash.match(/^#\/lib\/([a-z0-9-]+)/);
+  if (l) return { view: 'libDetail', slug: l[1] };
   const c = window.location.hash.match(/[?&]clone=([a-z0-9-]+)/)?.[1] ?? null;
   // ?attach=<slug> viene del detalle de un proyecto backend → diseño
   // con el backend destino ya seleccionado (attach front).
@@ -22,6 +26,7 @@ const parseHash = () => {
   if (window.location.hash.startsWith('#/mobile')) return { view: 'mobile', clone: c };
   if (window.location.hash.startsWith('#/fullstack')) return { view: 'fullstack', clone: c };
   if (window.location.hash.startsWith('#/proyectos')) return { view: 'projects', clone: c };
+  if (window.location.hash.startsWith('#/archivados')) return { view: 'archivados', clone: c };
   return { view: 'design', attach: a }; // landing = Diseñar app (#/ y #/design)
 };
 
@@ -181,7 +186,7 @@ export default function App() {
             La API no responde — levantala con <code className="font-mono">npm run dashboard</code>.
           </p>
         )}
-        {engine !== null && !gateOpen && route.view !== 'detail' && (
+        {engine !== null && !gateOpen && !['detail', 'libDetail'].includes(route.view) && (
           <nav className="flex gap-1 rounded-lg bg-slate-900 p-1 ring-1 ring-accent-500/40 glow-card">
             {[
               ['design', 'Diseñar app', '#/', Palette],
@@ -201,11 +206,21 @@ export default function App() {
                 <Icon size={14} /> {label}
               </a>
             ))}
-            {/* Proyectos: separado a la derecha — es el inventario, no
-                una tarea como los otros tabs */}
+            {/* Proyectos/Archivados: separados a la derecha — son
+                inventario, no una tarea como los otros tabs */}
+            <a
+              href="#/archivados"
+              className={`ml-auto flex items-center gap-1.5 rounded-lg border-l border-accent-500/40 px-3 py-1.5 pl-4 text-sm font-semibold ${
+                route.view === 'archivados'
+                  ? 'bg-accent-500 text-slate-950 glow-card font-bold'
+                  : 'text-slate-400 hover:bg-slate-800'
+              }`}
+            >
+              <Archive size={14} /> Archivados
+            </a>
             <a
               href="#/proyectos"
-              className={`ml-auto flex items-center gap-1.5 rounded-lg border-l border-accent-500/40 px-3 py-1.5 pl-4 text-sm font-semibold ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold ${
                 route.view === 'projects'
                   ? 'bg-accent-500 text-slate-950 glow-card font-bold'
                   : 'text-slate-400 hover:bg-slate-800'
@@ -219,6 +234,10 @@ export default function App() {
           <div key={route.view} className="animate-view-enter space-y-5">
           {route.view === 'detail' ? (
             <ProjectDetail slug={route.slug} onChanged={refresh} />
+          ) : route.view === 'libDetail' ? (
+            <LibraryDetail slug={route.slug} />
+          ) : route.view === 'archivados' ? (
+            <LibraryTab />
           ) : route.view === 'design' ? (
             <DesignTab
               attachSlug={route.attach}
