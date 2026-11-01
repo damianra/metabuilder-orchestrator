@@ -86,9 +86,14 @@ export function listLibrary(libDir = LIBRARY_DIR) {
     .sort((a, b) => String(b.created ?? '').localeCompare(String(a.created ?? '')));
 }
 
+// Dedup: el sufijo -N debe seguir dentro de LIB_SLUG_RE (61 chars
+// max) — sin el truncate un base largo quedaría ilegible para
+// getEntry y la entrada archivada sería invisible.
 const uniqueSlug = (base, libDir = LIBRARY_DIR) => {
   let slug = base;
-  for (let i = 2; existsSync(entryDir(slug, libDir)); i++) slug = `${base}-${i}`;
+  for (let i = 2; existsSync(entryDir(slug, libDir)); i++) {
+    slug = `${base.slice(0, 61 - String(i).length - 1)}-${i}`;
+  }
   return slug;
 };
 
@@ -146,9 +151,6 @@ export function makeSpec({ workDir, kind, state = {}, name = '', description = '
     for (const m of text.matchAll(/@keyframes\s+([\w-]+)/g)) anims.set(`keyframes:${m[1]}`, (anims.get(`keyframes:${m[1]}`) ?? 0) + 1);
     for (const m of text.matchAll(/\b(?:MotiView|MotiText|AnimatePresence|motion\.[a-z]+|Animated\.[A-Za-z]+)/g)) anims.set(m[0], (anims.get(m[0]) ?? 0) + 1);
     for (const m of text.matchAll(/font-?(?:family|Family)?['"]?\s*[:=]\s*['"]([^'";}]+)['"]/g)) fonts.set(m[1], (fonts.get(m[1]) ?? 0) + 1);
-    for (const m of text.matchAll(/from\s+['"][^'"]*(tailwindcss|nativewind)|lucide-(?:react|react-native)['"];?\s*$/gm)) {
-      void m;
-    }
     for (const m of text.matchAll(/import\s*\{([^}]+)\}\s*from\s*['"]lucide[^'"]*['"]/g)) {
       for (const icon of m[1].split(',')) icons.set(icon.trim(), 1);
     }
@@ -283,6 +285,11 @@ export function restoreWorkspace({ slug, kind, workDir, statePath, libDir = LIBR
   try {
     const st = readFileSync(join(entryDir(slug, libDir), 'state.json'), 'utf8');
     writeFileSync(statePath, st);
+    // Re-hidratar .reference/: el archive lo excluye del workspace
+    // copiado pero state.reference sigue seteado — sin esto
+    // referenceBlock apuntaría a un dir inexistente tras restaurar.
+    const ref = JSON.parse(st)?.reference;
+    if (ref && getEntry(ref, libDir)) copyReference(ref, workDir, libDir);
   } catch {
     writeFileSync(statePath, JSON.stringify({ messages: [], created: new Date().toISOString() }));
   }

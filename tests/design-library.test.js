@@ -173,6 +173,26 @@ describe('design library', () => {
     expect(referenceBlock('no-existe', libDir)).toBe('');
   });
 
+  it('restore re-hidrata .reference/ si el state archivado la tenía', async () => {
+    const libDir = tmp();
+    const refWork = tmp();
+    const work = tmp();
+    const dest = join(tmp(), 'restore-ref');
+    tmps.push(libDir, refWork, work, dest);
+    makeWork(refWork);
+    const ref = await archiveWorkspace({ kind: 'web', workDir: refWork, statePath: join(refWork, 'design-state.json'), libDir });
+    // Segunda sesión que usaba la primera como referencia
+    makeWork(work, {
+      messages: [{ role: 'user', text: 'otro' }],
+      reference: ref.slug,
+      frontendStackId: 'vite-react',
+    });
+    const r = await archiveWorkspace({ kind: 'web', workDir: work, statePath: join(work, 'design-state.json'), libDir });
+    const ok = restoreWorkspace({ slug: r.slug, kind: 'web', workDir: dest, statePath: join(dest, 'design-state.json'), libDir });
+    expect(ok.ok).toBe(true);
+    expect(existsSync(join(dest, '.reference', ref.slug, 'src', 'App.jsx'))).toBe(true);
+  });
+
   it('deleteEntry borra la entrada y valida slug', async () => {
     const libDir = tmp();
     const work = tmp();

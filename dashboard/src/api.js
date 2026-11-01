@@ -51,6 +51,12 @@ export const api = {
       body: JSON.stringify({ ...(forSlug ? { for: forSlug } : {}), ...(stackFrontend ? { stackFrontend } : {}), ...(reference ? { reference } : {}) }),
     }),
   discardDesign: () => req('/api/design', { method: 'DELETE' }),
+  archiveDesign: ({ slug, name, description } = {}) =>
+    req('/api/design/archive', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ slug, name, description }),
+    }),
   designDev: () => req('/api/design/dev', { method: 'POST' }),
   designStopDev: () => req('/api/design/stop-dev', { method: 'POST' }),
   designSave: (slug) =>
