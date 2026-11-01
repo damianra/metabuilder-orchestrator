@@ -115,3 +115,22 @@ si queda vacío el backend asigna `Diseño NNN` (`nextDesignName` —
 secuencia global web+mobile, nunca el primer mensaje del chat como
 nombre). `GET /api/design-library/:slug` sirve la meta de una entrada
 para el deep-link del detalle.
+
+## Robustez de procesos + validación acotada
+
+- **Huérfanos**: `run()` (`tools/shell.js`) mataba solo al `sh` directo
+  en timeout — los nietos (`webServer` de Playwright → vite/expo)
+  quedaban vivos con `PPID=1`. Ahora `detached` + kill del **process
+  group** en timeout/cancel. Además la API del dashboard barre
+  `dev-run.json` con `status:'running'` al boot y mata los grupos
+  registrados que sigan vivos (muerte anormal de la API = ya no deja
+  previews sueltos), y `validate-pr` limpia procesos spawnados dentro
+  del worktree antes de borrarlo.
+- **Validación acotada por flujos tocados**: `pr-validator.md` corre
+  `vitest related <archivos del diff>` (grafo de imports — solo tests
+  de los flujos comprometidos) en vez de la suite completa; suite full
+  solo para archivos hub (config/shell/acp/server/grafo/package.json).
+  Tests del dashboard solo si el diff toca `dashboard/`; `npm ci
+  --prefer-offline` en el worktree; sin e2e (queda manual —
+  `npm run test:e2e` en la app); el sub-agente verifica `pgrep`/`ss`
+  antes del veredicto (sin servicios encendidos).
