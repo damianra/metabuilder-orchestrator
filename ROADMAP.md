@@ -77,3 +77,30 @@ producción (Expo SDK 54 / RN 0.81, Prebuild CNG, NativeWind v4, Moti).
 - **Versión pineada a matriz probada** — las deps del skeleton copian
   las versiones verificadas en producción (SDK 54 / RN 0.81.5): Expo
   rompe con cualquier deriva de versiones; el agente no elige números.
+
+## Visión v15 (propuesta aprobada — pendiente de implementación)
+
+**Biblioteca de diseños archivados** — hoy `descartar` hace `rmSync`
+del workspace (`design-work/` o `mobile-work/`) y se pierde todo:
+código, `design-state.json`/`mobile-state.json` (el historial de chat
+= el "prompt de reconstrucción") y cualquier referencia visual. v15
+agrega `design-library/<slug>/` (gitignored) para archivar lo que no
+se convirtió en app y reutilizarlo después:
+
+| Pieza | Detalle |
+| --- | --- |
+| Storage | `design-library/<slug>/` con `meta.json` (slug, `kind:'web'|'mobile'` → chip, created, descripción), `state.json` (snapshot del state de sesión), workspace copiado con el mismo `SAVE_EXCLUDE` de hoy |
+| Archivar | Botón junto a *descartar*: mueve workspace → biblioteca; `descartar` sigue borrando de verdad |
+| Restaurar | `cpSync` de vuelta a `design-work/` o `mobile-work/` + `writeState` → el chat continúa y *guardar como app* funciona igual |
+| Referencia | Picker al crear diseño nuevo → inyecta `spec.md` al prompt del agente (mismo patrón que `apiContextBlock`) + copia el workspace archivado a `.reference/<slug>/` para que el agente lea estilos/animaciones exactos |
+| `spec.md` | Resumen de estilos/animaciones — opciones: generado por el agente ACP al archivar (mejor calidad), extracción heurística, o texto manual (MVP) |
+| Screenshot | `screenshot.png` del preview al archivar — requiere Playwright como dep opcional (el iframe es cross-origin, no hay alternativa barata); fallback "sin captura" si falta |
+| UI | Sección biblioteca (cards + thumbnail + chip web/mobile) con acciones restaurar / usar como referencia / eliminar |
+
+**Cross-kind**: restaurar solo aplica same-kind (un diseño Expo no va
+a `design-work` Vite), pero la referencia sí cruza — el agente mobile
+recibe spec + código web y lo traduce a RN/NativeWind, y viceversa.
+
+Esfuerzo estimado: MVP (archive/restore/referencia + spec manual, sin
+screenshot) ~400 líneas, riesgo bajo; completo (spec auto-generado +
+screenshot con Playwright opcional) ~600-700 líneas, riesgo medio.
