@@ -22,7 +22,9 @@ import {
   getEntry,
   referenceBlock,
   restoreWorkspace,
+  waitForUrl,
 } from './library.js';
+import { writeDesignPrompt } from './session.js';
 
 export const MOBILE_DIR = join(config.rootDir, 'mobile-work');
 const statePath = join(MOBILE_DIR, 'mobile-state.json');
@@ -338,21 +340,45 @@ export function discardMobile() {
 
 // Archivar en la biblioteca (v15) — espejo de archiveDesign: copia
 // workspace+state+spec a design-library/<slug>/ y recién ahí borra
-// mobile-work. El screenshot sale del preview Expo Web si corre.
-export async function archiveMobile({ slug = '', name = '', description = '' } = {}) {
+// mobile-work. Si el preview Expo Web no corría lo levantamos solo
+// para la captura — es nuestro proceso y SIEMPRE queda frenado
+// (stopDevRun corre en todos los caminos del flujo).
+export async function archiveMobile({ slug = '', name = '', description = '', agent = '' } = {}) {
   touchActivity();
-  const previewUrl = mobileStatus().devRunning ? (mobileStatus().urls[0] ?? null) : null;
-  const r = await archiveWorkspace({
-    kind: 'mobile',
-    workDir: MOBILE_DIR,
-    statePath,
-    slug,
-    name,
-    description,
-    previewUrl,
-  });
+  if (!existsSync(join(MOBILE_DIR, 'package.json'))) {
+    return { ok: false, error: 'no hay diseño mobile para archivar' };
+  }
+  const install = await awaitInstall(MOBILE_DIR);
+  if (install && !install.ok) {
+    return { ok: false, error: `npm install falló o sigue en curso: ${install?.stderr?.slice(-200) ?? ''}` };
+  }
+  if (!mobileStatus().devRunning) mobileDev();
+  const previewUrl = await waitForUrl(() => mobileStatus());
+  let r;
+  try {
+    r = await archiveWorkspace({
+      kind: 'mobile',
+      workDir: MOBILE_DIR,
+      statePath,
+      slug,
+      name,
+      description,
+      previewUrl,
+    });
+    if (r.ok) {
+      await writeDesignPrompt({ workDir: MOBILE_DIR, entryDir: r.dir, kind: 'mobile', agent });
+    }
+  } catch (e) {
+    r = { ok: false, error: String(e?.message ?? e) };
+  } finally {
+    // El dev auto-prendido es nuestro proceso: se frena SIEMPRE —
+    // éxito, error de negocio o excepción (ENOSPC en cpSync, etc.).
+    stopDevRun(MOBILE_DIR);
+    if (mobileStatus().devRunning) {
+      console.warn('archiveMobile: el dev quedó corriendo tras frenarlo');
+    }
+  }
   if (!r.ok) return r;
-  stopDevRun(MOBILE_DIR);
   clearInstall(MOBILE_DIR);
   rmSync(MOBILE_DIR, { recursive: true, force: true });
   return r;

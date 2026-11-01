@@ -22,6 +22,7 @@ import {
   getEntry,
   referenceBlock,
   restoreWorkspace,
+  waitForUrl,
 } from './library.js';
 
 export const DESIGN_DIR = join(config.rootDir, 'design-work');
@@ -487,23 +488,74 @@ export function discardDesign() {
   return { ok: true };
 }
 
+// Prompt copiable (v15): el agente escribe un spec de sistema de
+// diseño reutilizable — paleta con roles, tipografía, espaciado,
+// componentes, animaciones — para pegar en cualquier agente sin
+// restaurar la sesión. Si el engine falla queda spec.md de fallback.
+const PROMPT_SPEC = (kind) => `Leé el código de este workspace${kind === 'mobile' ? ' (React Native + NativeWind/Expo)' : ' (React + Tailwind + Vite)'} y escribí en español un documento markdown "spec de sistema de diseño" reutilizable, pensado para pegar como prompt en cualquier agente y replicar el look & feel. Incluí:
+- Síntesis del estilo (una línea)
+- Paleta: cada color hex con su rol (fondo/texto/primario/acento)
+- Tipografía: familia, tamaños, pesos
+- Layout: espaciado, radios, sombras, bordes
+- Componentes: patrones de cards/botones/nav con las clases o estilos exactos
+- Animaciones: transiciones, keyframes y librerías usadas
+Respondé SOLO con el markdown, sin prólogo ni cierre.`;
+
+export const writeDesignPrompt = async ({ workDir, entryDir, kind, agent = '' }) => {
+  try {
+    const res = await runAgentPrompt({ agent, prompt: PROMPT_SPEC(kind), cwd: workDir });
+    if (res?.ok && res.text?.trim()) {
+      writeFileSync(join(entryDir, 'prompt.md'), res.text.trim());
+      return true;
+    }
+  } catch {
+    /* engine caído → queda spec.md como fallback */
+  }
+  return false;
+};
+
 // Archivar en la biblioteca (v15): copia workspace+state+spec a
-// design-library/<slug>/ con screenshot del preview si corre, y
-// recién ahí borra el workspace (distinto de discard, que pierde todo).
-export async function archiveDesign({ slug = '', name = '', description = '' } = {}) {
+// design-library/<slug>/ con screenshot del preview y recién ahí
+// borra el workspace (distinto de discard, que pierde todo).
+// Si el preview no corría lo levantamos SOLO para la captura — es
+// nuestro proceso y SIEMPRE queda frenado (stopDevRun corre en
+// todos los caminos, incluido el error de archiveWorkspace).
+export async function archiveDesign({ slug = '', name = '', description = '', agent = '' } = {}) {
   touchActivity();
-  const previewUrl = designStatus().devRunning ? (designStatus().urls[0] ?? null) : null;
-  const r = await archiveWorkspace({
-    kind: 'web',
-    workDir: DESIGN_DIR,
-    statePath,
-    slug,
-    name,
-    description,
-    previewUrl,
-  });
+  if (!existsSync(join(DESIGN_DIR, 'package.json'))) {
+    return { ok: false, error: 'no hay diseño para archivar' };
+  }
+  const install = await awaitInstall(DESIGN_DIR);
+  if (install && !install.ok) {
+    return { ok: false, error: `npm install falló o sigue en curso: ${install?.stderr?.slice(-200) ?? ''}` };
+  }
+  if (!designStatus().devRunning) designDev();
+  const previewUrl = await waitForUrl(() => designStatus());
+  let r;
+  try {
+    r = await archiveWorkspace({
+      kind: 'web',
+      workDir: DESIGN_DIR,
+      statePath,
+      slug,
+      name,
+      description,
+      previewUrl,
+    });
+    if (r.ok) {
+      await writeDesignPrompt({ workDir: DESIGN_DIR, entryDir: r.dir, kind: 'web', agent });
+    }
+  } catch (e) {
+    r = { ok: false, error: String(e?.message ?? e) };
+  } finally {
+    // El dev auto-prendido es nuestro proceso: se frena SIEMPRE —
+    // éxito, error de negocio o excepción (ENOSPC en cpSync, etc.).
+    stopDevRun(DESIGN_DIR);
+    if (designStatus().devRunning) {
+      console.warn('archiveDesign: el dev quedó corriendo tras frenarlo');
+    }
+  }
   if (!r.ok) return r;
-  stopDevRun(DESIGN_DIR);
   clearInstall(DESIGN_DIR);
   rmSync(DESIGN_DIR, { recursive: true, force: true });
   return r;

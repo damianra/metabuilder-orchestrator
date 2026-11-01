@@ -88,6 +88,7 @@ export const api = {
   deleteLibrary: (slug) =>
     req(`/api/design-library/${slug}`, { method: 'DELETE' }),
   libraryShot: (slug) => `/api/design-library/${slug}/screenshot`,
+  libraryPrompt: (slug) => req(`/api/design-library/${slug}/prompt`),
   mobileDev: () => req('/api/mobile/dev', { method: 'POST' }),
   mobileStopDev: () => req('/api/mobile/stop-dev', { method: 'POST' }),
   mobileSave: (slug) =>

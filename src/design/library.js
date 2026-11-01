@@ -9,7 +9,8 @@
 //   state.json     snapshot del design-state/mobile-state.json
 //   workspace/     código (mismo exclude que save + .reference/dist/.expo)
 //   spec.md        resumen heurístico de estilos/animaciones/archivos
-//   screenshot.png captura del preview (opcional — Playwright)
+//   prompt.md      spec de diseño copiable generado por el agente (opcional)
+//   screenshot.png captura del preview (opcional — Playwright del workspace)
 import {
   cpSync,
   existsSync,
@@ -188,16 +189,36 @@ ${files.slice(0, 40).map((f) => `- \`${f}\``).join('\n')}
 `;
 }
 
+// Playwright se resuelve del PROPIO workspace (los skeletons traen
+// @playwright/test para e2e) — el orquestador no necesita la dep.
+// Fallback al import local por si el root la instala algún día.
+import { createRequire } from 'node:module';
+const loadPlaywright = async (workDir) => {
+  if (workDir) {
+    const req = createRequire(join(workDir, 'package.json'));
+    for (const mod of ['playwright', '@playwright/test']) {
+      try {
+        const p = req(mod);
+        if (p?.chromium) return p;
+      } catch {
+        /* no instalado en el workspace */
+      }
+    }
+  }
+  try {
+    return await import('playwright');
+  } catch {
+    return null;
+  }
+};
+
 // Screenshot del preview — Playwright es dep OPCIONAL: si no está
 // instalado (o falla el launch), devuelve skipped y el archive sigue
 // sin imagen. El iframe del dashboard no sirve (cross-origin).
-export async function captureScreenshot(url, dest, { mobile = false } = {}) {
-  let chromium;
-  try {
-    ({ chromium } = await import('playwright'));
-  } catch {
-    return { ok: false, skipped: 'playwright no instalado' };
-  }
+export async function captureScreenshot(url, dest, { mobile = false, workDir = null } = {}) {
+  const pw = await loadPlaywright(workDir);
+  if (!pw?.chromium) return { ok: false, skipped: 'playwright no instalado' };
+  const { chromium } = pw;
   let browser;
   try {
     browser = await chromium.launch();
@@ -262,9 +283,10 @@ export async function archiveWorkspace({
   if (previewUrl) {
     shot = await captureScreenshot(previewUrl, join(dir, 'screenshot.png'), {
       mobile: kind === 'mobile',
+      workDir,
     });
   }
-  return { ok: true, slug: finalSlug, screenshot: shot.ok ? 'captured' : (shot.skipped ?? 'no-preview') };
+  return { ok: true, slug: finalSlug, dir, screenshot: shot.ok ? 'captured' : (shot.skipped ?? 'no-preview') };
 }
 
 // Restaura una entrada a su workspace de sesión (same-kind). El
@@ -295,6 +317,32 @@ export function restoreWorkspace({ slug, kind, workDir, statePath, libDir = LIBR
   }
   return { ok: true, slug };
 }
+
+// Prompt copiable del sistema de diseño — prompt.md (generado por
+// el agente al archivar) con fallback a spec.md (heurístico, que
+// siempre existe). source indica qué versión se sirvió.
+export function readPrompt(slug, libDir = LIBRARY_DIR) {
+  if (!LIB_SLUG_RE.test(slug ?? '')) return null;
+  const dir = entryDir(slug, libDir);
+  const p = join(dir, 'prompt.md');
+  if (existsSync(p)) return { text: readFileSync(p, 'utf8'), source: 'agent' };
+  const s = join(dir, 'spec.md');
+  if (existsSync(s)) return { text: readFileSync(s, 'utf8'), source: 'spec' };
+  return null;
+}
+
+// Espera a que el dev server del workspace esté listo — las sesiones
+// lo usan al archivar para la captura cuando el preview no corría.
+// Devuelve la primera URL o null si agotó el timeout.
+export const waitForUrl = async (statusFn, ms = 45_000) => {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    const st = statusFn();
+    if (st?.devRunning && st.urls?.[0]) return st.urls[0];
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  return null;
+};
 
 // Copia la entrada como .reference/<slug>/ dentro de un workspace
 // nuevo — el agente lee estilos/animaciones/componentes exactos.

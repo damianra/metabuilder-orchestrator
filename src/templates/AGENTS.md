@@ -29,5 +29,6 @@ Este proyecto fue generado por MetaBuilder. Stack esperado:
 - Si la app tiene login/usuarios del seed, documentarlos en el README (sección 'Usuarios demo' con email+password dev y el rol de cada uno).
 - Al final del README, una sección 'Prompt' con el prompt original del usuario (si el plan tiene sección BACKEND, incluirla entera).
 - No commitear `node_modules/`, `.env`, `*.sqlite`, `server/uploads/*`, `dist/`, `out/` ni `build/`.
+- Si levantás un servicio para probar (dev server, API, watchers), frenalo al terminar y verificá que no quede corriendo — nada de procesos huérfanos.
 - Al escribir tests E2E con Playwright, cubrir explícitamente las reglas de UI de arriba.
 {{backendNotes}}
