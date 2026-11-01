@@ -5,17 +5,34 @@
 /*
  * Temas retro-gamer por área — paleta `accent-*` por CSS vars con
  * fondo oscuro tintado por área + CRT scanline global:
- *   design    → violet  (canvas neón — dot-grid)
+ *   design    → OBSCURA (claro — paper nube + signal orange + pixel)
  *   backend   → red     (terminal — scanline reforzada)
  *   mobile    → emerald (terminal — mismo estilo que tenía backend)
  *   fullstack → amber   (taller — blueprint grid)
  *   neutral   → sky     (detalle de proyecto)
  */
-.theme-design {
-  background-color: #0d0a1a;
-  --a50: 245 243 255; --a100: 237 233 254; --a200: 221 214 254;
-  --a300: 196 181 253; --a400: 167 139 250; --a500: 139 92 246;
-  --a600: 124 58 237; --a700: 109 40 217; --a800: 91 33 182; --a900: 76 29 149;
+/* Obscura: 8-bit arcade sobre paper nube — tema CLARO. El acento
+   (--a*) es la rampa de signal-orange #ff5e24; las superficies slate
+   se re-mapean a paper/mist/graphite con overrides al final del archivo. */
+.theme-obscura {
+  background-color: #e3f1fe; /* Cloud Mist canvas */
+  color: #232629;            /* Graphite Ink */
+  font-family: 'Manrope Variable', Manrope, ui-sans-serif, system-ui,
+    -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --a50: 255 244 239; --a100: 255 229 219; --a200: 255 203 186;
+  --a300: 255 164 136; --a400: 255 122 82; --a500: 255 94 36;
+  --a600: 240 74 18; --a700: 200 62 15; --a800: 160 52 16; --a900: 130 41 13;
+}
+/* Display pixel — Jersey 10 solo ≥36px (nunca body/UI). */
+.theme-obscura h1,
+.theme-obscura h2 {
+  font-family: 'Jersey 10', 'Press Start 2P', ui-monospace, monospace;
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 1.11;
+  letter-spacing: -0.025em;
+  text-transform: none;
+  color: #232629;
 }
 .theme-backend {
   background-color: #170808;
@@ -50,12 +67,16 @@
     transparent 2px 5px
   );
 }
-/* Motif de área — se suma al CRT. */
-.motif-canvas {
+/* Motif de área. */
+/* Obscura: nubes pixel 8-bit flotando en los bordes — nunca centradas,
+   máx ~120px. Sprite SVG plano (outline slate + relleno blanco/mist). */
+.motif-obscura {
   background-image:
-    repeating-linear-gradient(0deg, rgb(var(--a500) / .05) 0 2px, transparent 2px 5px),
-    radial-gradient(circle, rgb(var(--a400) / .4) 1px, transparent 1.5px);
-  background-size: auto, 24px 24px;
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32'%3E%3Cpath fill='%235c6066' d='M16 0h24v8H16zM8 8h48v8H8zM0 16h64v16H0z'/%3E%3Cpath fill='%23ffffff' d='M16 8h32v8H16zM8 16h48v8H8z'/%3E%3Cpath fill='%23e3f1fe' d='M8 24h48v8H8z'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32'%3E%3Cpath fill='%235c6066' d='M16 0h24v8H16zM8 8h48v8H8zM0 16h64v16H0z'/%3E%3Cpath fill='%23ffffff' d='M16 8h32v8H16zM8 16h48v8H8z'/%3E%3Cpath fill='%23e3f1fe' d='M8 24h48v8H8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 24px 96px, calc(100% - 32px) 38%;
+  background-size: 96px 48px, 72px 36px;
 }
 .motif-terminal {
   background-image:
@@ -96,3 +117,36 @@ a, button, select, [role='button'] {
   transition-duration: 160ms;
   transition-timing-function: ease-out;
 }
+
+/* ===== Obscura — re-map de superficies sobre el markup dark =====
+   DesignTab/App usan clases slate-* oscuras; bajo .theme-obscura se
+   re-mapean a paper white / cloud mist / graphite ink sin tocar JSX. */
+.theme-obscura .bg-slate-900 { background-color: #ffffff; }          /* cards, header */
+.theme-obscura .bg-slate-950 { background-color: #f5f5f7; }          /* inputs, iframe, preview strip */
+.theme-obscura .bg-slate-950\/60 { background-color: rgb(227 241 254 / .45); }
+.theme-obscura .bg-slate-800 { background-color: #eef6fd; }          /* bubble del agente */
+.theme-obscura .text-slate-100,
+.theme-obscura .text-slate-200,
+.theme-obscura .text-slate-300 { color: #232629; }                   /* Graphite Ink */
+.theme-obscura .text-slate-400,
+.theme-obscura .text-slate-500 { color: #5c6066; }                   /* Slate Pencil */
+.theme-obscura .placeholder\:text-slate-500::placeholder { color: #989ea4; }
+.theme-obscura .border-slate-100 { border-color: #e3f1fe; }
+.theme-obscura .hover\:bg-slate-950:hover { background-color: #eef6fd; }
+.theme-obscura .hover\:text-slate-200:hover { color: #232629; }
+/* Semantics claras: éxito/peligro oscuros sobre paper. */
+.theme-obscura .text-emerald-400 { color: #047857; }
+.theme-obscura .text-red-400,
+.theme-obscura .text-red-300 { color: #b91c1c; }
+/* Radii Obscura: 6px interactivos / 12px cards. */
+.theme-obscura .rounded-lg { border-radius: 6px; }
+.theme-obscura section.rounded-lg { border-radius: 12px; }
+/* Sombras: glow neón → soft shadow azulada multi-capa (paper feel). */
+.theme-obscura .glow-card {
+  box-shadow:
+    0 27px 11px 0 rgb(15 34 52 / .01),
+    0 15px 9px 0 rgb(15 34 52 / .02),
+    0 7px 7px 0 rgb(15 34 52 / .04),
+    0 2px 4px 0 rgb(15 34 52 / .04);
+}
+/* Selección en naranja signal (el glow genérico usa --a500 ya). */

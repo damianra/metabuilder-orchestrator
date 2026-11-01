@@ -185,7 +185,11 @@ UI estilo **retro-gamer oscuro con temas por área**: fondo tintado
 por tab + CRT scanline + cards con `glow-card` (halo neón por
 acento) + labels de sección en monospace uppercase; la paleta
 `accent-*` resuelve por CSS vars (`tailwind.config.js` +
-`index.css`): Diseñar app → violeta con dot-grid de canvas,
+`index.css`): Diseñar app → **Obscura** — tema CLARO (canvas Cloud
+Mist `#e3f1fe`, un solo acento Signal Orange `#ff5e24`, headings en
+Jersey 10 pixel ≥36px, body en Manrope, superficies slate re-mapeadas
+a paper/graphite por overrides scoped, motif `motif-obscura` = sprites
+de nubes pixel en los bordes),
 Backend → rojo con scanline reforzada de terminal, Fullstack →
 ámbar con blueprint grid (taller), Mobile → emerald con scanline
 de terminal (el estilo que antes tenía Backend), detalle → sky neutro. El cambio
