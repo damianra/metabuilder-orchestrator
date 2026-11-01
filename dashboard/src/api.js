@@ -104,7 +104,8 @@ export const api = {
         }
         if (ev === 'chunk') onChunk(obj.text ?? '');
         else if (ev === 'activity') onActivity(obj.text ?? '');
-        else last = obj;
+        else if (ev === 'done') last = { ok: true, text: obj.text ?? '' };
+        else if (ev === 'error') last = { ok: false, error: obj.error ?? 'error' };
       }
     }
     return last ?? { ok: false, error: 'stream vacío' };

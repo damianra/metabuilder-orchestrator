@@ -57,7 +57,9 @@ export default function App() {
       .project(route.clone)
       .then((p) => {
         // Mobile es scope frontend pero vive en su propio tab — un
-        // stack frontend de kind mobile enruta ahí.
+        // stack frontend de kind mobile enruta ahí. El param ?clone se
+        // descarta a propósito: MobileTab es un chat de sesión (no un
+        // formulario con prefill) — el clone solo fija el tab correcto.
         const want = mobileIds.includes(p?.stacks?.frontend)
           ? '#/mobile'
           : p?.scope === 'fullstack'
