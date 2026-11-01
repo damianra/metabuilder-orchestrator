@@ -350,25 +350,33 @@ export async function archiveMobile({ slug = '', name = '', description = '', ag
   }
   const install = await awaitInstall(MOBILE_DIR);
   if (install && !install.ok) {
-    return { ok: false, error: install.error ?? 'install en curso — esperá a que termine' };
+    return { ok: false, error: `npm install falló o sigue en curso: ${install?.stderr?.slice(-200) ?? ''}` };
   }
   if (!mobileStatus().devRunning) mobileDev();
   const previewUrl = await waitForUrl(() => mobileStatus());
-  const r = await archiveWorkspace({
-    kind: 'mobile',
-    workDir: MOBILE_DIR,
-    statePath,
-    slug,
-    name,
-    description,
-    previewUrl,
-  });
-  if (r.ok) {
-    await writeDesignPrompt({ workDir: MOBILE_DIR, entryDir: r.dir, kind: 'mobile', agent });
-  }
-  stopDevRun(MOBILE_DIR);
-  if (mobileStatus().devRunning) {
-    console.warn('archiveMobile: el dev quedó corriendo tras frenarlo');
+  let r;
+  try {
+    r = await archiveWorkspace({
+      kind: 'mobile',
+      workDir: MOBILE_DIR,
+      statePath,
+      slug,
+      name,
+      description,
+      previewUrl,
+    });
+    if (r.ok) {
+      await writeDesignPrompt({ workDir: MOBILE_DIR, entryDir: r.dir, kind: 'mobile', agent });
+    }
+  } catch (e) {
+    r = { ok: false, error: String(e?.message ?? e) };
+  } finally {
+    // El dev auto-prendido es nuestro proceso: se frena SIEMPRE —
+    // éxito, error de negocio o excepción (ENOSPC en cpSync, etc.).
+    stopDevRun(MOBILE_DIR);
+    if (mobileStatus().devRunning) {
+      console.warn('archiveMobile: el dev quedó corriendo tras frenarlo');
+    }
   }
   if (!r.ok) return r;
   clearInstall(MOBILE_DIR);

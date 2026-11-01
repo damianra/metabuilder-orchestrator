@@ -527,25 +527,33 @@ export async function archiveDesign({ slug = '', name = '', description = '', ag
   }
   const install = await awaitInstall(DESIGN_DIR);
   if (install && !install.ok) {
-    return { ok: false, error: install.error ?? 'install en curso — esperá a que termine' };
+    return { ok: false, error: `npm install falló o sigue en curso: ${install?.stderr?.slice(-200) ?? ''}` };
   }
   if (!designStatus().devRunning) designDev();
   const previewUrl = await waitForUrl(() => designStatus());
-  const r = await archiveWorkspace({
-    kind: 'web',
-    workDir: DESIGN_DIR,
-    statePath,
-    slug,
-    name,
-    description,
-    previewUrl,
-  });
-  if (r.ok) {
-    await writeDesignPrompt({ workDir: DESIGN_DIR, entryDir: r.dir, kind: 'web', agent });
-  }
-  stopDevRun(DESIGN_DIR);
-  if (designStatus().devRunning) {
-    console.warn('archiveDesign: el dev quedó corriendo tras frenarlo');
+  let r;
+  try {
+    r = await archiveWorkspace({
+      kind: 'web',
+      workDir: DESIGN_DIR,
+      statePath,
+      slug,
+      name,
+      description,
+      previewUrl,
+    });
+    if (r.ok) {
+      await writeDesignPrompt({ workDir: DESIGN_DIR, entryDir: r.dir, kind: 'web', agent });
+    }
+  } catch (e) {
+    r = { ok: false, error: String(e?.message ?? e) };
+  } finally {
+    // El dev auto-prendido es nuestro proceso: se frena SIEMPRE —
+    // éxito, error de negocio o excepción (ENOSPC en cpSync, etc.).
+    stopDevRun(DESIGN_DIR);
+    if (designStatus().devRunning) {
+      console.warn('archiveDesign: el dev quedó corriendo tras frenarlo');
+    }
   }
   if (!r.ok) return r;
   clearInstall(DESIGN_DIR);
