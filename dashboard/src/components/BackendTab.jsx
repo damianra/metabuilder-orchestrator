@@ -55,6 +55,14 @@ export default function BackendTab({ onSaved }) {
   }, [refresh]);
 
   const messages = status?.messages ?? [];
+  // Dedup defensivo: si el server persistió el msg user mientras el
+  // turno sigue en vuelo, no repetirlo junto al bubble de `inflight`.
+  const visible = inflight
+    ? messages.filter(
+        (m, i) =>
+          !(i === messages.length - 1 && m.role === 'user' && m.text === inflight.user),
+      )
+    : messages;
   const apiSurface = status?.apiSurface ?? [];
 
   useEffect(() => {
@@ -308,15 +316,15 @@ export default function BackendTab({ onSaved }) {
         </p>
       )}
       <div className="mt-3 grid gap-4 lg:grid-cols-2">
-        <div className="flex min-h-[420px] flex-col rounded-lg ring-1 ring-accent-500/40">
-          <div className="flex-1 space-y-3 overflow-y-auto p-3" style={{ maxHeight: '55vh' }}>
-            {messages.length === 0 && !inflight && (
+        <div className="flex min-h-[420px] max-h-[75vh] flex-col rounded-lg ring-1 ring-accent-500/40">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+            {visible.length === 0 && !inflight && (
               <p className="p-3 text-xs text-slate-400">
                 Describí el dominio: entidades, relaciones, reglas. El experto propone el
                 modelo, schema, rutas y tests — y podés levantar la API para probarla.
               </p>
             )}
-            {messages.map((m, i) => {
+            {visible.map((m, i) => {
               if (m.role === 'user') {
                 return (
                   <div key={i} className="flex justify-end">

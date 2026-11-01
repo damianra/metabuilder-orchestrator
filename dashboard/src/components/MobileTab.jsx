@@ -69,6 +69,14 @@ export default function MobileTab({ onSaved }) {
   }, [refresh]);
 
   const messages = status?.messages ?? [];
+  // El server persiste el msg user al INICIAR el turno — si el poll ya
+  // lo trajo a `messages`, no repetirlo mientras `inflight` lo muestra.
+  const visible = inflight
+    ? messages.filter(
+        (m, i) =>
+          !(i === messages.length - 1 && m.role === 'user' && m.text === inflight.user),
+      )
+    : messages;
   const previewUrl = status?.urls?.[0] ?? null;
   const devRunning = Boolean(status?.devRunning);
 
@@ -291,15 +299,15 @@ export default function MobileTab({ onSaved }) {
         </p>
       )}
       <div className="mt-3 grid gap-4 lg:grid-cols-2">
-        <div className="flex min-h-[420px] flex-col rounded-lg ring-1 ring-accent-500/40">
-          <div className="flex-1 space-y-3 overflow-y-auto p-3" style={{ maxHeight: '55vh' }}>
-            {messages.length === 0 && !inflight && (
+        <div className="flex min-h-[420px] max-h-[75vh] flex-col rounded-lg ring-1 ring-accent-500/40">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+            {visible.length === 0 && !inflight && (
               <p className="p-3 text-xs text-slate-400">
                 Describí la app: qué hace, pantallas, estilo, datos. El agente edita el
                 código del workspace Expo y el preview se actualiza solo.
               </p>
             )}
-            {messages.map((m, i) => {
+            {visible.map((m, i) => {
               if (m.role === 'user') {
                 return (
                   <div key={i} className="flex justify-end">
