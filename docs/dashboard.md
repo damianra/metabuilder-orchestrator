@@ -11,7 +11,11 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
 
 - `GET /api/projects` — resumen por app en `generated-apps/` (plan.json +
   status.json → status, pasos done/total, arch, hasDockerfile,
-  `hasRemote` si el repo tiene remote `origin` configurado).
+  `hasRemote` si el repo tiene remote `origin` configurado, `mobile`
+  si `plan.stacks.frontend` es un stack kind `mobile` — el chip
+  📱 mobile en la card y el header del detalle distingue apps expo
+  guardadas desde la pestaña Mobile, cuyo plan lleva scope
+  `frontend`).
 - `GET /api/projects/:slug` — detalle: pasos, reporte del último run
   (buildReport en vivo), repoUrl (ssh→https), docker-build.json,
   plan.stacks, `scripts` del package.json de la app, test-run.json,

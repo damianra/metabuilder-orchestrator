@@ -48,4 +48,17 @@ describe('ProjectList', () => {
     expect(chips).toHaveLength(1);
     expect(chips[0].textContent).toContain('landing-vet');
   });
+
+  it('muestra el chip mobile solo cuando p.mobile (app expo guardada)', () => {
+    const { container } = render(
+      <ProjectList
+        projects={[...projects, project('gastos-rn', 'done', { mobile: true })]}
+      />,
+    );
+    const chips = [...container.querySelectorAll('a')].filter((a) =>
+      a.textContent.includes('mobile'),
+    );
+    expect(chips).toHaveLength(1);
+    expect(chips[0].textContent).toContain('gastos-rn');
+  });
 });

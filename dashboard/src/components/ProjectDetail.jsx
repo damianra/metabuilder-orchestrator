@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, CircleCheckBig, CloudUpload, Container, Copy, ExternalLink, FileText, FlaskConical, GitBranch, Globe, LoaderCircle, Play, Plus, RotateCcw, Square, Trash2 } from 'lucide-react';
+import { ArrowLeft, CircleCheckBig, CloudUpload, Container, Copy, ExternalLink, FileText, FlaskConical, GitBranch, Globe, LoaderCircle, Play, Plus, RotateCcw, Smartphone, Square, Trash2 } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import MobilePreview from './MobilePreview.jsx';
 import { api } from '../api.js';
@@ -313,6 +313,11 @@ export default function ProjectDetail({ slug, onChanged }) {
                 title="La API necesita una DB externa (postgres/mysql/mongodb). Levantar el contenedor: docker compose up -d db — o usar DB_TYPE=sqlite embebido."
               >
                 DB externa — docker
+              </span>
+            )}
+            {isMobile && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-accent-500/15 px-2.5 py-0.5 text-xs font-semibold text-accent-300 ring-1 ring-accent-500/40">
+                <Smartphone size={12} /> mobile
               </span>
             )}
             {project.timings?.startedAt && project.timings?.finishedAt && (

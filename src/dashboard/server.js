@@ -518,6 +518,11 @@ function projectSummary(dir, slug) {
     name: plan?.projectName ?? slug,
     appType: plan?.appType ?? null,
     scope: plan?.scope ?? null,
+    // Chip mobile: el stack frontend tiene kind 'mobile' (expo-mobile)
+    // — una app guardada desde la pestaña Mobile lleva scope
+    // 'frontend' en su plan sintético, y sin este flag el list/detail
+    // la mostraban igual que una web.
+    mobile: getStack(plan?.stacks?.frontend)?.kind === 'mobile',
     arch: plan?.arch ?? null,
     agent: plan?.agent ?? null,
     compliance: plan?.compliance ?? null,
