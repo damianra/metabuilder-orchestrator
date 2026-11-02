@@ -1194,6 +1194,100 @@ describe('run-dev sin containers', () => {
     expect(state.procs[0].alive).toBe(true);
     stopDevRun(dir); // limpieza de B
   });
+
+  // Espera a que el puerto figure LISTEN en /proc/net/tcp{,6} (hex) —
+  // Node bindea :: dual-stack → aparece en tcp6.
+  const waitListen = async (port) => {
+    const hex = port.toString(16).toUpperCase().padStart(4, '0');
+    for (let i = 0; i < 60; i++) {
+      for (const f of ['/proc/net/tcp', '/proc/net/tcp6']) {
+        try {
+          if (readFileSync(f, 'utf8').includes(`:${hex} `)) return;
+        } catch { /* archivo no disponible */ }
+      }
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  };
+
+  it('startDevRun libera el puerto de un zombie del mismo dir; no toca holders ajenos', async () => {
+    const { spawn } = await import('node:child_process');
+    const { EventEmitter } = await import('node:events');
+    const { startDevRun } = await import('../src/dashboard/server.js');
+    const dir = seedDevApp('app-zombie');
+    const other = mkdtempSync(join(tmpdir(), 'mb-other-'));
+    // Zombie estilo Expo: listener real en :5173, cwd=dir, grupo propio
+    // (sobrevivió al kill del group — el caso que retenía :8081 tras
+    // archivar y servía el proyecto anterior en la URL nueva).
+    const zombie = spawn(
+      process.execPath,
+      ['-e', 'require("http").createServer(()=>{}).listen(5173)'],
+      { cwd: dir, detached: true },
+    );
+    // Holder ajeno en :4000 (target api) con cwd de OTRO dir → intocable.
+    const foreigner = spawn(
+      process.execPath,
+      ['-e', 'require("http").createServer(()=>{}).listen(4000)'],
+      { cwd: other, detached: true },
+    );
+    const fakeChild = () => {
+      const c = new EventEmitter();
+      c.pid = process.pid;
+      c.stdout = null;
+      c.stderr = null;
+      setImmediate(() => c.emit('close', 1));
+      return c;
+    };
+    try {
+      await waitListen(5173);
+      await waitListen(4000);
+      const spawned = [];
+      startDevRun(dir, {
+        spawnFn: (cmd) => {
+          spawned.push(cmd);
+          return fakeChild();
+        },
+      });
+      await new Promise((r) => setTimeout(r, 300));
+      // el zombie del workspace murió; el ajeno sigue vivo
+      expect(() => process.kill(zombie.pid, 0)).toThrow();
+      expect(() => process.kill(foreigner.pid, 0)).not.toThrow();
+      // y el run nuevo spawnó sus targets igual
+      expect(spawned).toEqual(['npm', 'npm']);
+    } finally {
+      for (const pid of [zombie.pid, foreigner.pid]) {
+        try { process.kill(-pid, 'SIGKILL'); } catch { /* grupo muerto */ }
+        try { process.kill(pid, 'SIGKILL'); } catch { /* ya muerto */ }
+      }
+    }
+  });
+
+  it('stopDevRun también reapa nietos fuera del process group que retienen el puerto', async () => {
+    const { spawn } = await import('node:child_process');
+    const { stopDevRun } = await import('../src/dashboard/server.js');
+    const dir = seedDevApp('app-stopreap');
+    const zombie = spawn(
+      process.execPath,
+      ['-e', 'require("http").createServer(()=>{}).listen(5173)'],
+      { cwd: dir, detached: true },
+    );
+    try {
+      await waitListen(5173);
+      // Run vigente cuyo proc trackeado ya no existe — el zombie es un
+      // nieto no registrado que quedó con el puerto (cwd=dir).
+      writeJson(join(dir, 'dev-run.json'), {
+        status: 'running',
+        procs: [{ kind: 'dev', cmd: 'npm run dev', port: 5173, pid: 999999, alive: true }],
+        startedAt: new Date().toISOString(),
+      });
+      const { stopped } = stopDevRun(dir);
+      expect(stopped).toBe(true);
+      await new Promise((r) => setTimeout(r, 300));
+      expect(() => process.kill(zombie.pid, 0)).toThrow();
+    } finally {
+      try { process.kill(-zombie.pid, 'SIGKILL'); } catch { /* grupo muerto */ }
+      try { process.kill(zombie.pid, 'SIGKILL'); } catch { /* ya muerto */ }
+    }
+  });
 });
 
 describe('eliminar proyecto', () => {

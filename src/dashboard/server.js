@@ -275,7 +275,91 @@ const devTargets = (dir) => {
   return targets;
 };
 
-export function startDevRun(dir, { spawnFn = spawn } = {}) {
+// PIDs con un socket LISTEN en `port` — via /proc (sin depender de
+// ss/lsof): inodes LISTEN de /proc/net/tcp{,6} → scan /proc/*/fd.
+const portHolders = (port) => {
+  const inodes = new Set();
+  const hex = port.toString(16).toUpperCase().padStart(4, '0');
+  for (const f of ['/proc/net/tcp', '/proc/net/tcp6']) {
+    let lines;
+    try {
+      lines = readFileSync(f, 'utf8').split('\n');
+    } catch {
+      continue;
+    }
+    for (const line of lines.slice(1)) {
+      const cols = line.trim().split(/\s+/);
+      // [1]=local_address "IP:PORT" hex, [3]=state (0A=LISTEN), [9]=inode
+      if (cols[3] !== '0A' || !cols[1]?.endsWith(`:${hex}`)) continue;
+      inodes.add(cols[9]);
+    }
+  }
+  if (!inodes.size || !existsSync('/proc')) return [];
+  const pids = new Set();
+  for (const pid of readdirSync('/proc')) {
+    if (!/^\d+$/.test(pid)) continue;
+    if (pids.size >= inodes.size) break;
+    let fds;
+    try {
+      fds = readdirSync(`/proc/${pid}/fd`);
+    } catch {
+      continue;
+    }
+    for (const fd of fds) {
+      let link;
+      try {
+        link = readlinkSync(`/proc/${pid}/fd/${fd}`);
+      } catch {
+        continue;
+      }
+      const m = link.match(/^socket:\[(\d+)\]$/);
+      if (m && inodes.has(m[1])) {
+        pids.add(Number(pid));
+        break;
+      }
+    }
+  }
+  return [...pids];
+};
+
+// Libera `port` si lo ocupa un proceso cuyo cwd ES este workspace (o
+// lo era — sufijo "(deleted)": el dir se rmSync'd con el proc vivo,
+// típico de Expo/Metro que sobrevive al kill del process group al
+// archivar con el preview prendido → puerto retenido y el siguiente
+// preview sirve el diseño viejo). No toca procesos de otros dirs ni
+// ajenos — el filtro por cwd es estricto.
+export function killStalePortHolders(
+  dir,
+  port,
+  { killGroup = (pid) => process.kill(-pid, 'SIGTERM'), cwdOf = (pid) => readlinkSync(`/proc/${pid}/cwd`) } = {},
+) {
+  if (!port || !existsSync('/proc')) return { killed: [] };
+  const killed = [];
+  for (const pid of portHolders(port)) {
+    if (pid === process.pid) continue;
+    let cwd;
+    try {
+      cwd = cwdOf(pid);
+    } catch {
+      continue;
+    }
+    if (String(cwd ?? '').replace(/ \(deleted\)$/, '') !== dir) continue;
+    try {
+      killGroup(pid);
+      killed.push(pid);
+    } catch {
+      try {
+        process.kill(pid, 'SIGTERM');
+        killed.push(pid);
+      } catch {
+        /* ya muerto */
+      }
+    }
+  }
+  return { killed };
+}
+
+export function startDevRun(dir, { spawnFn = spawn, reapPort = killStalePortHolders } = {}) {
   const targets = devTargets(dir);
   const state = {
     status: 'running',
@@ -289,6 +373,10 @@ export function startDevRun(dir, { spawnFn = spawn } = {}) {
   log.on('error', () => {});
   log.write(`\n━━ dev run · ${targets.map((t) => t.cmd).join(' + ')} · ${state.startedAt}\n`);
   state.procs.forEach((proc) => {
+    // Zombies del mismo workspace reteniendo el puerto (dev que
+    // sobrevivió al rmSync): sin esto el target cae por puerto
+    // ocupado y la URL sigue sirviendo el proyecto anterior.
+    reapPort(dir, proc.port);
     // El comando se divide en argv simple — los devCmd del toolchain
     // son comandos de un nivel (npm run api, uvicorn app.main:app…).
     const [bin, ...args] = proc.cmd.split(/\s+/);
@@ -333,7 +421,13 @@ export function startDevRun(dir, { spawnFn = spawn } = {}) {
   return state;
 }
 
-export function stopDevRun(dir, { killGroup = (pid) => process.kill(-pid, 'SIGTERM') } = {}) {
+export function stopDevRun(
+  dir,
+  {
+    killGroup = (pid) => process.kill(-pid, 'SIGTERM'),
+    reapPort = killStalePortHolders,
+  } = {},
+) {
   const state = readDevState(dir);
   // Solo una sesión vigente: señalar procs de un run ya 'stopped'/
   // 'exited' sería SIGTERM a pids que el SO pudo reciclar (grupo ajeno).
@@ -347,6 +441,11 @@ export function stopDevRun(dir, { killGroup = (pid) => process.kill(-pid, 'SIGTE
     }
     p.alive = false;
   }
+  // Nietos fuera del process group (Expo/Metro dejan el bundler vivo
+  // en otro grupo): si aún retienen el puerto con cwd en este dir se
+  // van también — sin esto archivar/discard con preview prendido deja
+  // un zombie incontrolable ocupando el puerto.
+  for (const p of state.procs) reapPort(dir, p.port);
   writeDevState(dir, { ...state, status: 'stopped', finishedAt: new Date().toISOString() });
   return { stopped: true };
 }

@@ -129,8 +129,11 @@ motifs que el resto de las áreas).
   group** en timeout/cancel. Además la API del dashboard barre
   `dev-run.json` con `status:'running'` al boot y mata los grupos
   registrados que sigan vivos (muerte anormal de la API = ya no deja
-  previews sueltos), y `validate-pr` limpia procesos spawnados dentro
-  del worktree antes de borrarlo.
+  previews sueltos), `validate-pr` limpia procesos spawnados dentro
+  del worktree antes de borrarlo, y `startDevRun`/`stopDevRun`
+  reapean port-holders cuyo cwd es el workspace (o fue — `(deleted)`):
+  nietos fuera del process group (Expo/Metro) que sobrevivían
+  reteniendo el puerto y servían el proyecto anterior en la URL nueva.
 - **Validación acotada por flujos tocados**: `pr-validator.md` corre
   `vitest related <archivos del diff>` (grafo de imports — solo tests
   de los flujos comprometidos) en vez de la suite completa; suite full
