@@ -96,5 +96,7 @@ export default {
     e2eSuffix: '',
     dev: '.venv/bin/uvicorn app.main:app --port 4000   # API FastAPI en http://localhost:4000',
     tests: [],
+    requires: ['- Python >= 3.10 (venv + pip)'],
+    envVars: ['- `DATABASE_URL` — sqlite local por default; postgres/mysql vía SQLAlchemy URL'],
   },
 };

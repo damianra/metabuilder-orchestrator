@@ -46,7 +46,13 @@ improvisarlo por prompt), `uiDoc` (fragmento AGENTS propio en
 `AGENTS.mobile.md` con reglas React Native), `pagesBaseEnv` (env var
 para re-build con basePath en Pages; solo stacks que lo necesitan),
 `requirements` (reglas declarativas de validatePlan con `error` +
-`prompt` equivalente) y fragmentos `readme`.
+`prompt` equivalente) y fragmentos `readme` — `stack`/`e2eSuffix`/`dev`/
+`tests` (texto del README generado), `requires` (bullets de la sección
+"Requisitos" — default `- Node.js >= 20`; un stack python o con DB
+externa declara los suyos), `envVars` (bullets de "Variables de entorno"
+— solo si el stack los declara; el `.env.example` del skeleton es la
+fuente) y `nativeBuild` (sección opcional — solo expo-mobile: `build.sh`
++ dependencias del host JDK 17–21/Android SDK).
 `resolveStacks(scope, overrides)` devuelve `{ frontend, backend }`;
 `planRequirements` los mergea deduplicando; `finalCheckCommands` arma
 la batería de verify; `stackRuleBullets(scope)` genera las reglas que

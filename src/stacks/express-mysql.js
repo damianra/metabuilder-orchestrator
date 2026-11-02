@@ -66,5 +66,9 @@ export default {
     e2eSuffix: '',
     dev: 'npm run api        # API Express en http://localhost:4000 (requiere DB_* en .env)',
     tests: [],
+    requires: ['- Node.js >= 20', '- MySQL accesible (ver Variables de entorno)'],
+    envVars: [
+      '- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` — conexión MySQL',
+    ],
   },
 };

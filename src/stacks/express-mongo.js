@@ -63,5 +63,7 @@ export default {
     e2eSuffix: '',
     dev: 'npm run api        # API Express en http://localhost:4000 (requiere MONGO_URI en .env)',
     tests: [],
+    requires: ['- Node.js >= 20', '- MongoDB accesible (ver Variables de entorno)'],
+    envVars: ['- `MONGO_URI`, `MONGO_DB` — conexión MongoDB'],
   },
 };

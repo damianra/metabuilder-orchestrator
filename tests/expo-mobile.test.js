@@ -173,13 +173,37 @@ describe('stack expo-mobile — scripts APK en el skeleton (backlog #9)', () => 
     const mdMobile = readFileSync(join(mobile.projectDir, 'README.md'), 'utf8');
     expect(mdMobile).toContain('## Build nativo (APK/AAB)');
     expect(mdMobile).toContain('bash build.sh staging');
+    expect(mdMobile).toContain('### Dependencias del host');
+    expect(mdMobile).toContain('openjdk-17-jdk');
     expect(mdMobile).not.toContain('{{nativeBuild}}');
+    expect(mdMobile).not.toContain('## Variables de entorno');
 
     const web = mkState({ frontend: 'vite-react' });
     writeReadme(web);
     const mdWeb = readFileSync(join(web.projectDir, 'README.md'), 'utf8');
     expect(mdWeb).not.toContain('## Build nativo');
     expect(mdWeb).not.toContain('{{nativeBuild}}');
+  });
+
+  it('writeReadme backend con DB externa → requisitos + env vars + deploy sin Pages', () => {
+    const s = {
+      projectDir: tmp(),
+      projectSlug: 'api-x',
+      scope: 'backend',
+      agent: 'opencode',
+      plan: { stacks: { frontend: null, backend: 'express-postgres' } },
+    };
+    writeReadme(s);
+    const md = readFileSync(join(s.projectDir, 'README.md'), 'utf8');
+    expect(md).toContain('- PostgreSQL accesible');
+    expect(md).toContain('## Variables de entorno');
+    expect(md).toContain('`DB_HOST`');
+    expect(md).toContain('npm run api');
+    expect(md).toContain('## Deploy');
+    expect(md).toContain('docker build -t api-x .');
+    expect(md).not.toContain('GitHub Pages');
+    expect(md).not.toContain('{{envSection}}');
+    expect(md).not.toContain('{{deploySection}}');
   });
 });
 

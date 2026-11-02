@@ -74,5 +74,10 @@ export default {
     e2eSuffix: '',
     dev: 'npm run api        # API NestJS en http://localhost:4000 (requiere DB_TYPE/DB_* en .env)',
     tests: [],
+    requires: ['- Node.js >= 20', '- Base de datos según `DB_TYPE` (postgres/mysql/mongodb) accesible'],
+    envVars: [
+      '- `DB_TYPE` — postgres | mysql | mongodb',
+      '- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` — conexión',
+    ],
   },
 };
