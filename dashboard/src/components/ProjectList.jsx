@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Container, FolderOpen, GitBranch, Search } from 'lucide-react';
+import { Container, FolderOpen, GitBranch, Search, Smartphone } from 'lucide-react';
 import StatusBadge from './StatusBadge.jsx';
 import { timeAgo } from '../util.js';
 
@@ -63,6 +63,11 @@ export default function ProjectList({ projects }) {
                 {p.scope && <span className="rounded-full bg-slate-800 px-2 py-0.5 text-slate-400">{p.scope}</span>}
                 {p.appType && <span className="rounded-full bg-slate-800 px-2 py-0.5 text-slate-400">{p.appType}</span>}
                 {p.arch && <span className="rounded-full bg-slate-800 px-2 py-0.5 text-slate-400">arch {p.arch}</span>}
+                {p.mobile && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-accent-500/15 px-2 py-0.5 text-accent-300">
+                    <Smartphone size={11} /> mobile
+                  </span>
+                )}
                 {p.hasDockerfile && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-accent-500/15 px-2 py-0.5 text-accent-300">
                     <Container size={11} /> docker

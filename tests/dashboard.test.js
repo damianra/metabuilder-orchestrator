@@ -179,6 +179,19 @@ describe('GET /api/projects', () => {
       hasDockerfile: false,
     });
   });
+
+  it('flag mobile solo cuando stacks.frontend es kind mobile (expo)', async () => {
+    // plan sintético de saveMobile: scope frontend + stacks.frontend
+    // 'expo-mobile' — el list/detail muestra el chip mobile.
+    const dir = seedApp('app-mobil');
+    const plan = JSON.parse(readFileSync(join(dir, 'plan.json'), 'utf8'));
+    plan.stacks = { frontend: 'expo-mobile' };
+    writeJson(join(dir, 'plan.json'), plan);
+    seedApp('app-web');
+    const { body } = await api('/api/projects');
+    expect(body.find((p) => p.slug === 'app-mobil').mobile).toBe(true);
+    expect(body.find((p) => p.slug === 'app-web').mobile).toBe(false);
+  });
 });
 
 describe('GET /api/projects/:slug', () => {
