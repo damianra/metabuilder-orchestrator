@@ -87,6 +87,21 @@ con utilidades CSS-web-only, `<form>`, `<input>`).
   están en `.gitignore`. Backup del keystore FUERA del repo
   (perderlo = no más updates de la app publicada).
 
+### Emulador (pruebas manuales del APK)
+
+- **Teclado virtual**: si al tocar un `TextInput` el teclado no
+  abre, primero descartar el AVD antes que el código —
+  `hw.keyboard = yes` en `~/.android/avd/<avd>.avd/config.ini` (o
+  "Enable on-screen keyboard" apagado en Extended Controls) hace
+  que Android oculte el IME permanentemente, inclusive dentro de
+  `presentation: 'modal'`. Fix en caliente, sin reboot:
+  `adb shell settings put secure show_ime_with_hard_keyboard 1`.
+  Fix persistente: `hw.keyboard = no` + cold boot del AVD.
+- Diagnóstico en 10s: `adb shell dumpsys input_method | grep
+  mInputShown` tras tocar el campo — `false` con
+  `mServedView=DecorView` = IME suprimido por hardware keyboard;
+  `true` con `mServedView=...ReactEditText` = el input funciona.
+
 ### Equivalencias web → mobile (para traducir las reglas genéricas)
 
 - "Checkbox de consentimiento en formularios": en mobile, un
