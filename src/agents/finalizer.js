@@ -140,10 +140,11 @@ export async function finalVerifyNode(state) {
  */
 export function writeReadme(state, { screenshot = null } = {}) {
   const { frontend, backend } = stacksFor(state);
+  const stacks = [frontend, backend].filter(Boolean);
 
   // Labels de tests por toolchain activo (Vitest | pytest…), dedup.
   const testLabels = [
-    ...new Set([frontend, backend].filter(Boolean).map((s) => s?.toolchain?.testLabel ?? 'Vitest')),
+    ...new Set(stacks.map((s) => s?.toolchain?.testLabel ?? 'Vitest')),
   ];
   const stack = [
     frontend?.readme.stack,
@@ -151,20 +152,65 @@ export function writeReadme(state, { screenshot = null } = {}) {
     `- ${testLabels.join(' + ')} (tests)${frontend?.readme.e2eSuffix ?? ''}`,
   ].filter(Boolean).join('\n');
 
-  const devCommands = [frontend?.readme.dev, backend?.readme.dev].filter(Boolean).join('\n');
+  // Requisitos del host por stack (readme.requires, dedup) — los stacks
+  // node comparten 'Node.js >= 20'; un stack python declara los suyos.
+  const requirements = [
+    ...new Set(stacks.flatMap((s) => s?.readme?.requires ?? ['- Node.js >= 20'])),
+  ].join('\n');
+
+  // Bloque "Levantar el proyecto": installCmd de cada toolchain (dedup)
+  // + el comando dev de cada stack con su comentario de puerto.
+  const setupCommands = [
+    ...new Set(stacks.map((s) => s?.toolchain?.installCmd).filter(Boolean)),
+    frontend?.readme.dev,
+    backend?.readme.dev,
+  ].filter(Boolean).join('\n');
+
+  // Sección "Variables de entorno" — solo si algún stack declara
+  // readme.envVars (backends con DB externa/servicio).
+  const envVars = [
+    ...new Set(stacks.flatMap((s) => s?.readme?.envVars ?? [])),
+  ];
+  const envSection = envVars.length
+    ? `\n## Variables de entorno\n\nCopiar \`.env.example\` a \`.env\` y completar:\n\n${envVars.join('\n')}\n\n`
+    : '';
 
   // Comandos de test del README: el testCmd de cada toolchain activo
   // (dedup — los stacks node comparten 'npx vitest run') + los extras
   // declarados en readme.tests (p.ej. e2e Playwright del frontend).
   const testCommands = [
     ...[...new Set(
-      [frontend, backend]
+      stacks
         .map((s) => s?.toolchain?.testCmd)
         .filter(Boolean)
         .map((c) => `${c}   # tests`),
     )],
     ...(frontend?.readme.tests ?? []),
   ].join('\n');
+
+  // Sección Deploy: build del front (si hay) + Pages solo cuando el run
+  // realmente lo pidió (--github + --ghpages) + Dockerfile siempre.
+  const deployLines = [];
+  if (frontend) {
+    deployLines.push(
+      '```bash',
+      `${frontend.toolchain?.buildCmd ?? 'npm run build'}   # build → ${frontend.buildDir ?? 'dist'}/`,
+      '```',
+      '',
+    );
+    if (state.deployGithub && state.deployPages) {
+      deployLines.push(
+        `Si el proyecto se generó con \`--github\` + \`--ghpages\`, el build queda publicado en GitHub Pages (\`https://<usuario>.github.io/${state.projectSlug}/\`). Pages sirve solo el frontend; en apps fullstack el backend corre aparte.`,
+        '',
+      );
+    }
+  }
+  deployLines.push(
+    'El proyecto incluye `Dockerfile` — `docker build -t ' +
+      (state.projectSlug || 'app') +
+      ' .` para el build de container.',
+  );
+  const deploySection = `## Deploy\n\n${deployLines.join('\n')}\n\n`;
 
   // Crédito del engine real usado (state.agent lo resolvió preflight a
   // un id concreto; 'auto'/vacío no debería llegar acá — fallback
@@ -179,10 +225,12 @@ export function writeReadme(state, { screenshot = null } = {}) {
 
   const md = loadTemplate('README.md', {
     name: state.projectSlug,
-    idea: state.idea,
     stack,
-    devCommands,
+    requirements,
+    setupCommands,
+    envSection,
     testCommands,
+    deploySection,
     engine,
     screenshot: screenshot ? `## Captura\n\n![Captura de la app](${screenshot})\n` : '',
     // Sección "Build nativo (APK/AAB)" — solo el stack mobile la define;

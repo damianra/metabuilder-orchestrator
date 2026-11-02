@@ -76,4 +76,12 @@ describe('writeReadme — engine + screenshot', () => {
     expect(md).toContain('usando Devin (via ACP)');
     expect(md).toContain('![Captura de la app](screenshot.png)');
   });
+
+  it('no vuelca la idea (prompt) en el README', () => {
+    const s = { ...state('devin'), idea: 'PROMPT_INTERNO_SECRETO_XYZ' };
+    writeReadme(s);
+    const md = readFileSync(join(s.projectDir, 'README.md'), 'utf8');
+    expect(md).not.toContain('PROMPT_INTERNO_SECRETO_XYZ');
+    expect(md).not.toContain('{{idea}}');
+  });
 });

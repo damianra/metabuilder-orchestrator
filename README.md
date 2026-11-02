@@ -37,7 +37,7 @@ preflight → planner → validate ─┬─→ confirm → builder → verify �
 | `fixer` | Si verify falla: manda a Devin la descripción del paso + stderr (`prompts/fixer.md`). Máx `MAX_STEP_RETRIES` (3) intentos. |
 | `finalVerify` | Batería por toolchain del stack: `npm run build` + `npx vitest run` + `npm run test:e2e` (solo si hay frontend; backend → solo vitest). |
 | `review` | Sub-agente QA: sesión Devin revisa la app contra `AGENTS.md` y la idea (`prompts/reviewer.md`) — incluye checklist de seguridad/privacidad (`/privacidad`, consentimiento, sin XSS, prepared statements). `RESULT: APPROVED` → finalize; `RESULT: ISSUES` → fixer. |
-| `finalize` | Genera `README.md` (con `screenshot.png` del build frontend — capturada en `review` para el QA visual y reusada acá, warn-only si falta chromium)` (descripción + cómo levantarlo + crédito a MetaBuilder), `git init/commit`, y push según modo. |
+| `finalize` | Genera `README.md` determinístico por stack — requisitos del host, install/dev del toolchain real, env vars, deploy condicional (Pages solo con `--ghpages`) y build nativo APK en mobile; nunca el prompt del usuario (con `screenshot.png` del build frontend — capturada en `review` para el QA visual y reusada acá, warn-only si falta chromium), `git init/commit`, y push según modo. |
 | `repairPlan` / `fail` | Reparación del plan (máx `MAX_PLAN_RETRIES`=2, solo errores de contenido) / terminación en `failed`. |
 
 ## Feedback en vivo y `status.json`
@@ -274,5 +274,5 @@ cp .env.example .env
 - `plan.json` — checkpoint con status/attempts por paso.
 - `status.json` — último estado reportado del pipeline (nodo, step/totalSteps, lastError).
 - `AGENTS.md` — reglas de UI + guía de diseño.
-- `README.md` — descripción, cómo levantarlo, crédito a MetaBuilder.
+- `README.md` — stack, requisitos, install/dev, env vars, deploy y crédito a MetaBuilder (sin el prompt del usuario).
 - Repo git propio con commit inicial (remoto con `--github`, Pages además con `--ghpages`).

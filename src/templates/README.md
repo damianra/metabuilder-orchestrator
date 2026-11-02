@@ -1,7 +1,5 @@
 # {{name}}
 
-{{idea}}
-
 > App generada automáticamente por [MetaBuilder Orchestrator](https://github.com/damianra/metabuilder-orchestrator) usando {{engine}} (via ACP).
 {{screenshot}}
 ## Stack
@@ -10,25 +8,21 @@
 
 ## Requisitos
 
-- Node.js >= 20
+{{requirements}}
 
 ## Levantar el proyecto
 
 ```bash
-npm install
-{{devCommands}}
+{{setupCommands}}
 ```
-
+{{envSection}}
 ## Tests
 
 ```bash
 {{testCommands}}
 ```
 
-## Deploy
-
-Si el proyecto se generó con `--github`, el build de `dist/` queda publicado en GitHub Pages (`https://<usuario>.github.io/{{name}}/`). Pages sirve solo el frontend; en apps fullstack el backend corre aparte (`npm run api`).
-
+{{deploySection}}
 {{nativeBuild}}
 ## Cumplimiento legal
 
