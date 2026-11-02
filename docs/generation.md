@@ -165,6 +165,18 @@ emulator -list-avds          # AVDs creados (`avdmanager list avd` = detalle)
 emulator -avd pixel7         # lanzar
 ```
 
+**Teclado virtual en el AVD**: si al tocar un `TextInput` el teclado
+no abre, no es bug de la app — el AVD está reportando teclado físico
+(`hw.keyboard = yes` en `~/.android/avd/<avd>.avd/config.ini`, o
+"Extended Controls → Settings → Enable on-screen keyboard" apagado)
+y Android oculta el IME permanentemente, inclusive en pantallas
+`presentation: 'modal'`. Diagnóstico:
+`adb shell dumpsys input_method | grep mInputShown` tras tocar el
+campo (`false` con `mServedView=DecorView` = IME suprimido). Fix en
+caliente, sin reboot:
+`adb shell settings put secure show_ime_with_hard_keyboard 1`; fix
+persistente: `hw.keyboard = no` + cold boot.
+
 **Selección**: flags `--stack-frontend <id>` / `--stack-backend <id>`
 (o pregunta interactiva) → `state.stackFrontend/stackBackend` →
 `plan.stacks` (persistido por planner; resume lo restaura igual que
