@@ -224,7 +224,7 @@ animaciones; si el engine falla queda `spec.md` de fallback). En la
 pantalla de "nuevo diseño" ya no se listan — la biblioteca vive solo
 en el tab **Archivados** (`#/archivados`, junto a Proyectos —
 `LibraryTab`), con tema propio `theme-parrot`/`motif-parrot` (Parrot
-OS: navy + cyan, sprites angulares, haz diagonal, loro flotante). Las
+OS: navy + cyan, sprites angulares, loro flotante). Las
 cards (`LibraryCard`) permiten **restaurar** (same-kind — devuelve la
 sesión a `design-work/` o `mobile-work/` con su historial), **usar
 como referencia** (crea el diseño con el código archivado en

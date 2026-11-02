@@ -431,8 +431,8 @@
 
 /* Parrot OS — archivo/seguridad: hexágonos, candado, escudo,
    prompt de terminal, brackets, nodos de circuito y binario,
-   todo en cyan low-opacity sobre navy — deriva lenta + haz que
-   barre en diagonal + glyph de loro flotante. */
+   todo en cyan low-opacity sobre navy — deriva lenta + glyph de
+   loro flotante. */
 .motif-parrot {
   background-image:
     /* hexágono */            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 26'%3E%3Cpath d='M7 2 L21 2 L27 13 L21 24 L7 24 L1 13 Z' fill='none' stroke='%2322d3ee' stroke-opacity='.5' stroke-width='1.5'/%3E%3C/svg%3E"),
@@ -460,20 +460,6 @@
     22px 26px, 36px 22px, 11px 18px, 22px 20px, 21px 21px,
     auto;
   animation: parrot-drift 55s ease-in-out infinite;
-}
-/* Haz fino que barre en diagonal — reflector de seguridad. */
-.motif-parrot::before {
-  content: '';
-  position: fixed;
-  z-index: 0;
-  pointer-events: none;
-  top: -40%;
-  left: -30%;
-  width: 60%;
-  height: 200%;
-  background: linear-gradient(90deg, transparent, rgb(var(--a400) / .05) 45%, rgb(var(--a400) / .11) 50%, rgb(var(--a400) / .05) 55%, transparent);
-  transform: rotate(18deg);
-  animation: parrot-beam 14s linear infinite;
 }
 /* Glyph de loro flotante — bob suave en el borde derecho. */
 .motif-parrot::after {
@@ -504,10 +490,6 @@
       0 -14px;
   }
 }
-@keyframes parrot-beam {
-  0%   { transform: rotate(18deg) translateX(-30%); }
-  100% { transform: rotate(18deg) translateX(230%); }
-}
 @keyframes parrot-bob {
   0%, 100% { transform: translateY(0) rotate(-3deg); opacity: .8; }
   50%      { transform: translateY(-16px) rotate(4deg); opacity: 1; }
@@ -536,7 +518,6 @@
   .motif-stack::before,
   .motif-stack::after,
   .motif-parrot,
-  .motif-parrot::before,
   .motif-parrot::after {
     animation: none;
   }
