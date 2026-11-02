@@ -113,7 +113,8 @@ export default function App() {
 
   // Tema + motif por área — cada tab se siente en su territorio:
   // diseño = estudio azul, backend = ciudad nocturna gold, mobile =
-  // taller emerald, fullstack = arquitectura amber, detalle = neutro.
+  // taller emerald, fullstack = arquitectura amber, detalle = neutro,
+  // archivados = estilo Parrot OS (dark + cyan geométrico/terminal).
   const theme = {
     design: 'theme-design motif-studio',
     list: 'theme-backend motif-gotham',
@@ -121,6 +122,8 @@ export default function App() {
     mobile: 'theme-mobile motif-mobile',
     detail: 'theme-neutral',
     projects: 'theme-neutral',
+    archivados: 'theme-parrot motif-parrot',
+    libDetail: 'theme-parrot motif-parrot',
   }[route.view];
 
   return (

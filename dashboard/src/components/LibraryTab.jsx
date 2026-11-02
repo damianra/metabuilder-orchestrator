@@ -24,17 +24,18 @@ export default function LibraryTab() {
 
   const restore = (it) => goTab(it);
 
-  // Referencia same-kind: crea la sesión nueva con .reference/<slug>/ +
-  // spec inyectado y navega al tab que la atiende.
-  const reference = async (it) => {
+  // Referencia con destino elegido en el menú de la card (web|mobile)
+  // — la sesión nueva nace con .reference/<slug>/ + spec inyectado;
+  // cross-kind: una referencia web puede sembrar un diseño mobile.
+  const reference = async (it, kind) => {
     setError(null);
     try {
       const r =
-        it.kind === 'mobile'
+        kind === 'mobile'
           ? await api.createMobile(it.slug)
           : await api.createDesign(undefined, 'vite-react', it.slug);
       if (!r?.ok) return setError(r?.error ?? 'no se pudo crear el diseño');
-      goTab(it);
+      window.location.hash = kind === 'mobile' ? '#/mobile' : '#/';
     } catch (e) {
       setError(e.message);
     }

@@ -114,7 +114,12 @@ eliminar). Al archivar el tab pide **nombre** (+ descripción opcional);
 si queda vacío el backend asigna `Diseño NNN` (`nextDesignName` —
 secuencia global web+mobile, nunca el primer mensaje del chat como
 nombre). `GET /api/design-library/:slug` sirve la meta de una entrada
-para el deep-link del detalle.
+para el deep-link del detalle. La biblioteca quedó **exclusiva** del
+tab (fuera de las pantallas de nuevo diseño de Diseñar/Mobile — se
+eliminó `LibraryPanel`) y con tema propio estilo **Parrot OS**
+(`theme-parrot`/`motif-parrot`: navy + cyan, sprites angulares de
+seguridad, haz diagonal, glyph de loro flotante — mismo patrón de
+motifs que el resto de las áreas).
 
 ## Robustez de procesos + validación acotada
 

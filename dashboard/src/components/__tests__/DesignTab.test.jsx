@@ -24,7 +24,7 @@ vi.mock('../../api.js', () => ({
     archiveDesign: vi.fn(() => Promise.resolve({ ok: true, slug: 'mi-diseno' })),
     projects: vi.fn(() => Promise.resolve([{ slug: 'mi-api', scope: 'backend' }])),
     action: vi.fn(() => Promise.resolve({ ok: true })),
-    // Biblioteca (v15): LibraryPanel hace poll de api.library al montar.
+    // Biblioteca (v15): la consume el tab Archivados — mocks sin uso aquí.
     library: vi.fn(() => Promise.resolve([])),
     restoreLibrary: vi.fn(() => Promise.resolve({ ok: true })),
     deleteLibrary: vi.fn(() => Promise.resolve({ ok: true })),

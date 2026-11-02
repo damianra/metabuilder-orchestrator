@@ -221,19 +221,20 @@ trae `@playwright/test` para e2e — el orquestador no necesita la dep)
 — + `prompt.md` con un spec de sistema de diseño **generado por el
 agente** al archivar (paleta con roles, tipografía, componentes,
 animaciones; si el engine falla queda `spec.md` de fallback). En la
-pantalla de "nuevo diseño" un `LibraryPanel` lista las entradas (chip
-web/mobile, thumbnail) con **restaurar** (same-kind — devuelve la
+pantalla de "nuevo diseño" ya no se listan — la biblioteca vive solo
+en el tab **Archivados** (`#/archivados`, junto a Proyectos —
+`LibraryTab`), con tema propio `theme-parrot`/`motif-parrot` (Parrot
+OS: navy + cyan, sprites angulares, haz diagonal, loro flotante). Las
+cards (`LibraryCard`) permiten **restaurar** (same-kind — devuelve la
 sesión a `design-work/` o `mobile-work/` con su historial), **usar
 como referencia** (crea el diseño con el código archivado en
 `.reference/<slug>/` — cross-kind — y el `referenceBlock` inyecta el
 spec al prompt del agente, mismo patrón que `apiContextBlock`) y
 **copiar prompt** (el spec copiable al portapapeles, para pegarlo en
-cualquier agente sin restaurar). El tab **Archivados** (`#/archivados`,
-junto a Proyectos — `LibraryTab`) es la biblioteca como vista propia:
-las mismas cards (`LibraryCard`, compartida con `LibraryPanel`) que al
-click abren el detalle `#/lib/<slug>` (`LibraryDetail` — captura a
-tamaño completo, prompt de diseño legible con badge agente/spec y las
-4 acciones; restaurar/referencia navegan al tab por kind). Al
+cualquier agente sin restaurar); al click abren el detalle
+`#/lib/<slug>` (`LibraryDetail` — captura a tamaño completo, prompt de
+diseño legible con badge agente/spec y las 4 acciones;
+restaurar/referencia navegan al tab por kind). Al
 **archivar** el tab pide nombre + descripción (form inline — vacío →
 `nextDesignName` asigna `Diseño NNN`, secuencia global web+mobile, ya
 no el primer mensaje del chat).

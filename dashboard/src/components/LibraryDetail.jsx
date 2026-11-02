@@ -24,6 +24,7 @@ export default function LibraryDetail({ slug }) {
   const [error, setError] = useState(null);
   const [confirmDel, setConfirmDel] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [refMenu, setRefMenu] = useState(false);
 
   useEffect(() => {
     api
@@ -54,16 +55,18 @@ export default function LibraryDetail({ slug }) {
     window.location.hash = meta?.kind === 'mobile' ? '#/mobile' : '#/';
   };
 
-  const reference = async () => {
+  // Referencia con destino elegido (web|mobile) — cross-kind: una
+  // referencia web puede sembrar un diseño mobile.
+  const reference = async (kind) => {
     setBusy(true);
     setError(null);
     try {
       const r =
-        meta.kind === 'mobile'
+        kind === 'mobile'
           ? await api.createMobile(slug)
           : await api.createDesign(undefined, 'vite-react', slug);
       if (!r?.ok) return setError(r?.error ?? 'no se pudo crear el diseño');
-      goTab();
+      window.location.hash = kind === 'mobile' ? '#/mobile' : '#/';
     } catch (e) {
       setError(e.message);
     } finally {
@@ -140,13 +143,31 @@ export default function LibraryDetail({ slug }) {
         >
           {busy ? spin : <PackageOpen size={12} />} restaurar
         </button>
-        <button
-          disabled={busy}
-          onClick={reference}
-          className="inline-flex items-center gap-1 rounded px-2.5 py-1.5 text-xs font-semibold text-accent-300 ring-1 ring-accent-400/50 hover:bg-accent-500/10 disabled:opacity-40"
-        >
-          <Sparkles size={12} /> usar como referencia
-        </button>
+        <span className="relative">
+          <button
+            disabled={busy}
+            onClick={() => setRefMenu((v) => !v)}
+            className="inline-flex items-center gap-1 rounded px-2.5 py-1.5 text-xs font-semibold text-accent-300 ring-1 ring-accent-400/50 hover:bg-accent-500/10 disabled:opacity-40"
+          >
+            <Sparkles size={12} /> usar como referencia
+          </button>
+          {refMenu && (
+            <div className="absolute left-0 top-full z-10 mt-1 w-44 overflow-hidden rounded-md bg-slate-900 shadow-lg ring-1 ring-accent-500/40">
+              <button
+                onClick={() => { setRefMenu(false); reference('web'); }}
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs text-slate-200 hover:bg-accent-500/10"
+              >
+                <MonitorSmartphone size={13} className="text-accent-400" /> nuevo diseño web
+              </button>
+              <button
+                onClick={() => { setRefMenu(false); reference('mobile'); }}
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs text-slate-200 hover:bg-accent-500/10"
+              >
+                <Smartphone size={13} className="text-emerald-400" /> nuevo diseño mobile
+              </button>
+            </div>
+          )}
+        </span>
         <button
           disabled={busy || !prompt?.text}
           onClick={copyPrompt}

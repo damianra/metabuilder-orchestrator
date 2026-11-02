@@ -13,16 +13,18 @@ import { api } from '../api.js';
 
 const spin = <LoaderCircle size={13} className="animate-spin" />;
 
-// Card de una entrada de la biblioteca — compartida entre
-// LibraryPanel (pantalla "nuevo diseño" de los tabs) y LibraryTab
+// Card de una entrada de la biblioteca — usada por LibraryTab
 // (#/archivados). Cada card maneja su propio estado busy/copied/
-// confirmDel. Si llega `onOpen`, el click en la card navega al
-// detalle #/lib/<slug> (los botones internos hacen stopPropagation).
+// confirmDel/refMenu. Si llega `onOpen`, el click en la card navega
+// al detalle #/lib/<slug> (los botones internos hacen stopPropagation).
+// "usar como referencia" abre menú de destino (web|mobile) — el
+// cross-kind web→mobile queda alcanzable desde acá.
 export default function LibraryCard({ it, onOpen, onRestore, onReference, onDeleted }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [confirmDel, setConfirmDel] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [refMenu, setRefMenu] = useState(false);
 
   const act = async (fn, after) => {
     setBusy(true);
@@ -111,14 +113,32 @@ export default function LibraryCard({ it, onOpen, onRestore, onReference, onDele
           >
             {busy ? spin : <PackageOpen size={11} />} restaurar
           </button>
-          <button
-            title="Crea un diseño nuevo que usa estilos/animaciones de este (referencia)"
-            disabled={busy}
-            onClick={() => onReference?.(it)}
-            className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-semibold text-accent-300 ring-1 ring-accent-400/50 hover:bg-accent-500/10 disabled:opacity-40"
-          >
-            <Sparkles size={11} /> usar como referencia
-          </button>
+          <span className="relative">
+            <button
+              title="Crea un diseño nuevo que usa estilos/animaciones de este (referencia) — elegí el destino"
+              disabled={busy}
+              onClick={() => setRefMenu((v) => !v)}
+              className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-semibold text-accent-300 ring-1 ring-accent-400/50 hover:bg-accent-500/10 disabled:opacity-40"
+            >
+              <Sparkles size={11} /> usar como referencia
+            </button>
+            {refMenu && (
+              <div className="absolute bottom-full left-0 z-10 mb-1 w-44 overflow-hidden rounded-md bg-slate-900 shadow-lg ring-1 ring-accent-500/40">
+                <button
+                  onClick={() => { setRefMenu(false); onReference?.(it, 'web'); }}
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11px] text-slate-200 hover:bg-accent-500/10"
+                >
+                  <MonitorSmartphone size={12} className="text-accent-400" /> nuevo diseño web
+                </button>
+                <button
+                  onClick={() => { setRefMenu(false); onReference?.(it, 'mobile'); }}
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11px] text-slate-200 hover:bg-accent-500/10"
+                >
+                  <Smartphone size={12} className="text-emerald-400" /> nuevo diseño mobile
+                </button>
+              </div>
+            )}
+          </span>
           <button
             title="Copia el spec de diseño (paleta/componentes/animaciones) para pegarlo en cualquier agente"
             disabled={busy}
