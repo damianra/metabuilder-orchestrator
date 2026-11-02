@@ -34,3 +34,7 @@ design-work/
 backend-work/
 mobile-work/
 design-library/
+
+# Python (fix-signing.py de skeletons mobile)
+__pycache__/
+*.pyc
