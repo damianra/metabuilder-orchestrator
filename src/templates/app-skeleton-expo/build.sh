@@ -140,8 +140,11 @@ check_prerequisites() {
   log_step "Verificando prerequisitos..."
   local missing=()
 
-  # Verificar que ANDROID_HOME o ANDROID_SDK_ROOT esté configurado PRIMERO
-  if [[ -z "$ANDROID_HOME" && -z "$ANDROID_SDK_ROOT" ]]; then
+  # Normalizar: el resto del script solo consume ANDROID_HOME
+  [[ -z "$ANDROID_HOME" && -n "$ANDROID_SDK_ROOT" ]] && export ANDROID_HOME="$ANDROID_SDK_ROOT"
+
+  # Verificar que ANDROID_HOME esté configurado PRIMERO
+  if [[ -z "$ANDROID_HOME" ]]; then
     log_warn "ANDROID_HOME no está configurado. Intentando detectar..."
     if [[ -d "$HOME/Library/Android/sdk" ]]; then
       export ANDROID_HOME="$HOME/Library/Android/sdk"
@@ -183,7 +186,10 @@ check_prerequisites() {
   if [[ "$NO_INSTALL" == false && "$ENVIRONMENT" == "test" ]]; then
     command -v adb >/dev/null 2>&1 || missing+=("Android SDK Platform Tools (adb)")
   fi
-  command -v keytool >/dev/null 2>&1 || missing+=("Java JDK (keytool)")
+  # keytool solo se usa al generar keystore (staging/production)
+  if [[ "$ENVIRONMENT" != "test" ]]; then
+    command -v keytool >/dev/null 2>&1 || missing+=("Java JDK (keytool)")
+  fi
   command -v java >/dev/null 2>&1 || missing+=("Java Runtime (java)")
   command -v python3 >/dev/null 2>&1 || missing+=("python3 (fix-signing)")
 
@@ -367,7 +373,12 @@ run_prebuild() {
   fi
 
   # 🔐 Fix signing config para builds release (prebuild regenera build.gradle)
-  python3 scripts/fix-signing.py
+  # Propagar el fallo: si el parche no aplica (template drift), seguir
+  # compilaría un release firmado con signingConfig debug en silencio.
+  if ! python3 scripts/fix-signing.py; then
+    log_error "fix-signing.py no aplicó el parche de firma — abortando"
+    exit 1
+  fi
 
   log_success "Código nativo generado en android/ ✓"
 }
