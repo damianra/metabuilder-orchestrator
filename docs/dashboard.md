@@ -113,7 +113,15 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
   dev-run.log; 400 si la app no tiene comando dev/api detectable, 409 si
   hay un run con pids vivos — `running` con pids muertos es stale y no
   bloquea), `stop-dev` (`kill(-pid)` SIGTERM al process group de cada
-  proc → cubre npm + vite/next + descendientes; marca stopped) y
+  proc → cubre npm + vite/next + descendientes; marca stopped) — y en
+  run-dev/stop-dev corre `killStalePortHolders(dir, port)`: libera el
+  puerto de cada target si lo retiene un proceso cuyo cwd es ese dir
+  (o era — sufijo `(deleted)`), cubriendo nietos fuera del process
+  group que sobreviven al kill (Expo/Metro deja el bundler vivo en
+  otro grupo; al archivar con el preview prendido quedaba un zombie
+  sin dev-run.json que retenía el puerto y el siguiente dev-run
+  servía el proyecto anterior). El filtro por cwd es estricto —
+  holders de otros dirs o ajenos al repo nunca se tocan) y
   `delete` (borra `generated-apps/<slug>` recursivo + `<engine> rm -f`
   y `rmi -f <slug>:local` si hay engine + frena el dev run vigente +
   cierra las sesiones de terminal del slug via `attachTerminal().killBySlug`;
