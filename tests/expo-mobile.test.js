@@ -1,10 +1,13 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { getStack, listStacks, resolveStacks, stackRuleBullets } from '../src/stacks/index.js';
 import { detectStackId } from '../src/tools/docker.js';
 import { validatePlan } from '../src/agents/validator.js';
+import { writeReadme } from '../src/agents/finalizer.js';
+import { config } from '../src/config.js';
 
 let dir;
 afterEach(() => dir && rmSync(dir, { recursive: true, force: true }));
@@ -88,6 +91,95 @@ describe('stack expo-mobile — registro y contrato', () => {
       expect(typeof stack.readme[k]).toBe('string');
     }
     expect(Array.isArray(stack.readme.tests)).toBe(true);
+  });
+
+  it('readme.nativeBuild documenta el build local con build.sh', () => {
+    expect(typeof stack.readme.nativeBuild).toBe('string');
+    expect(stack.readme.nativeBuild).toContain('build.sh');
+    expect(stack.readme.nativeBuild).toContain('JAVA_HOME');
+    expect(stack.readme.nativeBuild).toMatch(/test|staging|production/);
+  });
+});
+
+describe('stack expo-mobile — scripts APK en el skeleton (backlog #9)', () => {
+  const skeletonDir = join(config.templatesDir, stack.skeletonDir);
+
+  it('build.sh y scripts/fix-signing.py shippean en el skeleton', () => {
+    expect(existsSync(join(skeletonDir, 'build.sh'))).toBe(true);
+    expect(existsSync(join(skeletonDir, 'scripts', 'fix-signing.py'))).toBe(true);
+  });
+
+  it('build.sh: sintaxis bash válida y sin rutas de usuario hardcodeadas', () => {
+    const buildSh = join(skeletonDir, 'build.sh');
+    expect(() => execSync(`bash -n ${buildSh}`)).not.toThrow();
+    const src = readFileSync(buildSh, 'utf8');
+    // apksigner se resuelve via ANDROID_HOME — nunca un home de usuario.
+    expect(src).not.toMatch(/\/home\/[a-z]+\//i);
+    // APP_ID dinámico desde app.json (sobrevive cambios de package).
+    expect(src).toContain('app.json');
+    // Preflight Java 17–21 (Gradle rechaza 25).
+    expect(src).toMatch(/JAVA_HOME/);
+  });
+
+  it('fix-signing.py: sintaxis válida y aborta si el parche no aplica', () => {
+    const fix = join(skeletonDir, 'scripts', 'fix-signing.py');
+    expect(() => execSync(`python3 -m py_compile ${fix}`)).not.toThrow();
+    const src = readFileSync(fix, 'utf8');
+    // Hardening vs la versión original: verificación post-parche.
+    expect(src).toContain('MYAPP_UPLOAD_STORE_FILE');
+    expect(src).toContain('signingConfigs.release');
+  });
+
+  it('fix-signing.py aplica el parche sobre un build.gradle de template Expo', () => {
+    const d = tmp();
+    const gradle = [
+      'android {',
+      '    signingConfigs {',
+      "        debug {",
+      "            storeFile file('debug.keystore')",
+      "            storePassword 'android'",
+      "            keyAlias 'androiddebugkey'",
+      "            keyPassword 'android'",
+      '        }',
+      '    }',
+      '    buildTypes {',
+      '        release {',
+      '            // Caution! In production, you need to generate your own keystore file.',
+      '            // see https://reactnative.dev/docs/signed-apk-android.',
+      '            signingConfig signingConfigs.debug',
+      '        }',
+      '    }',
+      '}',
+    ].join('\n');
+    mkdirSync(join(d, 'android', 'app'), { recursive: true });
+    writeFileSync(join(d, 'android', 'app', 'build.gradle'), gradle);
+    execSync(`python3 ${join(skeletonDir, 'scripts', 'fix-signing.py')}`, { cwd: d });
+    const patched = readFileSync(join(d, 'android', 'app', 'build.gradle'), 'utf8');
+    expect(patched).toContain('signingConfig signingConfigs.release');
+    expect(patched).toContain('MYAPP_UPLOAD_STORE_FILE');
+  });
+
+  it('writeReadme incluye la sección Build nativo solo con stack mobile', () => {
+    const mkState = (stacks) => ({
+      projectDir: tmp(),
+      projectSlug: 'app-x',
+      idea: 'idea x',
+      scope: 'frontend',
+      agent: 'opencode',
+      plan: { stacks },
+    });
+    const mobile = mkState({ frontend: 'expo-mobile' });
+    writeReadme(mobile);
+    const mdMobile = readFileSync(join(mobile.projectDir, 'README.md'), 'utf8');
+    expect(mdMobile).toContain('## Build nativo (APK/AAB)');
+    expect(mdMobile).toContain('bash build.sh staging');
+    expect(mdMobile).not.toContain('{{nativeBuild}}');
+
+    const web = mkState({ frontend: 'vite-react' });
+    writeReadme(web);
+    const mdWeb = readFileSync(join(web.projectDir, 'README.md'), 'utf8');
+    expect(mdWeb).not.toContain('## Build nativo');
+    expect(mdWeb).not.toContain('{{nativeBuild}}');
   });
 });
 
