@@ -172,7 +172,7 @@ export function writeReadme(state, { screenshot = null } = {}) {
     ...new Set(stacks.flatMap((s) => s?.readme?.envVars ?? [])),
   ];
   const envSection = envVars.length
-    ? `\n## Variables de entorno\n\nCopiar \`.env.example\` a \`.env\` y completar:\n\n${envVars.join('\n')}\n\n`
+    ? `\n## Variables de entorno\n\nCopiar \`.env.example\` a \`.env\` y completar:\n\n${envVars.join('\n')}\n`
     : '';
 
   // Comandos de test del README: el testCmd de cada toolchain activo
@@ -210,7 +210,7 @@ export function writeReadme(state, { screenshot = null } = {}) {
       (state.projectSlug || 'app') +
       ' .` para el build de container.',
   );
-  const deploySection = `## Deploy\n\n${deployLines.join('\n')}\n\n`;
+  const deploySection = `## Deploy\n\n${deployLines.join('\n')}\n`;
 
   // Crédito del engine real usado (state.agent lo resolvió preflight a
   // un id concreto; 'auto'/vacío no debería llegar acá — fallback
