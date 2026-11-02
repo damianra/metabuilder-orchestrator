@@ -132,14 +132,27 @@ referencia:
 - **Android SDK** en `~/Android/Sdk`: cmdline-tools
   (`dl.google.com/android/repository/commandlinetools-linux-*_latest.zip`
   → `cmdline-tools/latest/`), más `sdkmanager "platform-tools"
-  "platforms;android-35" "build-tools;35.0.0"` (API 35 matchea Expo
-  SDK 54) y `yes | sdkmanager --licenses`.
+  "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006"
+  "cmake;3.22.1"` y `yes | sdkmanager --licenses`. API 36 +
+  build-tools 36 + NDK 27.1 son los defaults de Expo SDK 54
+  (`ExpoRootProjectPlugin`); con las licencias aceptadas AGP
+  auto-instala lo que falte, pero pre-instalar el NDK (~2.5 GB)
+  evita un stall silencioso a mitad del build.
 - Env en `~/.bashrc` + `~/.profile`:
   `ANDROID_HOME=~/Android/Sdk` (+ `ANDROID_SDK_ROOT`),
   `JAVA_HOME=~/tools/jdk-17`, `PATH` +=
   `platform-tools`:`cmdline-tools/latest/bin`. Los shells/procesos
   que lanzan builds heredan `JAVA_HOME` → Gradle compila con 17 aun
-  con un `java` 25 en PATH.
+  con un `java` 25 en PATH. **Ojo con nvm**: si node viene de
+  `~/.nvm`, `npx`/`node` solo existen en shells interactivos —
+  agregar a `~/.profile` un loop
+  `for d in ~/.nvm/versions/node/*/bin; do PATH="$d:$PATH"; done`
+  para que `bash -lc`/procesos no-interactivos también lo vean.
+- Validado end-to-end en host de referencia: `bash build.sh test
+  --no-install` → APK debug firmado en `builds/test/` verificado
+  con `apksigner`. Memoria justa: el primer build nativo
+  (reanimated/worklets vía ninja) llega a ~9 GB usados en un
+  sistema de 11 GB.
 
 **Emulador** (opcional — el gate del pipeline es preview web, no lo
 usa): sin Android Studio no hay AVD Manager gráfico; se maneja por
@@ -149,9 +162,9 @@ CLI. Requiere `/dev/kvm` accesible (aceleración hardware).
 sdkmanager --list | grep system-images   # imágenes descargables
 # variantes: default (AOSP), google_apis (Play Services),
 # google_apis_playstore (Play Store) — la más útil para probar apps
-sdkmanager "emulator" "system-images;android-35;google_apis_playstore;x86_64"
+sdkmanager "emulator" "system-images;android-36;google_apis_playstore;x86_64"
 avdmanager create avd -n pixel7 \
-  -k "system-images;android-35;google_apis_playstore;x86_64" -d "pixel_7"
+  -k "system-images;android-36;google_apis_playstore;x86_64" -d "pixel_7"
 emulator -list-avds          # AVDs creados (`avdmanager list avd` = detalle)
 emulator -avd pixel7         # lanzar
 ```
