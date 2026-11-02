@@ -185,6 +185,9 @@ export function writeReadme(state, { screenshot = null } = {}) {
     testCommands,
     engine,
     screenshot: screenshot ? `## Captura\n\n![Captura de la app](${screenshot})\n` : '',
+    // Sección "Build nativo (APK/AAB)" — solo el stack mobile la define;
+    // en web/backend el placeholder queda vacío.
+    nativeBuild: frontend?.readme?.nativeBuild ? `${frontend.readme.nativeBuild}\n` : '',
   });
   writeFileSync(join(state.projectDir, 'README.md'), md);
 }

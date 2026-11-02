@@ -93,5 +93,28 @@ export default {
     e2eSuffix: ' + Playwright sobre preview web (E2E)',
     dev: 'npm run web        # preview web en http://localhost:8081',
     tests: ['npm run test:e2e   # E2E Playwright (Chromium, preview web)'],
+    // Sección "Build nativo" del README generado — solo mobile la emite
+    // (finalizer pasa readme.nativeBuild como {{nativeBuild}}).
+    nativeBuild: [
+      '## Build nativo (APK/AAB)',
+      '',
+      'El proyecto incluye `build.sh` + `scripts/fix-signing.py` para compilar',
+      'localmente. Requisitos del host: **JDK 17–21** (Gradle rechaza Java 25 —',
+      'apuntar `JAVA_HOME`, ej. `export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64`)',
+      'y **Android SDK** (`ANDROID_HOME`, ej. `~/Android/Sdk` — el script lo',
+      'auto-detecta si está en esa ruta).',
+      '',
+      '```bash',
+      'bash build.sh test --no-install      # APK debug (sin keystore)',
+      'bash build.sh staging                # APK firmado (keystore en keys/staging/)',
+      'bash build.sh production --format aab # AAB para Play Store',
+      '```',
+      '',
+      'Los artefactos quedan en `builds/<entorno>/`. `android/`, `keys/` y',
+      '`builds/` están gitignored — el keystore es irreemplazable, hacer',
+      'backup fuera del repo. Alternativa gestionada: `eas build -p android`',
+      '(keystore en la cuenta Expo, sin toolchain local).',
+      '',
+    ].join('\n'),
   },
 };

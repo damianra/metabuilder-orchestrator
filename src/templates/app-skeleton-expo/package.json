@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "build": "expo export --platform web",
-    "build:web": "expo export --platform web"
+    "build:web": "expo export --platform web",
+    "apk": "bash build.sh"
   },
   "dependencies": {
     "expo": "~54.0.0",

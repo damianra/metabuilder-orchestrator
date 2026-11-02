@@ -69,21 +69,23 @@ con utilidades CSS-web-only, `<form>`, `<input>`).
 - El pipeline genera y verifica la app vía preview web; el **APK/AAB
   nativo no se compila acá** (exige Java 17–21 + Android SDK — no
   instalarlos "por las dudas").
-- **Vía recomendada — EAS Build** (`eas build --platform android`):
+- **Vía local — `bash build.sh`** (incluido en el proyecto raíz, junto
+  a `scripts/fix-signing.py`): `bash build.sh test --no-install` arma
+  el APK debug; `bash build.sh staging` genera keystore en
+  `keys/staging/` + `credentials.json`, firma y deja el artefacto en
+  `builds/staging/`; `bash build.sh production --format aab` produce
+  el AAB de Play Store. El script corre `expo prebuild`, parchea la
+  firma release (`MYAPP_UPLOAD_*` en `android/gradle.properties`,
+  gitignored con `android/`) y valida la firma con `apksigner`.
+- **Vía gestionada — EAS Build** (`eas build --platform android`):
   EAS genera y guarda el *upload keystore* en la cuenta Expo, sin
   archivos locales (`eas credentials` para ver/descargar). Activá
   **Google Play App Signing** en Play Console: Google firma con su
   key y el upload key perdido se resetea — es el camino seguro.
-- **Vía local** (solo si no hay EAS): `keytool -genkeypair -v
-  -keyalg RSA -keysize 2048 -validity 10000 -alias upload
-  -keystore keys/upload-keystore.jks`; `keys/` está gitignored —
-  backup del keystore FUERA del repo (perderlo = no más updates).
-  `npx expo prebuild` genera `android/`; los passwords van como env
-  vars `MYAPP_UPLOAD_STORE_PASSWORD`/`MYAPP_UPLOAD_KEY_PASSWORD`
-  (nunca commiteadas ni en `gradle.properties` trackeado) →
-  `cd android && ./gradlew bundleRelease` produce el `.aab`.
 - Nunca commitear keystores, fingerprints ni passwords de firma —
-  `keys/`, `*.keystore`, `*.jks` ya están en `.gitignore`.
+  `keys/`, `*.keystore`, `*.jks`, `credentials.json` y `builds/` ya
+  están en `.gitignore`. Backup del keystore FUERA del repo
+  (perderlo = no más updates de la app publicada).
 
 ### Equivalencias web → mobile (para traducir las reglas genéricas)
 

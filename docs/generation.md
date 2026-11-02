@@ -118,28 +118,37 @@ traducción web→mobile cuando el frontend es `kind:'mobile'`
 cuelgan — `npx tsc`/`test -f`, nunca `npm run web`): sin esas reglas
 el planner genera patrones DOM en un plan de React Native.
 
-### Entorno Android del host (`--build-apk` / emulador)
+**APK local incluido**: el skeleton shippea `build.sh` +
+`scripts/fix-signing.py` (vía `cpSync` — llega tanto al run del
+pipeline como al guardado de la pestaña Mobile) y el README generado
+lleva la sección "Build nativo (APK/AAB)" (`readme.nativeBuild` del
+stack → `{{nativeBuild}}`). `build.sh` hace preflight propio:
+auto-detecta `ANDROID_HOME` (`~/Android/Sdk`), suma `platform-tools`
+al PATH si falta `adb` y **exige Java 17–21** (respeta `JAVA_HOME`,
+rechaza el 25 del sistema con hint de export). `bash build.sh
+test --no-install` → APK debug sin keystore; `staging`/`production`
+generan keystore en `keys/<env>/` + `credentials.json` y firman vía
+`MYAPP_UPLOAD_*` en `android/gradle.properties` (todo gitignored).
 
-Todo vive en `$HOME` (sin sudo). Estado instalado en el host de
-referencia:
+### Entorno Android del host (`build.sh` / emulador)
 
-- **JDK 17** (Temurin) en `~/tools/jdk-17` — AGP/Gradle exigen Java
-  17–21 y el preflight de `--build-apk` **rechaza 25** (la del
-  sistema). Instalación: tarball de
-  `api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jdk/hotspot/normal/eclipse`
-  descomprimido ahí. `JAVA_HOME` apunta a este JDK; el `java` del
-  PATH puede seguir siendo el del sistema — Gradle usa `JAVA_HOME`.
+El toolchain nativo vive en el host (sin sudo para el SDK; el JDK
+entra por apt). Estado instalado en el host de referencia:
+
+- **JDK 17** por apt en `/usr/lib/jvm/java-17-openjdk-amd64` —
+  AGP/Gradle exigen Java 17–21 y `build.sh` **rechaza 25** (el
+  `java` default del sistema). No hace falta cambiar el default:
+  Gradle obedece `JAVA_HOME`, alcanza
+  `export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64` antes de
+  correr el build (o en `~/.bashrc`).
 - **Android SDK** en `~/Android/Sdk`: cmdline-tools
   (`dl.google.com/android/repository/commandlinetools-linux-*_latest.zip`
   → `cmdline-tools/latest/`), más `sdkmanager "platform-tools"
-  "platforms;android-35" "build-tools;35.0.0"` (API 35 matchea Expo
-  SDK 54) y `yes | sdkmanager --licenses`.
-- Env en `~/.bashrc` + `~/.profile`:
-  `ANDROID_HOME=~/Android/Sdk` (+ `ANDROID_SDK_ROOT`),
-  `JAVA_HOME=~/tools/jdk-17`, `PATH` +=
-  `platform-tools`:`cmdline-tools/latest/bin`. Los shells/procesos
-  que lanzan builds heredan `JAVA_HOME` → Gradle compila con 17 aun
-  con un `java` 25 en PATH.
+  "platforms;android-36" "build-tools;35.0.0"` (API 36 es el
+  compileSdk de Expo SDK 54) y `yes | sdkmanager --licenses`.
+- Env opcional en `~/.bashrc`: `ANDROID_HOME=~/Android/Sdk` (+
+  `ANDROID_SDK_ROOT`), `PATH` += `platform-tools` — `build.sh`
+  auto-detecta el SDK y suma adb solo si no están exportados.
 
 **Emulador** (opcional — el gate del pipeline es preview web, no lo
 usa): sin Android Studio no hay AVD Manager gráfico; se maneja por
