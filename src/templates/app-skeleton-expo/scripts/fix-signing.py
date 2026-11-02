@@ -29,18 +29,18 @@ def main():
         "        release {\n            // Caution! In production, you need to generate your own keystore file.\n            // see https://reactnative.dev/docs/signed-apk-android.\n            signingConfig signingConfigs.release",
     )
 
-    # 2. Add release signing config block after debug block, if not already present
-    if "signingConfigs {" in content:
-        configs_part = content.split("signingConfigs {")[1].split("}")[0]
-        if "release {" not in configs_part:
-            old_debug = """        debug {
+    # 2. Add release signing config block after debug block, if not already
+    #    present. Idempotencia: el bloque insertado es lo único que introduce
+    #    MYAPP_UPLOAD_STORE_FILE — si ya está, el parche se aplicó antes.
+    if "signingConfigs {" in content and "MYAPP_UPLOAD_STORE_FILE" not in content:
+        old_debug = """        debug {
             storeFile file('debug.keystore')
             storePassword 'android'
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }"""
 
-            new_debug_release = """        debug {
+        new_debug_release = """        debug {
             storeFile file('debug.keystore')
             storePassword 'android'
             keyAlias 'androiddebugkey'
@@ -55,7 +55,7 @@ def main():
             }
         }"""
 
-            content = content.replace(old_debug, new_debug_release)
+        content = content.replace(old_debug, new_debug_release)
 
     # Verificación: el buildType release debe firmar con signingConfigs.release
     # (si el replace #1 no aplicó, queda signingConfigs.debug) y debe existir
