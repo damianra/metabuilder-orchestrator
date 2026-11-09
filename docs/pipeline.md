@@ -164,7 +164,11 @@ inyectables) + `src/agents/smoke.js`.
 3. `GITHUB_REPO_URL` → remote + push (repo pre-creado, SSH).
 4. `--github` + `GITHUB_TOKEN` (PAT scope `repo` en .env) →
    `POST /user/repos` crea el repo, push con `http.extraHeader`
-   (el token NO queda en el remote ni en logs — `sanitize()`),
+   (el token NO queda en el remote ni en logs — `sanitize()`);
+   si GitHub rechaza el ref por scope `workflow` (PAT sin ese scope +
+   commits que tocan `.github/workflows/`), `pushMainWithFallback`
+   repunta `origin` al URL SSH del mismo repo y reintenta — la llave
+   SSH del host no tiene esa limitación;
    `<buildDir>/` del stack → rama `gh-pages` (repo git propio dentro
    del dir) + `POST /repos/{o}/{r}/pages` →
    `https://<user>.github.io/<repo>/`. Solo scopes con frontend.
@@ -185,6 +189,12 @@ inyectables) + `src/agents/smoke.js`.
   usar `git -c http.https://github.com.extraHeader="Authorization: Basic
   base64(x-access-token:$GITHUB_TOKEN)"` (ver `ghAuthArgs` en
   `agents/finalizer.js`). El token nunca entra al remote ni a los logs.
+- **Push rechazado "without `workflow` scope"**: un PAT sin ese scope no
+  puede crear/actualizar `.github/workflows/` y GitHub rechaza el ref
+  entero (los skeletons traen `ci.yml` → caso frecuente).
+  `pushMainWithFallback` reintenta por SSH (`git@github.com:`) — si el
+  host no tiene llave SSH el error combinado queda en `lastError`;
+  alternativa: agregar scope `workflow` al PAT.
 - **Pages**: pushear la rama `gh-pages` suele auto-habilitar Pages; el
   POST a `/repos/{o}/{r}/pages` puede devolver 500 transitorio o 409
   "already enabled" — `enablePagesWithRetry` reintenta los 5xx (3×4s),

@@ -8,7 +8,12 @@ import { join } from 'node:path';
 import { config } from '../config.js';
 import { run } from './shell.js';
 import { createRepo, getGitHubUser, getPages } from './github.js';
-import { deployPages, enablePagesWithRetry, ghAuthArgs, sanitize } from '../agents/finalizer.js';
+import {
+  deployPages,
+  enablePagesWithRetry,
+  pushMainWithFallback,
+  sanitize,
+} from '../agents/finalizer.js';
 
 export async function publishRepo({
   dir,
@@ -99,13 +104,16 @@ export async function publishRepo({
   await git('remote remove origin'); // idempotente si no existe
   r = await git(`remote add origin ${remoteUrl}`);
   if (!r.ok) fail('git remote', r);
-  r = await git(`${ghAuthArgs(token)} push -u origin main`);
+  r = await pushMainWithFallback(git, remoteUrl, { token });
   if (!r.ok) {
     // Rollback del remote que acabamos de crear: si queda configurado,
     // la UI ve repoUrl y esconde el botón de publish → dead-end sin
     // camino de retry. Si el remote era preexistente se conserva.
     if (!hadRemote) await git('remote remove origin');
     fail('push main', r);
+  }
+  if (r.sshFallback) {
+    lines.push('push rechazado por scope `workflow` del PAT — reintentado por SSH\n');
   }
 
   const out = { repoUrl: `https://github.com/${owner}/${slug}`, pagesUrl: null };

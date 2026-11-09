@@ -545,6 +545,51 @@ describe('POST /api/projects/:slug/actions', () => {
     }
   });
 
+  it('publish: push rechazado por scope workflow → fallback SSH sobre el mismo repo', async () => {
+    const dir = seedApp('con-workflows');
+    const prevToken = config.githubToken;
+    config.githubToken = 'fake-token';
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = async (u, opts) =>
+      String(u).includes('api.github.com')
+        ? Response.json(u.endsWith('/user') ? { login: 'tester' } : {}, { status: 201 })
+        : origFetch(u, opts);
+    let pushes = 0;
+    runCmdHandler = (cmd) =>
+      cmd.includes('push -u origin main') && ++pushes === 1
+        ? {
+            ok: false,
+            stdout: '',
+            stderr:
+              'refusing to allow a Personal Access Token to create or update ' +
+              'workflow `.github/workflows/ci.yml` without `workflow` scope',
+          }
+        : { ok: true, stdout: '', stderr: '' };
+    try {
+      const { status } = await post('/api/projects/con-workflows/actions', { action: 'publish' });
+      expect(status).toBe(202);
+      let pub;
+      for (let i = 0; i < 50; i++) {
+        pub = JSON.parse(readFileSync(join(dir, 'publish.json'), 'utf8'));
+        if (pub.status !== 'running') break;
+        await new Promise((r) => setTimeout(r, 20));
+      }
+      expect(pub.status).toBe('done');
+      expect(pub.repoUrl).toBe('https://github.com/tester/con-workflows');
+      expect(pushes).toBe(2);
+      expect(runCmdCalls).toContain(
+        'git remote add origin git@github.com:tester/con-workflows.git',
+      );
+      expect(readFileSync(join(dir, 'publish.log'), 'utf8')).toContain(
+        'reintentado por SSH',
+      );
+    } finally {
+      globalThis.fetch = origFetch;
+      config.githubToken = prevToken;
+      runCmdHandler = () => ({ ok: true, stdout: '', stderr: '' });
+    }
+  });
+
   it('publish sin GITHUB_TOKEN → 503', async () => {
     seedApp('sin-token');
     const prev = config.githubToken;
