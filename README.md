@@ -209,7 +209,7 @@ La API solo encola, no ejecuta — el worker procesa los jobs como siempre.
 | `--agent <id>` | Engine de agente: `devin` (default), `opencode` o `auto` (sondea y gana el primero que autentique). Persiste en `plan.agent` como fallback histórico (el resume prefiere el engine activo del config). |
 | `--resume <dir\|slug>` | **Reanuda un run** desde su `plan.json` (ruta o nombre en `generated-apps/`). No requiere `--idea` ni `--scope`/`--app-type` (los restaura del plan). Los pasos `done` se saltan, los que no terminaron vuelven a `pending` y el pipeline retoma en el primero pendiente — si están todos hechos, salta a `finalVerify` + QA + finalize. Los flags de deploy (`--github`/`--ghpages`/`--no-push`) aplican igual. |
 | `-y` / `--yes` | No pedir confirmación del plan ni preguntas interactivas. |
-| `--github` | Tras aprobación del QA: crea el repo en GitHub (REST, `GITHUB_TOKEN`) y pushea `main`. **No** publica Pages por sí solo. |
+| `--github` | Tras aprobación del QA: crea el repo en GitHub (REST, `GITHUB_TOKEN`) y pushea `main` (si el PAT no tiene scope `workflow` y el push toca `.github/workflows/` — los skeletons traen `ci.yml` — reintenta por SSH `git@github.com:`). **No** publica Pages por sí solo. |
 | `--ghpages` | Publica el build del frontend (`dist/` Vite / `out/` Next) en rama `gh-pages` y activa GitHub Pages (`https://<user>.github.io/<repo>/`). **Requiere `--github`**; solo aplica a scopes con frontend (`frontend`/`fullstack`). Con `nextjs` el build se repite con `PAGES_BASE=/<repo>` para el basePath correcto. |
 | `--phone <num>` | WhatsApp del negocio en formato internacional sin `+` (ej. `5491155500000`). Se inyecta en los verticales: landing → botón flotante con mini-form → `wa.me`; orders → checkout del carrito con items+total → `wa.me`. Vacío → la app no incluye botón de WhatsApp ni formulario de contacto (orders confirma el pedido via `POST /api/orders` o con confirmación local). |
 | `--no-push` | Solo commit local, nada remoto. |
@@ -227,7 +227,7 @@ cp .env.example .env
 
 | Variable | Para qué |
 | --- | --- |
-| `GITHUB_TOKEN` | PAT clásico scope `repo` (github.com/settings/tokens). Habilita `--github`. |
+| `GITHUB_TOKEN` | PAT clásico scope `repo` (github.com/settings/tokens). Habilita `--github`. Sumar scope `workflow` para pushear `.github/workflows/` por HTTPS — sin él el push cae al fallback SSH. |
 | `GITHUB_REPO_URL` | Alternativa a `--github`: pushea a un repo **pre-creado** (SSH). Sin crear repo ni Pages. |
 | `GIT_USER_NAME` / `GIT_USER_EMAIL` | Identidad de los commits en las apps generadas. |
 | `AGENT_PROVIDER` | Engine de agente por defecto (`devin`/`opencode`/`auto`). Menor precedencia que `--agent` y `settings.json`; mayor que `plan.agent`. |

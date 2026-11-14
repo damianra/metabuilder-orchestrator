@@ -3,7 +3,15 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
-import { finalizerNode, ghAuthArgs, sanitize, enablePagesWithRetry } from '../src/agents/finalizer.js';
+import {
+  finalizerNode,
+  ghAuthArgs,
+  sanitize,
+  enablePagesWithRetry,
+  isWorkflowScopeError,
+  httpsToSshRemote,
+  pushMainWithFallback,
+} from '../src/agents/finalizer.js';
 
 const tmp = () => mkdtempSync(join(tmpdir(), 'mb-fin-'));
 
@@ -26,6 +34,95 @@ describe('sanitize', () => {
       'error: auth *** invalid',
     );
     expect(sanitize('sin token', '')).toBe('sin token');
+  });
+});
+
+describe('pushMainWithFallback', () => {
+  const WORKFLOW_ERR =
+    'refusing to allow a Personal Access Token to create or update ' +
+    'workflow `.github/workflows/ci.yml` without `workflow` scope';
+  const HTTPS = 'https://github.com/tester/app-x.git';
+
+  const fakeGit = (handler) => {
+    const calls = [];
+    const git = async (args) => {
+      calls.push(args);
+      return { ok: true, stdout: '', stderr: '', ...(handler(args) ?? {}) };
+    };
+    return { calls, git };
+  };
+
+  it('isWorkflowScopeError detecta el rechazo por scope workflow', () => {
+    expect(isWorkflowScopeError(WORKFLOW_ERR)).toBe(true);
+    expect(isWorkflowScopeError('permission denied')).toBe(false);
+    expect(isWorkflowScopeError(null)).toBe(false);
+  });
+
+  it('httpsToSshRemote convierte solo URLs https de github.com', () => {
+    expect(httpsToSshRemote(HTTPS)).toBe('git@github.com:tester/app-x.git');
+    expect(httpsToSshRemote('git@github.com:tester/app-x.git')).toBeNull();
+    expect(httpsToSshRemote('https://gitlab.com/t/a.git')).toBeNull();
+    expect(httpsToSshRemote(null)).toBeNull();
+  });
+
+  it('push https OK → sin fallback, una sola llamada', async () => {
+    const { calls, git } = fakeGit(() => ({}));
+    const r = await pushMainWithFallback(git, HTTPS, { token: 't' });
+    expect(r.ok).toBe(true);
+    expect(r.sshFallback).toBe(false);
+    expect(calls).toHaveLength(1);
+  });
+
+  it('rechazo por scope workflow → repunta origin a SSH y reintenta', async () => {
+    let pushes = 0;
+    const { calls, git } = fakeGit((args) =>
+      args.includes('push -u origin main') && ++pushes === 1
+        ? { ok: false, stderr: WORKFLOW_ERR }
+        : {},
+    );
+    const r = await pushMainWithFallback(git, HTTPS, { token: 't' });
+    expect(r.ok).toBe(true);
+    expect(r.sshFallback).toBe(true);
+    expect(calls).toContain('remote add origin git@github.com:tester/app-x.git');
+    expect(pushes).toBe(2);
+    // el retry por SSH no lleva el extraHeader del token
+    expect(calls.at(-1)).toBe('push -u origin main');
+  });
+
+  it('fallo ajeno al scope → no reintenta', async () => {
+    const { calls, git } = fakeGit((args) =>
+      args.includes('push -u origin main')
+        ? { ok: false, stderr: 'non-fast-forward' }
+        : {},
+    );
+    const r = await pushMainWithFallback(git, HTTPS, { token: 't' });
+    expect(r.ok).toBe(false);
+    expect(r.sshFallback).toBe(false);
+    expect(calls.filter((c) => c.includes('push'))).toHaveLength(1);
+  });
+
+  it('scope workflow en remote no-https → no hay fallback posible', async () => {
+    const { calls, git } = fakeGit((args) =>
+      args.includes('push -u origin main')
+        ? { ok: false, stderr: WORKFLOW_ERR }
+        : {},
+    );
+    const r = await pushMainWithFallback(git, 'git@github.com:t/a.git', { token: 't' });
+    expect(r.ok).toBe(false);
+    expect(calls.some((c) => c.includes('remote add'))).toBe(false);
+  });
+
+  it('SSH también falla → stderr combina ambos errores', async () => {
+    const { git } = fakeGit((args) =>
+      args.includes('push -u origin main')
+        ? { ok: false, stderr: args.startsWith('-c') ? WORKFLOW_ERR : 'ssh: connect refused' }
+        : {},
+    );
+    const r = await pushMainWithFallback(git, HTTPS, { token: 't' });
+    expect(r.ok).toBe(false);
+    expect(r.sshFallback).toBe(false);
+    expect(r.stderr).toContain('workflow');
+    expect(r.stderr).toContain('connect refused');
   });
 });
 

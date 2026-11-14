@@ -25,6 +25,44 @@ export const ghAuthArgs = (token = config.githubToken) =>
       }"`
     : '';
 
+// Un PAT sin scope `workflow` no puede crear/actualizar archivos bajo
+// .github/workflows/ — GitHub rechaza el ref entero aunque el resto
+// del push sea válido (los skeletons traen ci.yml → caso frecuente).
+export const isWorkflowScopeError = (stderr) =>
+  /without `workflow` scope/i.test(String(stderr ?? ''));
+
+export const httpsToSshRemote = (url) =>
+  String(url ?? '').startsWith('https://github.com/')
+    ? `git@github.com:${String(url).slice('https://github.com/'.length)}`
+    : null;
+
+// Push de main con token por HTTPS; si GitHub lo rechaza por scope
+// `workflow`, repunta origin al URL SSH del mismo repo y reintenta —
+// la llave SSH del host no tiene esa limitación. Devuelve el último
+// resultado + `sshFallback` (true solo si SSH salvó el push); si SSH
+// también falla, stderr combina ambos errores para diagnóstico.
+export async function pushMainWithFallback(
+  git,
+  remoteUrl,
+  { token = config.githubToken } = {},
+) {
+  const first = await git(`${ghAuthArgs(token)} push -u origin main`);
+  const sshUrl = httpsToSshRemote(remoteUrl);
+  if (first.ok || !isWorkflowScopeError(first.stderr) || !sshUrl) {
+    return { ...first, sshFallback: false };
+  }
+  await git('remote remove origin');
+  const add = await git(`remote add origin ${sshUrl}`);
+  if (!add.ok) return { ...first, sshFallback: false };
+  const retry = await git('push -u origin main');
+  if (retry.ok) return { ...retry, sshFallback: true };
+  return {
+    ...retry,
+    sshFallback: false,
+    stderr: `${first.stderr}\n[retry ssh ${sshUrl}] ${retry.stderr}`,
+  };
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // POST /pages puede dar 5xx transitorio justo después del push de
@@ -374,13 +412,16 @@ export async function finalizerNode(state) {
       history: [...history, log('finalize', 'git remote add falló')],
     };
   }
-  r = await git(`${ghAuthArgs()} push -u origin main`);
+  r = await pushMainWithFallback(git, remoteUrl);
   if (!r.ok) {
     return {
       status: 'failed',
       lastError: `git push falló: ${r.stderr.slice(-400)}`,
       history: [...history, log('finalize', 'push a main falló')],
     };
+  }
+  if (r.sshFallback) {
+    history.push(log('finalize', 'PAT sin scope `workflow` — push reintentado por SSH'));
   }
   history.push(log('finalize', `push a ${remoteUrl} (main)`));
 

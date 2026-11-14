@@ -85,7 +85,9 @@ no es loopback, `main()` loguea un warning explícito al arrancar.
   body}` (body truncado a 4KB);
   `publish` (async — `publishRepo` de `src/tools/publish.js` en
   background: crea el repo via REST si falta, commitea lo pendiente,
-  pushea `main` y — solo con `ghpages:true` y scope con frontend —
+  pushea `main` (fallback a SSH si el PAT no tiene scope `workflow` y
+  el push toca `.github/workflows/` — ver `pushMainWithFallback`) y —
+  solo con `ghpages:true` y scope con frontend —
   corre el build [con `pagesBaseEnv` si el stack lo exige], pushea
   `<buildDir>/` a `gh-pages` y activa Pages. Estado en `publish.json`
   dentro de la app — running/done/failed + repoUrl/pagesUrl +
